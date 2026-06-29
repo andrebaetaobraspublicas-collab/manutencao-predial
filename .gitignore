@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Dados do sistema (criados em tempo de execução no servidor — NÃO versionar)
+database.db
+uploads/
+backups/
+
+# Diversos
+*.log
+.DS_Store
+Thumbs.db

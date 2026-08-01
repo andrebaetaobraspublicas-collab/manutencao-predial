@@ -1,0 +1,55 @@
+digraph ERCore {
+  graph [rankdir=LR, bgcolor="white", pad=0.3, nodesep=0.45, ranksep=0.75, fontname="Arial", splines=ortho];
+  node [shape=record, style="rounded,filled", fontname="Arial", fontsize=9.5, color="#3C4A5D", fillcolor="#F8FAFC", margin="0.10,0.06"];
+  edge [fontname="Arial", fontsize=8, color="#68788C", arrowsize=0.65];
+
+  tenant [label="{TENANT|id PK\lslug UK\lstatus\ltrialEndsAt\l}", fillcolor="#E9F2FF"];
+  user [label="{USER|id PK\lemail UK\lstatus\l}", fillcolor="#E9F2FF"];
+  membership [label="{TENANT_MEMBERSHIP|tenantId FK\luserId FK\lrole\lstatus\lexpiresAt\l}"];
+  subscription [label="{TENANT_SUBSCRIPTION|tenantId FK\lplanId FK\lstatus\lcurrentPeriodEnd\l}"];
+  plan [label="{SAAS_PLAN|code UK\lpriceBrl\llimits\lfeatures JSON\l}"];
+
+  building [label="{BUILDING|tenantId FK\lcode UK/tenant\laddress\llatitude/longitude\l}", fillcolor="#ECF8F0"];
+  supplier [label="{SUPPLIER|tenantId FK\ltaxId UK/tenant\lserviceAreas JSON\lstatus\l}", fillcolor="#ECF8F0"];
+  contract [label="{CONTRACT|tenantId FK\lsupplierId FK\lcode UK/tenant\lstart/end\lcurrentValue\lmeasuredValue\l}", fillcolor="#ECF8F0"];
+
+  wo [label="{WORK_ORDER — AGREGADO CENTRAL|tenantId FK\lnumber UK/tenant\lbuildingId FK\lrequesterUserId FK\lsupplierId FK\lstatus/priority\lopenedAt/SLA\lcosts\l}", fillcolor="#FFF2CC", penwidth=2.0];
+  woc [label="{WORK_ORDER_CONTRACT|workOrderId FK\lcontractId FK\lisPrimary\lallocatedAmount\l}"];
+  pend [label="{WORK_ORDER_PENDENCY|tenantId FK\lworkOrderId FK\lstatus\lreason/dueAt\lresolution\l}"];
+  attach [label="{WORK_ORDER_ATTACHMENT|tenantId FK\lworkOrderId FK\lkind\lstorageKey\lsha256\l}"];
+  history [label="{WORK_ORDER_STATUS_HISTORY|workOrderId FK\lfrom/to status\lchangedBy\lchangedAt\l}"];
+  budget [label="{WORK_ORDER_BUDGET|tenantId FK\lworkOrderId UK\lstatus\lsubtotal/BDI/total\l}"];
+  satisfaction [label="{SATISFACTION_RESPONSE|workOrderId UK\lscore\lnpsScore\lcomment\l}"];
+  measurement [label="{MEASUREMENT|tenantId FK\lcontractId FK\lreferenceMonth\lstatus\lnetAmount\l}"];
+  measurementItem [label="{MEASUREMENT_ITEM|measurementId FK\lworkOrderId FK\lmeasuredAmount\l}"];
+  commitment [label="{COMMITMENT|tenantId FK\lcontractId FK\lnumber/fiscalYear\loriginalValue\l}"];
+  planmaint [label="{MAINTENANCE_PLAN|tenantId FK\lbuildingId FK\lfrequency\lnextDueAt\lchecklist JSON\l}"];
+  kpi [label="{KPI_DEFINITION / MEASUREMENT|tenantId FK\lcategory/formula\lperiod/value\ldimensions\l}"];
+  audit [label="{AUDIT_LOG|tenantId FK\lactorUserId\laction/entity\lbefore/after JSON\l}"];
+
+  tenant -> membership [label="1:N"];
+  user -> membership [label="1:N"];
+  tenant -> subscription [label="1:N"];
+  plan -> subscription [label="1:N"];
+  tenant -> building [label="1:N"];
+  tenant -> supplier [label="1:N"];
+  supplier -> contract [label="1:N"];
+  building -> wo [label="1:N"];
+  user -> wo [label="solicita"];
+  supplier -> wo [label="atende", style=dashed];
+  wo -> woc [label="1:N"];
+  contract -> woc [label="1:N"];
+  wo -> pend [label="1:N"];
+  wo -> attach [label="1:N"];
+  wo -> history [label="1:N"];
+  wo -> budget [label="1:0..1"];
+  wo -> satisfaction [label="1:0..1"];
+  contract -> measurement [label="1:N"];
+  measurement -> measurementItem [label="1:N"];
+  wo -> measurementItem [label="1:N"];
+  contract -> commitment [label="1:N"];
+  building -> planmaint [label="1:N"];
+  planmaint -> wo [label="gera", style=dashed];
+  tenant -> kpi [label="1:N"];
+  tenant -> audit [label="1:N"];
+}

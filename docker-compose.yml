@@ -1,0 +1,26 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: gestaopredios-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: gestaopredios
+      MYSQL_USER: gestaopredios
+      MYSQL_PASSWORD: gestaopredios_dev
+      MYSQL_ROOT_PASSWORD: root_dev_change_me
+      TZ: America/Sao_Paulo
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_dev_change_me"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mysql_data:

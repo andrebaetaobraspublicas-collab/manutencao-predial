@@ -1,0 +1,118 @@
+# Estado verificável da implementação — v0.1
+
+Data de referência: **1º de agosto de 2026**.
+
+## 1. Como interpretar este repositório
+
+A fundação separa três níveis de maturidade:
+
+- **Implementado:** há rota/serviço/interface funcional no código inicial;
+- **Modelado:** o schema e a documentação já reservam a estrutura, mas o fluxo de aplicação ainda não está concluído;
+- **Planejado:** requisito especificado no roadmap, sem simulação de funcionalidade pronta.
+
+Essa classificação deve ser preservada no frontend e na comunicação comercial.
+
+## 2. Implementado na fundação v0.1
+
+| Área | Entrega atual |
+|---|---|
+| Monorepo | npm workspaces com API NestJS e frontend Next.js |
+| SaaS | tenant, proprietário, trial inicial, membership, login, JWT curto, refresh rotativo e logout |
+| Autorização | RBAC inicial e filtragem por tenant; demandante limitado às próprias OS |
+| Edificações | cadastro, edição, arquivamento, coordenadas e visualização no mapa quando disponíveis |
+| Fornecedores | cadastro, edição, áreas de atuação e contadores |
+| Contratos | cadastro, edição, fornecedor, edificações, gestor/fiscal, valores e vigência |
+| OS | emissão sequencial, listagem, filtros, detalhe, máquina de estados, pendências, histórico e custos básicos |
+| Backlog | totais, atraso de SLA, faixas de idade e dimensões por fornecedor, imóvel e demandante |
+| Evidências | upload/download privado de JPG, PNG, WebP e PDF, validação de assinatura e SHA-256 |
+| Satisfação | nota, NPS score e comentário pelo demandante após conclusão |
+| Dashboard | mapa, backlog, contratos ativos, execução financeira básica, satisfação e OS antigas |
+| Relatório | primeiro PDF gerencial do backlog |
+| Billing | Checkout, Portal e processamento inicial de webhooks Stripe |
+| Operação | Dockerfiles, Compose de referência, Nginx, health check e instruções Hostinger |
+| Continuidade | AGENTS.md, ADRs, contrato de API, roadmap, critérios de qualidade e handoff Codex |
+
+## 3. Modelado, mas ainda sem fluxo completo
+
+- planos preventivos/preditivos e ativos;
+- orçamento por OS e itens SINAPI;
+- medições e itens vinculados às OS;
+- empenhos e movimentos;
+- aditivos, reajustes, repactuações, subcontratações e penalidades;
+- definições e medições de KPIs;
+- planos SaaS, subscriptions e eventos de cobrança mais amplos;
+- auditoria genérica para todas as entidades.
+
+Essas tabelas não equivalem a módulos concluídos. Elas reduzem retrabalho de modelagem, mas cada fluxo precisa de API, autorização, interface, testes, relatórios e critérios de aceite próprios.
+
+## 4. Não implementado nesta versão
+
+- convites, administração integral de usuários e acesso provisório pela interface;
+- recuperação/alteração de senha e verificação de e-mail;
+- MFA;
+- aplicação efetiva dos limites comerciais de cada plano;
+- geocodificação automática e ajuste manual do marcador;
+- comentários, checklists, categorias e calendário de SLA;
+- notificações;
+- fechamento robusto e reabertura formal;
+- importação SINAPI;
+- consolidação e workflow de medição;
+- gestão de mão de obra terceirizada;
+- catálogo completo de relatórios PDF/Excel;
+- observabilidade e backup operados em produção;
+- antimalware para anexos;
+- CSRF token adicional, rate limiting e hardening final;
+- suíte completa de testes de integração/e2e.
+
+## 5. Validações executadas neste ambiente
+
+Foram executadas verificações estáticas que não dependem do download de pacotes:
+
+- leitura e validação sintática de todos os JSON;
+- leitura dos arquivos YAML do Compose e do GitHub Actions;
+- varredura sintática de **84 arquivos TypeScript/TSX** pelo compilador TypeScript;
+- verificação de imports relativos existentes, excetuado o client Prisma que é gerado;
+- revisão dos caminhos de runtime, migração e volumes dos Dockerfiles;
+- revisão manual das invariantes centrais da OS, do isolamento por tenant e do acesso a anexos.
+
+Em **1º de agosto de 2026**, a baseline também foi executada em ambiente com acesso ao npm:
+
+- instalação limpa e geração de `package-lock.json`;
+- `prisma validate` e `prisma generate` aprovados;
+- migração `20260801195500_initial_schema` gerada e versionada;
+- lint da API e do frontend aprovado;
+- três testes unitários aprovados;
+- builds NestJS e Next.js de produção aprovados;
+- auditoria npm sem vulnerabilidades conhecidas.
+
+## 6. Validações que permanecem obrigatórias no primeiro ambiente local/Codex
+
+Ainda **não foram afirmados como concluídos**, por ausência de Docker/MySQL local e do ambiente Hostinger autenticado:
+
+- inicialização do MySQL e smoke tests de navegador/API;
+- build das imagens Docker.
+
+Sequência obrigatória no VPS/staging:
+
+```bash
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d mysql
+docker compose -f docker-compose.prod.yml run --rm api npm run prisma:deploy -w @gestaopredios/api
+docker compose -f docker-compose.prod.yml run --rm api npm run prisma:seed -w @gestaopredios/api
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Depois, executar os smoke tests documentados e registrar os resultados em `VALIDATION.md`.
+
+## 7. Bloqueadores antes de produção
+
+1. concluir itens de conta e segurança do MVP;
+2. gerar, revisar e testar a migração inicial;
+3. implementar testes multi-tenant e de autorização por objeto;
+4. validar Stripe em modo teste e depois em produção;
+5. implantar staging;
+6. testar backup e restauração de banco e anexos;
+7. configurar HTTPS, monitoramento, logs, rate limiting e alertas;
+8. realizar teste funcional completo com cliente piloto;
+9. revisar LGPD, termos, privacidade e retenção;
+10. executar revisão de segurança independente antes de armazenar documentos reais sensíveis.

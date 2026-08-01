@@ -1,0 +1,982 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  DISABLED
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  EXPIRED
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  CONTRACT_MANAGER
+  CONTRACT_INSPECTOR
+  OPERATOR
+  REQUESTER
+  AUDITOR
+}
+
+enum BuildingStatus {
+  ACTIVE
+  INACTIVE
+  UNDER_CONSTRUCTION
+  DISPOSED
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+  UNDER_REVIEW
+}
+
+enum ContractType {
+  PREVENTIVE_MAINTENANCE
+  CORRECTIVE_MAINTENANCE
+  INTEGRATED_MAINTENANCE
+  OUTSOURCED_LABOR
+  SUPPLY
+  OTHER
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  EXPIRING
+  EXPIRED
+  TERMINATED
+  CLOSED
+}
+
+enum AmendmentType {
+  VALUE_INCREASE
+  VALUE_DECREASE
+  SCOPE_CHANGE
+  TERM_EXTENSION
+  OTHER
+}
+
+enum AdjustmentType {
+  PRICE_ADJUSTMENT
+  REPACTUATION
+  ECONOMIC_REBALANCING
+}
+
+enum PenaltyType {
+  WARNING
+  FINE
+  TEMPORARY_SUSPENSION
+  DEBARMENT
+  OTHER
+}
+
+enum CommitmentMovementType {
+  ISSUE
+  REINFORCEMENT
+  CANCELLATION
+  LIQUIDATION
+  PAYMENT
+}
+
+enum MeasurementStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum WorkOrderStatus {
+  OPEN
+  TRIAGED
+  ASSIGNED
+  IN_PROGRESS
+  PENDING
+  WAITING_APPROVAL
+  COMPLETED
+  CLOSED
+  CANCELED
+}
+
+enum WorkOrderPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum WorkOrderOrigin {
+  USER_REQUEST
+  PREVENTIVE_PLAN
+  INSPECTION
+  RECURRENT_FAILURE
+  CONTRACT_REQUIREMENT
+  OTHER
+}
+
+enum PendencyStatus {
+  OPEN
+  RESOLVED
+  CANCELED
+}
+
+enum AttachmentKind {
+  PHOTO_BEFORE
+  PHOTO_DURING
+  PHOTO_AFTER
+  INVOICE_PDF
+  TECHNICAL_REPORT
+  QUOTATION
+  OTHER_DOCUMENT
+}
+
+enum BudgetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  UNDER_MAINTENANCE
+  DISPOSED
+}
+
+enum AssetCriticality {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum MaintenancePlanType {
+  PREVENTIVE
+  PREDICTIVE
+  INSPECTION
+  LEGAL_COMPLIANCE
+}
+
+enum FrequencyUnit {
+  DAY
+  WEEK
+  MONTH
+  BIMONTH
+  QUARTER
+  SEMESTER
+  YEAR
+  METER_READING
+}
+
+enum KpiCategory {
+  OPERATIONAL
+  SLA
+  SATISFACTION
+  FINANCIAL
+  CONTRACTUAL
+  SUSTAINABILITY
+  RELIABILITY
+  SAFETY
+}
+
+enum KpiDirection {
+  HIGHER_IS_BETTER
+  LOWER_IS_BETTER
+  TARGET_RANGE
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  MANUAL_CONTRACT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  LOGIN
+  LOGOUT
+  EXPORT
+  DOWNLOAD
+  BILLING_CHANGE
+}
+
+model Tenant {
+  id                   String               @id @default(uuid()) @db.Char(36)
+  name                 String               @db.VarChar(160)
+  slug                 String               @unique @db.VarChar(100)
+  taxId                String?              @db.VarChar(24)
+  status               TenantStatus         @default(TRIAL)
+  timezone             String               @default("America/Sao_Paulo") @db.VarChar(60)
+  locale               String               @default("pt-BR") @db.VarChar(10)
+  trialEndsAt          DateTime?
+  stripeCustomerId     String?              @unique @db.VarChar(120)
+  settings             Json?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  deletedAt            DateTime?
+  memberships          TenantMembership[]
+  buildings            Building[]
+  suppliers            Supplier[]
+  contracts            Contract[]
+  workOrders           WorkOrder[]
+  workOrderPendencies  WorkOrderPendency[]
+  workOrderAttachments WorkOrderAttachment[]
+  workOrderBudgets     WorkOrderBudget[]
+  measurements         Measurement[]
+  commitments          Commitment[]
+  penalties            ContractPenalty[]
+  assets               Asset[]
+  maintenancePlans     MaintenancePlan[]
+  kpiDefinitions       KpiDefinition[]
+  kpiMeasurements      KpiMeasurement[]
+  subscriptions        TenantSubscription[]
+  auditLogs            AuditLog[]
+  sequences            TenantSequence[]
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model User {
+  id                       String                    @id @default(uuid()) @db.Char(36)
+  name                     String                    @db.VarChar(160)
+  email                    String                    @unique @db.VarChar(190)
+  passwordHash             String                    @db.VarChar(255)
+  phone                    String?                   @db.VarChar(30)
+  status                   UserStatus                @default(ACTIVE)
+  emailVerifiedAt          DateTime?
+  lastLoginAt              DateTime?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  deletedAt                DateTime?
+  memberships              TenantMembership[]
+  refreshSessions          RefreshSession[]
+  requestedWorkOrders      WorkOrder[]               @relation("WorkOrderRequester")
+  assignedWorkOrders       WorkOrder[]               @relation("WorkOrderAssignee")
+  createdWorkOrders        WorkOrder[]               @relation("WorkOrderCreator")
+  managedBuildings         Building[]                @relation("BuildingManager")
+  managedContracts         Contract[]                @relation("ContractManager")
+  inspectedContracts       Contract[]                @relation("ContractInspector")
+  pendenciesResponsibleFor WorkOrderPendency[]       @relation("PendencyResponsible")
+  uploadedAttachments      WorkOrderAttachment[]     @relation("AttachmentUploader")
+  statusChanges            WorkOrderStatusHistory[]  @relation("StatusChangedBy")
+  satisfactionResponses    SatisfactionResponse[]    @relation("SatisfactionResponder")
+  approvedMeasurements     Measurement[]             @relation("MeasurementApprover")
+  registeredPenalties      ContractPenalty[]         @relation("PenaltyRegistrar")
+  auditLogs                AuditLog[]                 @relation("AuditActor")
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model TenantMembership {
+  id              String            @id @default(uuid()) @db.Char(36)
+  tenantId        String            @db.Char(36)
+  userId          String            @db.Char(36)
+  role            MembershipRole    @default(REQUESTER)
+  status          MembershipStatus  @default(ACTIVE)
+  invitedAt       DateTime?
+  acceptedAt      DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  refreshSessions RefreshSession[]
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, role, status])
+  @@index([userId, status])
+}
+
+model RefreshSession {
+  id           String           @id @default(uuid()) @db.Char(36)
+  userId       String           @db.Char(36)
+  membershipId String           @db.Char(36)
+  tokenHash    String           @unique @db.Char(64)
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  userAgent    String?          @db.VarChar(500)
+  ipAddress    String?          @db.VarChar(64)
+  createdAt    DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership   TenantMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([membershipId, revokedAt])
+}
+
+model TenantSequence {
+  id           String   @id @default(uuid()) @db.Char(36)
+  tenantId     String   @db.Char(36)
+  key          String   @db.VarChar(80)
+  currentValue Int      @default(0)
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+}
+
+model Building {
+  id               String           @id @default(uuid()) @db.Char(36)
+  tenantId         String           @db.Char(36)
+  code             String           @db.VarChar(40)
+  name             String           @db.VarChar(180)
+  type             String?          @db.VarChar(100)
+  status           BuildingStatus   @default(ACTIVE)
+  managerUserId    String?          @db.Char(36)
+  addressLine1     String           @db.VarChar(220)
+  addressLine2     String?          @db.VarChar(160)
+  district         String?          @db.VarChar(120)
+  city             String           @db.VarChar(120)
+  state            String           @db.Char(2)
+  postalCode       String           @db.VarChar(12)
+  country          String           @default("BR") @db.Char(2)
+  latitude         Decimal?         @db.Decimal(10, 7)
+  longitude        Decimal?         @db.Decimal(10, 7)
+  geocodedAt       DateTime?
+  grossAreaM2      Decimal?         @db.Decimal(14, 2)
+  constructionYear Int?
+  floors           Int?
+  metadata         Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  manager          User?            @relation("BuildingManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  contracts        ContractBuilding[]
+  workOrders       WorkOrder[]
+  assets           Asset[]
+  maintenancePlans MaintenancePlan[]
+  kpiMeasurements  KpiMeasurement[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status, deletedAt])
+  @@index([tenantId, city, state])
+  @@index([latitude, longitude])
+}
+
+model Supplier {
+  id              String            @id @default(uuid()) @db.Char(36)
+  tenantId        String            @db.Char(36)
+  legalName       String            @db.VarChar(200)
+  tradeName       String?           @db.VarChar(180)
+  taxId           String            @db.VarChar(24)
+  status          SupplierStatus    @default(ACTIVE)
+  email           String?           @db.VarChar(190)
+  phone           String?           @db.VarChar(30)
+  contactName     String?           @db.VarChar(160)
+  address         Json?
+  serviceAreas    Json?
+  notes           String?           @db.Text
+  rating          Decimal?          @db.Decimal(3, 2)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contracts       Contract[]
+  directWorkOrders WorkOrder[]
+  penalties       ContractPenalty[]
+  kpiMeasurements KpiMeasurement[]
+
+  @@unique([tenantId, taxId])
+  @@index([tenantId, status, deletedAt])
+  @@index([tenantId, legalName])
+}
+
+model Contract {
+  id                     String               @id @default(uuid()) @db.Char(36)
+  tenantId               String               @db.Char(36)
+  supplierId             String               @db.Char(36)
+  code                   String               @db.VarChar(80)
+  administrativeProcess  String?              @db.VarChar(120)
+  object                 String               @db.Text
+  type                   ContractType
+  status                 ContractStatus       @default(DRAFT)
+  managerUserId          String?              @db.Char(36)
+  inspectorUserId        String?              @db.Char(36)
+  startDate              DateTime
+  endDate                DateTime
+  signatureDate          DateTime?
+  originalValue          Decimal              @db.Decimal(16, 2)
+  currentValue           Decimal              @db.Decimal(16, 2)
+  measuredValue          Decimal              @default(0) @db.Decimal(16, 2)
+  paidValue              Decimal              @default(0) @db.Decimal(16, 2)
+  adjustmentBaseDate     DateTime?
+  adjustmentIndex        String?              @db.VarChar(80)
+  notes                  String?              @db.Text
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  deletedAt              DateTime?
+  tenant                 Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  supplier               Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  manager                User?                @relation("ContractManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  inspector              User?                @relation("ContractInspector", fields: [inspectorUserId], references: [id], onDelete: SetNull)
+  buildings              ContractBuilding[]
+  workOrders             WorkOrderContract[]
+  amendments             ContractAmendment[]
+  adjustments            ContractAdjustment[]
+  subcontractors         ContractSubcontract[]
+  penalties              ContractPenalty[]
+  commitments            Commitment[]
+  measurements           Measurement[]
+  maintenancePlans       MaintenancePlan[]
+  kpiMeasurements        KpiMeasurement[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status, endDate, deletedAt])
+  @@index([tenantId, supplierId, status])
+}
+
+model ContractBuilding {
+  id         String   @id @default(uuid()) @db.Char(36)
+  contractId String   @db.Char(36)
+  buildingId String   @db.Char(36)
+  createdAt  DateTime @default(now())
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, buildingId])
+  @@index([buildingId])
+}
+
+model ContractAmendment {
+  id            String        @id @default(uuid()) @db.Char(36)
+  contractId    String        @db.Char(36)
+  number        String        @db.VarChar(60)
+  type          AmendmentType
+  description   String        @db.Text
+  signedAt      DateTime?
+  effectiveAt   DateTime?
+  endDateBefore DateTime?
+  endDateAfter  DateTime?
+  valueChange   Decimal?      @db.Decimal(16, 2)
+  createdAt     DateTime      @default(now())
+  contract      Contract      @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, number])
+}
+
+model ContractAdjustment {
+  id              String         @id @default(uuid()) @db.Char(36)
+  contractId      String         @db.Char(36)
+  type            AdjustmentType
+  referencePeriod String         @db.VarChar(20)
+  requestDate     DateTime?
+  approvalDate    DateTime?
+  percentage      Decimal?       @db.Decimal(9, 6)
+  amount          Decimal?       @db.Decimal(16, 2)
+  indexName       String?        @db.VarChar(100)
+  notes           String?        @db.Text
+  createdAt       DateTime       @default(now())
+  contract        Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId, type, referencePeriod])
+}
+
+model ContractSubcontract {
+  id                 String   @id @default(uuid()) @db.Char(36)
+  contractId         String   @db.Char(36)
+  subcontractorName  String   @db.VarChar(200)
+  subcontractorTaxId String?  @db.VarChar(24)
+  scope              String   @db.Text
+  amount             Decimal? @db.Decimal(16, 2)
+  startDate          DateTime?
+  endDate            DateTime?
+  approvedAt         DateTime?
+  createdAt          DateTime @default(now())
+  contract           Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+}
+
+model ContractPenalty {
+  id                 String      @id @default(uuid()) @db.Char(36)
+  tenantId           String      @db.Char(36)
+  contractId         String?     @db.Char(36)
+  supplierId         String      @db.Char(36)
+  registeredByUserId String?     @db.Char(36)
+  type               PenaltyType
+  administrativeCase String?     @db.VarChar(120)
+  description        String      @db.Text
+  amount             Decimal?    @db.Decimal(16, 2)
+  appliedAt          DateTime
+  startsAt           DateTime?
+  endsAt             DateTime?
+  status             String      @default("ACTIVE") @db.VarChar(30)
+  createdAt          DateTime    @default(now())
+  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract           Contract?   @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  supplier           Supplier    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  registeredBy       User?       @relation("PenaltyRegistrar", fields: [registeredByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, supplierId, appliedAt])
+  @@index([contractId])
+}
+
+model Commitment {
+  id            String               @id @default(uuid()) @db.Char(36)
+  tenantId      String               @db.Char(36)
+  contractId    String               @db.Char(36)
+  number        String               @db.VarChar(80)
+  fiscalYear    Int
+  issueDate     DateTime
+  originalValue Decimal              @db.Decimal(16, 2)
+  notes         String?              @db.Text
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract      Contract             @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  movements     CommitmentMovement[]
+
+  @@unique([tenantId, number, fiscalYear])
+  @@index([tenantId, contractId, fiscalYear])
+}
+
+model CommitmentMovement {
+  id           String                 @id @default(uuid()) @db.Char(36)
+  commitmentId String                 @db.Char(36)
+  type         CommitmentMovementType
+  amount       Decimal                @db.Decimal(16, 2)
+  occurredAt   DateTime
+  documentRef  String?                @db.VarChar(120)
+  notes        String?                @db.Text
+  createdAt    DateTime               @default(now())
+  commitment   Commitment             @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+
+  @@index([commitmentId, occurredAt])
+}
+
+model WorkOrder {
+  id                    String                   @id @default(uuid()) @db.Char(36)
+  tenantId              String                   @db.Char(36)
+  number                String                   @db.VarChar(40)
+  buildingId            String                   @db.Char(36)
+  requesterUserId       String                   @db.Char(36)
+  assignedToUserId      String?                  @db.Char(36)
+  createdByUserId       String                   @db.Char(36)
+  supplierId            String?                  @db.Char(36)
+  title                 String                   @db.VarChar(220)
+  description           String                   @db.Text
+  locationDetail        String?                  @db.VarChar(220)
+  origin                WorkOrderOrigin          @default(USER_REQUEST)
+  priority              WorkOrderPriority        @default(NORMAL)
+  status                WorkOrderStatus          @default(OPEN)
+  hasOpenPendency       Boolean                  @default(false)
+  openedAt              DateTime                 @default(now())
+  triagedAt             DateTime?
+  assignedAt            DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  closedAt              DateTime?
+  canceledAt            DateTime?
+  dueAt                 DateTime?
+  slaResponseDeadline   DateTime?
+  slaResolutionDeadline DateTime?
+  estimatedCost         Decimal?                 @db.Decimal(16, 2)
+  approvedCost          Decimal?                 @db.Decimal(16, 2)
+  finalCost             Decimal?                 @db.Decimal(16, 2)
+  energySavedKwh        Decimal?                 @db.Decimal(16, 3)
+  waterSavedLiters      Decimal?                 @db.Decimal(16, 2)
+  avoidedCorrectiveFail Boolean?                  @default(false)
+  metadata              Json?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  deletedAt             DateTime?
+  tenant                Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  building              Building                 @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  requester             User                     @relation("WorkOrderRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  assignedTo            User?                    @relation("WorkOrderAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  createdBy             User                     @relation("WorkOrderCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  supplier              Supplier?                @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  contracts             WorkOrderContract[]
+  pendencies            WorkOrderPendency[]
+  attachments           WorkOrderAttachment[]
+  statusHistory         WorkOrderStatusHistory[]
+  budget                WorkOrderBudget?
+  measurementItems      MeasurementItem[]
+  satisfaction          SatisfactionResponse?
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status, openedAt, deletedAt])
+  @@index([tenantId, buildingId, status, openedAt])
+  @@index([tenantId, supplierId, status, openedAt])
+  @@index([tenantId, requesterUserId, status, openedAt])
+  @@index([tenantId, hasOpenPendency, status])
+  @@index([tenantId, slaResolutionDeadline, status])
+  @@index([tenantId, priority, status])
+}
+
+model WorkOrderContract {
+  id              String    @id @default(uuid()) @db.Char(36)
+  workOrderId     String    @db.Char(36)
+  contractId      String    @db.Char(36)
+  isPrimary       Boolean   @default(false)
+  allocatedAmount Decimal?  @db.Decimal(16, 2)
+  createdAt       DateTime  @default(now())
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  contract        Contract  @relation(fields: [contractId], references: [id], onDelete: Restrict)
+
+  @@unique([workOrderId, contractId])
+  @@index([contractId])
+}
+
+model WorkOrderPendency {
+  id                String          @id @default(uuid()) @db.Char(36)
+  tenantId          String          @db.Char(36)
+  workOrderId       String          @db.Char(36)
+  responsibleUserId String?         @db.Char(36)
+  status            PendencyStatus  @default(OPEN)
+  previousStatus    WorkOrderStatus
+  reason            String          @db.Text
+  dueAt             DateTime?
+  resolvedAt        DateTime?
+  resolution        String?         @db.Text
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  workOrder         WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  responsible       User?           @relation("PendencyResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, dueAt])
+  @@index([workOrderId, status])
+}
+
+model WorkOrderAttachment {
+  id               String         @id @default(uuid()) @db.Char(36)
+  tenantId         String         @db.Char(36)
+  workOrderId      String         @db.Char(36)
+  uploadedByUserId String         @db.Char(36)
+  kind             AttachmentKind
+  storageKey       String         @unique @db.VarChar(500)
+  fileName         String         @db.VarChar(255)
+  originalName     String         @db.VarChar(255)
+  mimeType         String         @db.VarChar(120)
+  sizeBytes        BigInt
+  sha256           String         @db.Char(64)
+  metadata         Json?
+  createdAt        DateTime       @default(now())
+  deletedAt        DateTime?
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  workOrder        WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  uploadedBy       User           @relation("AttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, workOrderId, kind, deletedAt])
+}
+
+model WorkOrderStatusHistory {
+  id              String           @id @default(uuid()) @db.Char(36)
+  workOrderId     String           @db.Char(36)
+  changedByUserId String           @db.Char(36)
+  fromStatus      WorkOrderStatus?
+  toStatus        WorkOrderStatus
+  note            String?          @db.Text
+  changedAt       DateTime         @default(now())
+  workOrder       WorkOrder        @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  changedBy       User             @relation("StatusChangedBy", fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([workOrderId, changedAt])
+}
+
+model WorkOrderBudget {
+  id             String        @id @default(uuid()) @db.Char(36)
+  tenantId       String        @db.Char(36)
+  workOrderId    String        @unique @db.Char(36)
+  status         BudgetStatus  @default(DRAFT)
+  referenceMonth String?       @db.VarChar(7)
+  state          String?       @db.Char(2)
+  subtotal       Decimal       @default(0) @db.Decimal(16, 2)
+  bdiPercentage  Decimal       @default(0) @db.Decimal(9, 6)
+  total          Decimal       @default(0) @db.Decimal(16, 2)
+  notes          String?       @db.Text
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  workOrder      WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  items          BudgetItem[]
+
+  @@index([tenantId, status])
+}
+
+model BudgetItem {
+  id           String          @id @default(uuid()) @db.Char(36)
+  budgetId     String          @db.Char(36)
+  source       String          @default("SINAPI") @db.VarChar(30)
+  code         String          @db.VarChar(40)
+  description  String          @db.Text
+  unit         String          @db.VarChar(20)
+  quantity     Decimal         @db.Decimal(18, 6)
+  unitCost     Decimal         @db.Decimal(16, 6)
+  totalCost    Decimal         @db.Decimal(16, 2)
+  sourceData   Json?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  budget       WorkOrderBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@index([budgetId])
+  @@index([source, code])
+}
+
+model Measurement {
+  id               String            @id @default(uuid()) @db.Char(36)
+  tenantId         String            @db.Char(36)
+  contractId       String            @db.Char(36)
+  approvedByUserId String?           @db.Char(36)
+  number           String            @db.VarChar(60)
+  referenceMonth   String            @db.VarChar(7)
+  status           MeasurementStatus @default(DRAFT)
+  grossAmount      Decimal           @default(0) @db.Decimal(16, 2)
+  deductions       Decimal           @default(0) @db.Decimal(16, 2)
+  netAmount        Decimal           @default(0) @db.Decimal(16, 2)
+  submittedAt      DateTime?
+  approvedAt       DateTime?
+  paidAt           DateTime?
+  notes            String?           @db.Text
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract         Contract          @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  approvedBy       User?             @relation("MeasurementApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  items            MeasurementItem[]
+
+  @@unique([contractId, number])
+  @@index([tenantId, referenceMonth, status])
+  @@index([tenantId, contractId, referenceMonth])
+}
+
+model MeasurementItem {
+  id            String      @id @default(uuid()) @db.Char(36)
+  measurementId String      @db.Char(36)
+  workOrderId   String      @db.Char(36)
+  description   String?     @db.Text
+  amount        Decimal     @db.Decimal(16, 2)
+  createdAt     DateTime    @default(now())
+  measurement   Measurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+  workOrder     WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+
+  @@unique([measurementId, workOrderId])
+  @@index([workOrderId])
+}
+
+model SatisfactionResponse {
+  id                String    @id @default(uuid()) @db.Char(36)
+  workOrderId       String    @unique @db.Char(36)
+  respondedByUserId String?   @db.Char(36)
+  score             Int
+  npsScore          Int?
+  comment           String?   @db.Text
+  respondedAt       DateTime  @default(now())
+  workOrder         WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  respondedBy       User?     @relation("SatisfactionResponder", fields: [respondedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([respondedAt])
+}
+
+model Asset {
+  id               String             @id @default(uuid()) @db.Char(36)
+  tenantId         String             @db.Char(36)
+  buildingId       String             @db.Char(36)
+  tag              String             @db.VarChar(80)
+  name             String             @db.VarChar(180)
+  category         String             @db.VarChar(120)
+  location         String?            @db.VarChar(180)
+  manufacturer     String?            @db.VarChar(120)
+  model            String?            @db.VarChar(120)
+  serialNumber     String?            @db.VarChar(120)
+  criticality      AssetCriticality   @default(MEDIUM)
+  status           AssetStatus        @default(ACTIVE)
+  installedAt      DateTime?
+  warrantyEndsAt   DateTime?
+  metadata         Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  deletedAt        DateTime?
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  building         Building           @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  maintenancePlans MaintenancePlan[]
+
+  @@unique([tenantId, tag])
+  @@index([tenantId, buildingId, status, deletedAt])
+}
+
+model MaintenancePlan {
+  id                String              @id @default(uuid()) @db.Char(36)
+  tenantId          String              @db.Char(36)
+  buildingId        String              @db.Char(36)
+  assetId           String?             @db.Char(36)
+  contractId        String?             @db.Char(36)
+  name              String              @db.VarChar(180)
+  description       String?             @db.Text
+  type              MaintenancePlanType
+  frequencyUnit     FrequencyUnit
+  frequencyValue    Int                 @default(1)
+  nextDueAt         DateTime
+  lastGeneratedAt   DateTime?
+  defaultPriority   WorkOrderPriority   @default(NORMAL)
+  checklistTemplate Json?
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  building          Building            @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  asset             Asset?              @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  contract          Contract?           @relation(fields: [contractId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, active, nextDueAt])
+  @@index([buildingId, type])
+}
+
+model KpiDefinition {
+  id            String          @id @default(uuid()) @db.Char(36)
+  tenantId      String          @db.Char(36)
+  code          String          @db.VarChar(80)
+  name          String          @db.VarChar(180)
+  description   String?         @db.Text
+  category      KpiCategory
+  unit          String          @db.VarChar(40)
+  direction     KpiDirection
+  formula       String?         @db.Text
+  targetValue   Decimal?        @db.Decimal(18, 6)
+  warningValue  Decimal?        @db.Decimal(18, 6)
+  criticalValue Decimal?        @db.Decimal(18, 6)
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  measurements  KpiMeasurement[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, category, active])
+}
+
+model KpiMeasurement {
+  id              String        @id @default(uuid()) @db.Char(36)
+  tenantId        String        @db.Char(36)
+  definitionId    String        @db.Char(36)
+  buildingId      String?       @db.Char(36)
+  contractId      String?       @db.Char(36)
+  supplierId      String?       @db.Char(36)
+  periodStart     DateTime
+  periodEnd       DateTime
+  value           Decimal       @db.Decimal(18, 6)
+  targetValue     Decimal?      @db.Decimal(18, 6)
+  source          String?       @db.VarChar(80)
+  details         Json?
+  createdAt       DateTime      @default(now())
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  definition      KpiDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+  building        Building?     @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  contract        Contract?     @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  supplier        Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, definitionId, periodEnd])
+  @@index([tenantId, buildingId, periodEnd])
+  @@index([tenantId, contractId, periodEnd])
+}
+
+model SaaSPlan {
+  id                  String               @id @default(uuid()) @db.Char(36)
+  code                String               @unique @db.VarChar(50)
+  name                String               @db.VarChar(100)
+  billingInterval     BillingInterval
+  priceBrl            Decimal              @db.Decimal(12, 2)
+  stripePriceId       String?              @unique @db.VarChar(120)
+  maxBuildings        Int?
+  maxOperationalUsers Int?
+  maxStorageGb        Int?
+  maxWorkOrdersYear   Int?
+  features            Json?
+  active              Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  subscriptions       TenantSubscription[]
+}
+
+model TenantSubscription {
+  id                   String             @id @default(uuid()) @db.Char(36)
+  tenantId             String             @db.Char(36)
+  planId               String             @db.Char(36)
+  status               SubscriptionStatus
+  stripeSubscriptionId String?            @unique @db.VarChar(120)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  plan                 SaaSPlan           @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, status])
+}
+
+model StripeWebhookEvent {
+  id          String   @id @default(uuid()) @db.Char(36)
+  stripeId    String   @unique @db.VarChar(120)
+  type        String   @db.VarChar(120)
+  apiVersion  String?  @db.VarChar(30)
+  payload     Json
+  processedAt DateTime?
+  error       String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([type, processedAt])
+}
+
+model AuditLog {
+  id          String      @id @default(uuid()) @db.Char(36)
+  tenantId    String      @db.Char(36)
+  actorUserId String?     @db.Char(36)
+  action      AuditAction
+  entityType  String      @db.VarChar(100)
+  entityId    String?     @db.VarChar(64)
+  beforeData  Json?
+  afterData   Json?
+  ipAddress   String?     @db.VarChar(64)
+  userAgent   String?     @db.VarChar(500)
+  occurredAt  DateTime    @default(now())
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  actor       User?       @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, entityType, entityId, occurredAt])
+  @@index([tenantId, actorUserId, occurredAt])
+}

@@ -1,0 +1,19 @@
+# Changelog
+
+## 0.1.1 — Baseline instalável e candidata a piloto
+
+- Adicionado `package-lock.json` reproduzível e migração inicial MySQL versionada.
+- Corrigidos erros de TypeScript no JWT, autenticação, atualização e satisfação de OS.
+- Corrigidos bloqueadores de lint e build no frontend Next.js.
+- Atualizadas dependências vulneráveis e adicionados overrides transitivos de segurança.
+- Validado Prisma, lint, testes e builds locais; validação Docker/MySQL permanece para o VPS.
+
+## 0.1.0 — Fundação técnica
+
+- Monorepo Node.js com NestJS, Next.js e MySQL/Prisma.
+- Modelo multi-tenant.
+- Autenticação com access token e refresh token rotativo em cookies HttpOnly.
+- Cadastros iniciais de edificações, fornecedores e contratos.
+- Núcleo de ordens de serviço, pendências, histórico, anexos e backlog.
+- Dashboard inicial e relatório PDF de backlog.
+- Documentação de arquitetura, produto, roadmap, monetização, Hostinger e handoff ao Codex.

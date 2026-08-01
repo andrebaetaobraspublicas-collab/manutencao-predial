@@ -1,0 +1,34 @@
+{
+  "name": "gestao-de-predios",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo inicial do SaaS Gestão de Prédios",
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22 <27",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "concurrently -n API,WEB -c auto \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run start:dev -w @gestaopredios/api",
+    "dev:web": "npm run dev -w @gestaopredios/web",
+    "build": "npm run prisma:generate -w @gestaopredios/api && npm run build -w @gestaopredios/api && npm run build -w @gestaopredios/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:up": "docker compose up -d mysql",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run prisma:migrate -w @gestaopredios/api",
+    "db:seed": "npm run prisma:seed -w @gestaopredios/api",
+    "db:studio": "npm run prisma:studio -w @gestaopredios/api"
+  },
+  "overrides": {
+    "ajv@>=8": "8.20.0",
+    "postcss": "8.5.25",
+    "sharp": "0.35.3"
+  },
+  "devDependencies": {
+    "concurrently": "9.2.4"
+  }
+}

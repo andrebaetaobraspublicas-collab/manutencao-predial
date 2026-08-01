@@ -9,7 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [tenantSlug, setTenantSlug] = useState('demonstracao');
   const [email, setEmail] = useState('admin@gestaodepredios.com.br');
-  const [password, setPassword] = useState('Con2026!Demo');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -109,10 +109,6 @@ export default function LoginPage() {
               <LogIn size={18} /> {submitting ? 'Entrando…' : 'Entrar'}
             </button>
           </form>
-          <div className="login-demo">
-            <strong>Ambiente de demonstração local</strong><br />
-            Os campos já vêm preenchidos após a execução do seed. Troque a senha e remova este bloco antes da publicação.
-          </div>
         </div>
       </section>
     </main>

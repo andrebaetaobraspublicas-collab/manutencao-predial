@@ -7,6 +7,8 @@
 - Corrigidos bloqueadores de lint e build no frontend Next.js.
 - Atualizadas dependências vulneráveis e adicionados overrides transitivos de segurança.
 - Validado Prisma, lint, testes e builds locais; validação Docker/MySQL permanece para o VPS.
+- Adicionados scripts de build separados para os Web Apps Next.js e NestJS da Hostinger.
+- Removida a senha demonstrativa do código e da tela; o seed agora exige `SEED_ADMIN_PASSWORD`.
 
 ## 0.1.0 — Fundação técnica
 

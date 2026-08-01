@@ -54,15 +54,15 @@ Acessos locais:
 - API: `http://localhost:3001/api/v1`
 - Swagger: `http://localhost:3001/docs`
 
-Usuário de demonstração criado pelo seed:
+Antes do seed, defina `SEED_ADMIN_PASSWORD` no `.env` com pelo menos 12 caracteres. O usuário de demonstração criado é:
 
 ```text
 Tenant: demonstracao
 E-mail: admin@gestaodepredios.com.br
-Senha: Con2026!Demo
+Senha: valor configurado em SEED_ADMIN_PASSWORD
 ```
 
-Altere a senha e todos os segredos antes de qualquer publicação.
+Nunca use a senha de desenvolvimento em produção; configure uma senha exclusiva no ambiente da hospedagem.
 
 ## Estrutura
 

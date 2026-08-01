@@ -22,6 +22,7 @@ Consulte `docs/12-status-da-implementacao.md` para a matriz completa.
 - três testes unitários da máquina de estados aprovados;
 - build NestJS aprovado;
 - build Next.js de produção aprovado, incluindo type-check e geração das dez rotas;
+- scripts independentes `build:web` e `build:api` aprovados para o deploy gerenciado da Hostinger;
 - `npm audit` e `npm audit --omit=dev` sem vulnerabilidades conhecidas após atualização de dependências e overrides compatíveis.
 
 ## Pendente no ambiente com MySQL/Docker

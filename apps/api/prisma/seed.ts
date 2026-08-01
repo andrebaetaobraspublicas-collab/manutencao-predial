@@ -21,6 +21,17 @@ import { parseMySqlUrl } from '../src/prisma/database-url';
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL não configurada.');
 
+function requireSeedAdminPassword(): string {
+  const value = process.env.SEED_ADMIN_PASSWORD;
+  if (!value || value.length < 12) {
+    throw new Error('SEED_ADMIN_PASSWORD deve possuir pelo menos 12 caracteres.');
+  }
+  return value;
+}
+
+const seedAdminPassword = requireSeedAdminPassword();
+const seedAdminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@gestaodepredios.com.br';
+
 const prisma = new PrismaClient({
   adapter: new PrismaMariaDb(parseMySqlUrl(databaseUrl)),
 });
@@ -44,6 +55,7 @@ const kpis = [
 ] as const;
 
 async function main() {
+  const seedAdminPasswordHash = await hash(seedAdminPassword, 12);
   const plans = await Promise.all([
     prisma.saaSPlan.upsert({
       where: { code: 'TRIAL_30D' },
@@ -122,12 +134,12 @@ async function main() {
   });
 
   const user = await prisma.user.upsert({
-    where: { email: 'admin@gestaodepredios.com.br' },
-    update: {},
+    where: { email: seedAdminEmail },
+    update: { passwordHash: seedAdminPasswordHash },
     create: {
       name: 'Administrador de Demonstração',
-      email: 'admin@gestaodepredios.com.br',
-      passwordHash: await hash('Con2026!Demo', 12),
+      email: seedAdminEmail,
+      passwordHash: seedAdminPasswordHash,
       status: UserStatus.ACTIVE,
       emailVerifiedAt: new Date(),
     },
@@ -305,7 +317,7 @@ async function main() {
     });
   }
 
-  console.log('Seed concluído. Login: admin@gestaodepredios.com.br / Con2026!Demo');
+  console.log(`Seed concluído. Login: ${seedAdminEmail}`);
 }
 
 main()

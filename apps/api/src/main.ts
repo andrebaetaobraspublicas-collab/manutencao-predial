@@ -1,5 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -7,7 +8,8 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+  app.useBodyParser('json', { limit: `${Number(process.env.MAX_JSON_MB ?? 20)}mb` });
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.use(helmet());
   app.use(compression());
@@ -35,7 +37,7 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Gestão de Prédios API')
     .setDescription('API multi-tenant para manutenção predial e gestão de ordens de serviço.')
-    .setVersion('0.7.0')
+    .setVersion('0.9.0')
     .addCookieAuth('gp_access')
     .addBearerAuth()
     .build();

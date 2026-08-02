@@ -18,6 +18,11 @@ type TenantFixture = {
   attachmentId: string;
   membershipId: string;
   categoryId: string;
+  commitmentId: string;
+  assetId: string;
+  maintenancePlanId: string;
+  sinapiCatalogId: string;
+  budgetId: string;
 };
 
 describe('isolamento multiempresa', () => {
@@ -138,6 +143,35 @@ describe('isolamento multiempresa', () => {
       .send({ reason: 'Tentativa de reabertura em outra organização.' })
       .expect(404);
   });
+
+  it('isola empenhos, SINAPI, orçamentos, ativos e planos preventivos', async () => {
+    const commitments = await tenantA.agent.get('/api/v1/finance/commitments').expect(200);
+    expect(commitments.body).toHaveLength(1);
+    expect(commitments.body[0].id).toBe(tenantA.commitmentId);
+
+    await tenantA.agent
+      .post(`/api/v1/finance/commitments/${tenantB.commitmentId}/movements`)
+      .send({ type: 'REINFORCEMENT', amount: 10, occurredAt: '2026-08-02T12:00:00.000Z' })
+      .expect(404);
+    await tenantA.agent
+      .get(`/api/v1/budgets/sinapi/catalogs/${tenantB.sinapiCatalogId}/items`)
+      .expect(404);
+    await tenantA.agent
+      .get(`/api/v1/budgets/work-orders/${tenantB.workOrderId}`)
+      .expect(404);
+    await tenantA.agent
+      .patch(`/api/v1/maintenance/assets/${tenantB.assetId}`)
+      .send({ name: 'Tentativa cruzada' })
+      .expect(404);
+    await tenantA.agent
+      .patch(`/api/v1/maintenance/plans/${tenantB.maintenancePlanId}`)
+      .send({ name: 'Tentativa cruzada' })
+      .expect(404);
+
+    const budgets = await tenantA.agent.get('/api/v1/budgets').expect(200);
+    expect(budgets.body).toHaveLength(1);
+    expect(budgets.body[0].id).toBe(tenantA.budgetId);
+  });
 });
 
 async function createTenantFixture(
@@ -217,6 +251,59 @@ async function createTenantFixture(
     .get('/api/v1/operations/catalogs?kind=CATEGORY')
     .expect(200);
 
+  const commitment = await agent
+    .post('/api/v1/finance/commitments')
+    .send({
+      contractId: contract.body.id,
+      number: `EMP-${label}-${unique.slice(0, 8)}`,
+      fiscalYear: 2026,
+      issueDate: '2026-08-02T12:00:00.000Z',
+      originalValue: 1000,
+    })
+    .expect(201);
+
+  const asset = await agent
+    .post('/api/v1/maintenance/assets')
+    .send({
+      buildingId: building.body.id,
+      tag: `AT-${label}-${unique.slice(0, 8)}`,
+      name: `Ativo ${label.toUpperCase()}`,
+      category: 'Climatização',
+    })
+    .expect(201);
+
+  const maintenancePlan = await agent
+    .post('/api/v1/maintenance/plans')
+    .send({
+      buildingId: building.body.id,
+      assetId: asset.body.id,
+      name: `Plano ${label.toUpperCase()}`,
+      titleTemplate: 'Preventiva {ativo} {data}',
+      type: 'PREVENTIVE',
+      frequencyUnit: 'MONTH',
+      frequencyValue: 1,
+      nextDueAt: '2026-12-01T12:00:00.000Z',
+    })
+    .expect(201);
+
+  const catalog = await agent
+    .post('/api/v1/budgets/sinapi/catalogs')
+    .send({
+      referenceMonth: '2026-07',
+      state: 'DF',
+      version: `e2e-${label}-${unique.slice(0, 8)}`,
+      items: [{ type: 'SERVICE', code: `S-${label}`, description: 'Serviço sintético', unit: 'UN', unitCost: 10 }],
+    })
+    .expect(201);
+  const catalogItems = await agent
+    .get(`/api/v1/budgets/sinapi/catalogs/${catalog.body.id}/items`)
+    .expect(200);
+  const budget = await agent
+    .put(`/api/v1/budgets/work-orders/${workOrder.body.id}`)
+    .send({ catalogId: catalog.body.id, referenceMonth: '2026-07', state: 'DF', bdiPercentage: 10,
+      items: [{ catalogItemId: catalogItems.body[0].id, quantity: 2 }] })
+    .expect(200);
+
   return {
     agent,
     buildingId: building.body.id,
@@ -226,5 +313,10 @@ async function createTenantFixture(
     attachmentId: attachment.body.id,
     membershipId: members.body[0].id,
     categoryId: categories.body[0].id,
+    commitmentId: commitment.body.id,
+    assetId: asset.body.id,
+    maintenancePlanId: maintenancePlan.body.id,
+    sinapiCatalogId: catalog.body.id,
+    budgetId: budget.body.id,
   };
 }

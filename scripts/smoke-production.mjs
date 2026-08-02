@@ -23,6 +23,15 @@ const checks = [
     },
   },
   {
+    name: 'prontidão da API e banco',
+    url: `${apiBaseUrl}/api/v1/health/ready`,
+    validate: async (response) => {
+      if (!response.ok) return false;
+      const body = await response.json().catch(() => null);
+      return body?.readiness === 'ready' && body?.database === 'reachable';
+    },
+  },
+  {
     name: 'Swagger',
     url: `${apiBaseUrl}/docs`,
     validate: (response) => response.ok,

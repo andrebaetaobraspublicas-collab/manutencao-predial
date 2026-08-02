@@ -154,6 +154,12 @@ piloto formal. A implementação deve manter a OS como agregado central e seguir
 5. **GP-031 — staging, backup e piloto:** validar restauração, observabilidade e aceite antes de
    armazenar dados reais relevantes.
 
+**Estado em 2 de agosto de 2026:** GP-040 a GP-043 implementados na v0.9.0 com API, interface,
+migration, auditoria e testes unitários das regras puras. O GP-031 recebeu pipeline manual/tag,
+readiness, scripts de backup/restauração e roteiro do piloto. A instância pública isolada de
+staging ainda depende de capacidade adicional no plano Hostinger e de um ensaio operacional de
+restauração; produção não deve ser usada como substituta do staging.
+
 O detalhamento e os critérios de aceite estão em `docs/13-plano-inicial-de-issues-codex.md`.
 
 ---

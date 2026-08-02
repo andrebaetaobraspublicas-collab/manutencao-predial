@@ -17,6 +17,10 @@ import { MembersModule } from './modules/members/members.module';
 import { GeocodingModule } from './modules/geocoding/geocoding.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OperationsModule } from './modules/operations/operations.module';
+import { FinanceModule } from './modules/finance/finance.module';
+import { BudgetsModule } from './modules/budgets/budgets.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { KpisModule } from './modules/kpis/kpis.module';
 
 configureBigIntJsonSerialization();
 
@@ -41,6 +45,10 @@ configureBigIntJsonSerialization();
     WorkOrdersModule,
     DashboardModule,
     ReportsModule,
+    FinanceModule,
+    BudgetsModule,
+    MaintenanceModule,
+    KpisModule,
     BillingModule,
   ],
 })

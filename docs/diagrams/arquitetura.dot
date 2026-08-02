@@ -1,0 +1,33 @@
+digraph Architecture {
+  graph [rankdir=LR, bgcolor="white", pad=0.35, nodesep=0.55, ranksep=0.8, fontname="Arial"];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=11, color="#314158", fillcolor="#F7F9FC", margin="0.16,0.10"];
+  edge [fontname="Arial", fontsize=9, color="#5E6E82", arrowsize=0.75];
+
+  users [label="Usuários\nGestores • fiscais • operadores • demandantes", shape=ellipse, fillcolor="#EEF4FF"];
+
+  subgraph cluster_hostinger {
+    label="Hostinger / gestaodepredios.com.br";
+    color="#9BA9BA";
+    style="rounded,dashed";
+    proxy [label="Reverse proxy + TLS\nwww / api", fillcolor="#E9F2FF"];
+    web [label="Frontend\nNext.js + React + TypeScript\nporta 3000"];
+    api [label="API monolítica modular\nNestJS + TypeScript\nporta 3001", fillcolor="#ECF8F0"];
+    db [label="MySQL 8\nDados multi-tenant", shape=cylinder, fillcolor="#FFF7E6"];
+    files [label="Arquivos privados\nFotos • PDFs • notas fiscais", shape=folder, fillcolor="#FFF7E6"];
+  }
+
+  stripe [label="Stripe Billing\nCheckout • Portal • Webhooks", fillcolor="#F3EEFF"];
+  maps [label="Mapas e geocodificação\nProvedor configurável", fillcolor="#F3EEFF"];
+  email [label="E-mail transacional\nMVP v1.0", style="rounded,dashed,filled", fillcolor="#F7F7F7"];
+
+  users -> proxy [label="HTTPS"];
+  proxy -> web [label="www"];
+  proxy -> api [label="api"];
+  web -> api [label="REST + cookies HttpOnly"];
+  api -> db [label="Prisma + driver MySQL"];
+  api -> files [label="download autorizado"];
+  api -> stripe [dir=both, label="API / webhook"];
+  web -> maps [label="tiles"];
+  api -> maps [label="geocoding", style=dashed];
+  api -> email [label="notificações", style=dashed];
+}

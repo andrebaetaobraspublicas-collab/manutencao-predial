@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: gestaopredios_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: mysql://test:test@127.0.0.1:3306/gestaopredios_test
+      JWT_ACCESS_SECRET: ci-secret-with-at-least-thirty-two-characters
+      COOKIE_SECURE: "false"
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Prisma validate and generate
+        run: |
+          npm exec -w @gestaopredios/api prisma validate
+          npm run prisma:generate -w @gestaopredios/api
+      - name: Apply versioned migrations
+        run: npm run prisma:deploy -w @gestaopredios/api
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Multi-tenant integration tests
+        run: npm run test:e2e -w @gestaopredios/api
+      - name: Build
+        run: npm run build

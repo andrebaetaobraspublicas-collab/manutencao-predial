@@ -1,0 +1,41 @@
+{
+  "name": "gestao-de-predios",
+  "version": "0.8.0",
+  "private": true,
+  "description": "Monorepo inicial do SaaS Gestão de Prédios",
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22 <27",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "concurrently -n API,WEB -c auto \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run start:dev -w @gestaopredios/api",
+    "dev:web": "npm run dev -w @gestaopredios/web",
+    "build": "npm run prisma:generate -w @gestaopredios/api && npm run build -w @gestaopredios/api && npm run build -w @gestaopredios/web",
+    "build:web": "npm run build -w @gestaopredios/web && npm run hostinger:prepare -w @gestaopredios/web",
+    "build:web:source": "npm run build -w @gestaopredios/web",
+    "build:api": "npm run prisma:generate -w @gestaopredios/api && npm run build -w @gestaopredios/api",
+    "build:api:hostinger": "npm run hostinger:deploy -w @gestaopredios/api",
+    "build:api:hostinger:source": "npm run prisma:generate -w @gestaopredios/api && npm run build -w @gestaopredios/api && npm run prisma:deploy -w @gestaopredios/api && npm run prisma:seed -w @gestaopredios/api",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:up": "docker compose up -d mysql",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run prisma:migrate -w @gestaopredios/api",
+    "db:deploy": "npm run prisma:deploy -w @gestaopredios/api",
+    "db:seed": "npm run prisma:seed -w @gestaopredios/api",
+    "db:studio": "npm run prisma:studio -w @gestaopredios/api",
+    "smoke:production": "node scripts/smoke-production.mjs"
+  },
+  "overrides": {
+    "ajv@>=8": "8.20.0",
+    "postcss": "8.5.25",
+    "sharp": "0.35.3"
+  },
+  "devDependencies": {
+    "concurrently": "9.2.4"
+  }
+}

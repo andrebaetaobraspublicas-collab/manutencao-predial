@@ -1,0 +1,27 @@
+{
+  "name": "@gestaopredios/web",
+  "version": "0.8.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "hostinger:prepare": "node scripts/hostinger-prepare-standalone.mjs",
+    "start": "next start --port 3000",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "lucide-react": "0.545.0",
+    "maplibre-gl": "6.1.0",
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.15",
+    "@types/react": "19.1.11",
+    "@types/react-dom": "19.1.7",
+    "eslint": "9.32.0",
+    "eslint-config-next": "16.2.12",
+    "typescript": "5.9.2"
+  }
+}

@@ -1,17 +1,17 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-env/
-
-# Dados do sistema (criados em tempo de execução no servidor — NÃO versionar)
-database.db
-uploads/
-backups/
-
-# Diversos
+node_modules/
+.next/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+!.env.production.example
+apps/api/src/generated/
+apps/api/uploads/
+apps/web/hostinger-output/
+apps/web/out/
+.mysql-data/
 *.log
 .DS_Store
-Thumbs.db
+.vscode/
+.idea/

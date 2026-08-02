@@ -18,7 +18,7 @@
     "build:web": "npm run build -w @gestaopredios/web && npm run hostinger:prepare -w @gestaopredios/web",
     "build:web:source": "npm run build -w @gestaopredios/web",
     "build:api": "npm run prisma:generate -w @gestaopredios/api && npm run build -w @gestaopredios/api",
-    "build:api:hostinger": "npm run prisma:generate -w @gestaopredios/api && npm run prisma:deploy -w @gestaopredios/api && npm run prisma:seed -w @gestaopredios/api && npm run hostinger:verify -w @gestaopredios/api",
+    "build:api:hostinger": "npm run prisma:generate -w @gestaopredios/api && npm run prisma:deploy -w @gestaopredios/api && npm run prisma:seed -w @gestaopredios/api && npm run build -w @gestaopredios/api && npm run hostinger:verify -w @gestaopredios/api",
     "build:api:hostinger:source": "npm run prisma:generate -w @gestaopredios/api && npm run prisma:deploy -w @gestaopredios/api && npm run prisma:seed -w @gestaopredios/api && npm run build -w @gestaopredios/api",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",

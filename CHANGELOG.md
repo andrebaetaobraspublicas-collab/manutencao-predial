@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.3 — Deploy isolado e resiliente da API
+
+- Separado o gatilho de build da API na branch técnica `deploy-api`, evitando concorrência com o
+  build do frontend conectado à `main`.
+- Cada promoção aprovada cria um commit técnico vazio na branch de deploy, permitindo repetir um
+  build sem alterar o código funcional.
+- A espera e a carimbagem do runtime agora toleram desconexões SSH transitórias do Hostinger.
+
 ## 0.9.2 — Promoção Passenger com correspondência exata
 
 - Limitada a reciclagem automática ao processo Passenger exato da API, sem atingir a sessão SSH

@@ -10,16 +10,18 @@ import { resolve } from 'node:path';
 
 const packageRoot = process.cwd();
 const prebuiltDir = resolve(packageRoot, 'prebuilt');
+const buildDir = resolve(packageRoot, 'dist');
 const outputDir = resolve(packageRoot, 'apps', 'api', 'dist');
-const prebuiltEntry = resolve(prebuiltDir, 'main.js');
+const artifactDir = existsSync(resolve(buildDir, 'main.js')) ? buildDir : prebuiltDir;
+const artifactEntry = resolve(artifactDir, 'main.js');
 
-if (!existsSync(prebuiltEntry)) {
-  throw new Error('Missing prebuilt/main.js in the Hostinger deployment package');
+if (!existsSync(artifactEntry)) {
+  throw new Error('Missing compiled dist/main.js or fallback prebuilt/main.js');
 }
 
 rmSync(outputDir, { force: true, recursive: true });
 mkdirSync(outputDir, { recursive: true });
-cpSync(prebuiltDir, outputDir, { recursive: true });
+cpSync(artifactDir, outputDir, { recursive: true });
 
 const sourcePackage = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8'));
 const runtimePackage = {

@@ -26,7 +26,7 @@ if (existsSync(publicSource)) {
 
 writeFileSync(
   resolve(outputRoot, 'server.js'),
-  "require('./apps/web/server.js');\n",
+  "process.env.HOSTNAME = '0.0.0.0';\nrequire('./apps/web/server.js');\n",
   'utf8',
 );
 

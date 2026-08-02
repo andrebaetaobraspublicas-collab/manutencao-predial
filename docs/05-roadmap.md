@@ -138,6 +138,24 @@ Transformar o produto em plataforma integrada de operação, planejamento e medi
 - importação/exportação possui validação e relatório de erros;
 - fornecedor é comparável por SLA, reincidência, qualidade e custo.
 
+### Sequência operacional aprovada antes da GP-031
+
+Em 2 de agosto de 2026, foi definida a conclusão do desenho operacional antes da priorização do
+piloto formal. A implementação deve manter a OS como agregado central e seguir esta ordem:
+
+1. **GP-040 — medições e empenhos:** fechar competência, glosa, aprovação, liquidação,
+   pagamento e conciliação com OS e contrato;
+2. **GP-041 — orçamento e SINAPI:** versionar composições e orçamento da OS, com memória de
+   cálculo e comparação entre orçado, executado, medido e pago;
+3. **GP-042 — planos preventivos:** gerar OS recorrentes de forma idempotente, com calendário,
+   checklist e rastreabilidade;
+4. **GP-043 — KPIs e SLAs gerenciais:** calcular tendências e relatórios executivos somente
+   depois que as fontes operacionais anteriores estiverem reconciliadas;
+5. **GP-031 — staging, backup e piloto:** validar restauração, observabilidade e aceite antes de
+   armazenar dados reais relevantes.
+
+O detalhamento e os critérios de aceite estão em `docs/13-plano-inicial-de-issues-codex.md`.
+
 ---
 
 ## Versão 3.0 — fiscalização administrativa e inteligência gerencial

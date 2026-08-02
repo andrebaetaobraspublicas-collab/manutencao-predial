@@ -226,3 +226,47 @@ Na hospedagem gerenciada compatível com Node.js:
 A alternativa somente é adequada após validar limites de runtime, processo persistente, tamanho de upload, cron/jobs, logs e backup.
 
 No piloto de 2 de agosto de 2026, a exportação estática foi escolhida porque o Passenger do Web App retornava 503 antes de iniciar o runtime Next.js. A lógica e os dados permanecem na API; a rota de detalhe da OS é gerada em `/ordens-servico/detalhe/?id=<id>` para ser compatível com hospedagem estática.
+
+## 15. Deploy automático do piloto pelo GitHub
+
+Em **2 de agosto de 2026**, os dois Web Apps gerenciados foram conectados ao repositório
+`andrebaetaobraspublicas-collab/manutencao-predial`, branch `main`, com **Auto-deployment** ativo.
+A primeira publicação conectada usou o commit `d298c168`.
+
+Configuração da API:
+
+- domínio: `api.gestaodepredios.com.br`;
+- preset: `Other`;
+- Node.js: `22.x`;
+- diretório raiz: `./`;
+- build: `npm run build:api:hostinger`;
+- saída: `apps/api/dist`;
+- entry file: `apps/api/dist/main.js`.
+
+Configuração do frontend:
+
+- domínio: `gestaodepredios.com.br`;
+- preset: `React`;
+- Node.js: `22.x`;
+- diretório raiz: `./`;
+- build: `npm run build:web`;
+- saída: `apps/web/out`;
+- sem entry file, pois a publicação é estática;
+- `HOSTINGER_STATIC_EXPORT=1` no ambiente de build.
+
+Fluxo de promoção:
+
+1. desenvolver em branch dedicada;
+2. abrir PR para `main` e aguardar a CI de lint, testes e builds;
+3. revisar migration e compatibilidade de rollback quando houver mudança de banco;
+4. mesclar o PR aprovado em `main`;
+5. acompanhar os dois deployments automáticos no hPanel;
+6. validar `GET https://api.gestaodepredios.com.br/api/v1/health`;
+7. executar login, página gerencial e smoke tests proporcionais à mudança;
+8. conferir runtime logs da API e registrar o commit publicado.
+
+Não versionar segredos. As variáveis continuam administradas separadamente em cada Web App. Como
+os dois serviços acompanham a mesma branch, qualquer commit em `main`, inclusive documentação,
+pode iniciar os dois builds. Para rollback de código, usar um novo commit de reversão em `main` ou
+o redeploy do artefato anterior; migrações de banco precisam permanecer compatíveis com a versão
+anterior ou seguir o plano de restauração.

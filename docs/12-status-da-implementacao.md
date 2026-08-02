@@ -116,10 +116,12 @@ docker compose -f docker-compose.prod.yml up -d
 
 O diagnóstico histórico do incidente de publicação está em `docs/14-diagnostico-fase-a.md`. O estado público deve ser verificado novamente por smoke test em cada deploy; resultados antigos não comprovam a disponibilidade da nova versão.
 
-A v0.8.0 foi publicada na Hostinger em **2 de agosto de 2026** a partir do commit `f636fcd`.
-Os deployments da API e do frontend foram concluídos, o smoke test público foi aprovado e a
-central de relatórios foi validada com sessão administrativa e dados reais da organização.
-Os logs da API registravam zero issues e zero errors na janela de uma hora após a promoção.
+A v0.8.0 foi publicada na Hostinger em **2 de agosto de 2026** e promovida para `main` pelo commit
+de merge `d298c168`. API e frontend foram recriados como Web Apps conectados ao repositório
+`andrebaetaobraspublicas-collab/manutencao-predial`, com auto-deploy da branch `main`. A API
+respondeu `200 OK` em `/api/v1/health`; a central de relatórios foi reaberta no domínio público com
+sessão administrativa e dados reais da organização. A configuração reproduzível está em
+`docs/07-deploy-hostinger.md`.
 
 ## 7. Bloqueadores antes de produção
 

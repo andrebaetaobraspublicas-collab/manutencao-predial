@@ -512,6 +512,23 @@ p {
   font-weight: 800;
 }
 
+.map-status,
+.map-location-summary {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  padding: 6px 9px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: var(--shadow-sm);
+  font-size: 0.7rem;
+}
+
+.map-status { top: 12px; }
+.map-location-summary { bottom: 12px; font-weight: 700; }
+
 .bar-list {
   display: grid;
   gap: 14px;

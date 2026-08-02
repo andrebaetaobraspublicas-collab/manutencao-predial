@@ -164,6 +164,11 @@ sem criar staging. Essa exceção termina antes da entrada de usuários ou dados
 **Estado do GP-044 em 2 de agosto de 2026:** painel de homologação, critérios automáticos,
 decisões auditáveis, aceite final bloqueante e exportações PDF/CSV implementados na v0.10.0.
 
+**Aperfeiçoamento operacional v0.11.0:** concluídos mapa rotulado com fallback, cadastro
+relacional de áreas de fornecedores, consórcios e sanções, dossiê contratual com eventos que
+recalculam o valor atual e importação XLSX das quatro bases SINAPI por UF, além de tabelas
+próprias de manutenção.
+
 O detalhamento e os critérios de aceite estão em `docs/13-plano-inicial-de-issues-codex.md`.
 
 ---

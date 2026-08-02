@@ -49,12 +49,6 @@ export class CreateContractDto {
   @IsPositive()
   originalValue!: number;
 
-  @ApiPropertyOptional({ example: 1500000 })
-  @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  currentValue?: number;
-
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()

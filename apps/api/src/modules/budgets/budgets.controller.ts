@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { MembershipRole } from '../../generated/prisma/client';
 import { BudgetsService } from './budgets.service';
-import { ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
+import { ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
 
 const READ = [MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER,
   MembershipRole.CONTRACT_MANAGER, MembershipRole.CONTRACT_INSPECTOR, MembershipRole.OPERATOR, MembershipRole.AUDITOR];
@@ -28,6 +30,15 @@ export class BudgetsController {
   @Roles(...WRITE) @Post('sinapi/catalogs')
   importCatalog(@CurrentUser() user: AuthenticatedUser, @Body() dto: ImportSinapiCatalogDto) {
     return this.service.importCatalog(user.tenantId, user.userId, dto);
+  }
+
+  @Roles(...WRITE)
+  @ApiConsumes('multipart/form-data')
+  @Post('catalogs/import-file')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 40 * 1024 * 1024, files: 1 } }))
+  importFile(@CurrentUser() user: AuthenticatedUser, @Body() dto: ImportCatalogFileDto,
+    @UploadedFile() file?: Express.Multer.File) {
+    return this.service.importWorkbook(user.tenantId, user.userId, dto, file);
   }
 
   @Roles(...READ) @Get()

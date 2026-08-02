@@ -5,6 +5,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { MembershipRole } from '../../generated/prisma/client';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
+import { CreateSupplierPenaltyDto } from './dto/create-supplier-penalty.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { SuppliersService } from './suppliers.service';
 
@@ -44,7 +45,7 @@ export class SuppliersController {
   @Roles(MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER)
   @Post()
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateSupplierDto) {
-    return this.service.create(user.tenantId, dto);
+    return this.service.create(user.tenantId, user.userId, dto);
   }
 
   @Roles(MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER)
@@ -54,6 +55,16 @@ export class SuppliersController {
     @Param('id') id: string,
     @Body() dto: UpdateSupplierDto,
   ) {
-    return this.service.update(user.tenantId, id, dto);
+    return this.service.update(user.tenantId, user.userId, id, dto);
+  }
+
+  @Roles(MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER)
+  @Post(':id/penalties')
+  addPenalty(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateSupplierPenaltyDto,
+  ) {
+    return this.service.addPenalty(user.tenantId, user.userId, id, dto);
   }
 }

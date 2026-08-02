@@ -1,4 +1,4 @@
-# Estado verificável da implementação — v0.10.0
+# Estado verificável da implementação — v0.11.0
 
 Data de referência: **2 de agosto de 2026**.
 
@@ -44,10 +44,10 @@ Essa classificação deve ser preservada no frontend e na comunicação comercia
 | KPIs v0.9 | sete indicadores centrais, versão de fórmula, tendência, painel e PDF/CSV |
 | GP-031 v0.9 | health live/ready, workflow da candidata, backup/restore e roteiro de aceite |
 | GP-044 v0.10 | painel de piloto, nove cenários, critérios automáticos, decisões auditáveis, aceite bloqueante e PDF/CSV |
+| Aperfeiçoamento operacional v0.11 | mapa com estilo rotulado e fallback; fornecedores com categorias, endereço, consórcios e sanções; dossiê contratual; importador XLSX SINAPI e tabelas próprias |
 
 ## 3. Modelado, mas ainda sem fluxo completo
 
-- aditivos, reajustes, repactuações, subcontratações e penalidades;
 - planos SaaS, subscriptions e eventos de cobrança mais amplos;
 - auditoria genérica para todas as entidades.
 
@@ -66,8 +66,8 @@ Essas tabelas não equivalem a módulos concluídos. Elas reduzem retrabalho de 
 - CSRF token adicional, rate limiting e hardening final;
 - suíte completa de testes de integração/e2e.
 
-Os fluxos v0.9 são funcionais, mas ainda devem ganhar importação CSV/XLSX, orçamento em
-Excel/PDF detalhado, calendário visual preventivo, drill-down gerencial completo e jobs
+Os fluxos v0.9 são funcionais, mas ainda devem ganhar orçamento em Excel/PDF detalhado,
+calendário visual preventivo, drill-down gerencial completo e jobs
 agendados externos. O gerador preventivo desta entrega é disparado por endpoint protegido.
 
 ## 5. Validações executadas neste ambiente
@@ -108,6 +108,11 @@ deve ser registrado após o auto-deploy.
 Na v0.10.0, o GP-044 foi validado por lint, builds NestJS/Next.js e **74 testes unitários em 20
 suítes**. A suíte e2e passou a verificar o isolamento das decisões do piloto e o bloqueio do aceite
 prematuro; sua execução com MySQL limpo permanece gate obrigatório da CI antes da promoção.
+
+Na v0.11.0, o importador foi validado diretamente com o XLSX SINAPI 04/2026 anexado. Para MG,
+foram reconhecidos 4.304 insumos em cada regime e 10.378 composições sintéticas em cada regime,
+totalizando 29.364 itens. As abas analíticas foram deliberadamente ignoradas. Lint e builds de
+API/frontend foram aprovados; migration MySQL e e2e permanecem gates obrigatórios da CI.
 
 ## 6. Validações de infraestrutura que permanecem obrigatórias
 

@@ -173,6 +173,27 @@ describe('isolamento multiempresa', () => {
     expect(budgets.body[0].id).toBe(tenantA.budgetId);
   });
 
+  it('isola categorias de fornecedor e eventos contratuais e deriva o valor atual', async () => {
+    await tenantA.agent
+      .patch(`/api/v1/suppliers/${tenantA.supplierId}`)
+      .send({ serviceAreaCategoryIds: [tenantB.categoryId] })
+      .expect(400);
+
+    await tenantA.agent
+      .post(`/api/v1/contracts/${tenantB.contractId}/amendments`)
+      .send({ number: 'TA-CRUZADO', type: 'VALUE_INCREASE', description: 'Tentativa cruzada', valueChange: 100 })
+      .expect(404);
+
+    await tenantA.agent
+      .post(`/api/v1/contracts/${tenantA.contractId}/amendments`)
+      .send({ number: 'TA-001', type: 'VALUE_INCREASE', description: 'Acréscimo validado', valueChange: 100 })
+      .expect(201);
+
+    const contract = await tenantA.agent.get(`/api/v1/contracts/${tenantA.contractId}`).expect(200);
+    expect(Number(contract.body.currentValue)).toBe(1100);
+    expect(contract.body.amendments).toHaveLength(1);
+  });
+
   it('isola decisões e evidências do piloto por organização', async () => {
     await tenantB.agent
       .post('/api/v1/pilot/scenarios/ACCESS_SECURITY/decision')

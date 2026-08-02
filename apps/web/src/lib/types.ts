@@ -203,7 +203,19 @@ export type Supplier = {
   email?: string | null;
   phone?: string | null;
   contactName?: string | null;
+  kind: 'COMPANY' | 'CONSORTIUM';
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  district?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
   rating?: string | number | null;
+  serviceAreaLinks?: Array<{ category: { id: string; code: string; name: string } }>;
+  consortiumMembers?: Array<{ participationPercentage?: string | number | null; isLeader: boolean;
+    member: { id: string; legalName: string; tradeName?: string | null; taxId: string } }>;
+  penalties?: Array<{ id: string; type: string; description: string; administrativeCase?: string | null;
+    amount?: string | number | null; appliedAt: string; startsAt?: string | null; endsAt?: string | null; status: string }>;
   _count?: { contracts: number; directWorkOrders: number; penalties: number };
 };
 
@@ -219,10 +231,20 @@ export type Contract = {
   currentValue: string | number;
   measuredValue: string | number;
   paidValue: string | number;
+  administrativeProcess?: string | null;
   supplier: { id: string; legalName: string; tradeName?: string | null };
   manager?: { id: string; name: string } | null;
   inspector?: { id: string; name: string } | null;
   buildings?: Array<{ building: { id: string; code: string; name: string } }>;
+  amendments?: Array<Record<string, unknown>>;
+  adjustments?: Array<Record<string, unknown>>;
+  subcontractors?: Array<Record<string, unknown>>;
+  penalties?: Array<Record<string, unknown>>;
+  commitments?: Array<Record<string, unknown>>;
+  measurements?: Array<Record<string, unknown>>;
+  workOrders?: Array<{ workOrder: { id: string; number: string; title: string; status: string } }>;
+  _count?: { workOrders: number; measurements: number; amendments: number; adjustments: number;
+    subcontractors: number; penalties: number; commitments: number };
 };
 
 export type WorkOrder = {

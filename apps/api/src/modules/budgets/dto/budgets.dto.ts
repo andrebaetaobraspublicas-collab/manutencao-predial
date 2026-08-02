@@ -38,6 +38,27 @@ export class ImportSinapiCatalogDto {
   items!: SinapiCatalogItemDto[];
 }
 
+export enum CatalogFileSource {
+  SINAPI = 'SINAPI',
+  CUSTOM = 'CUSTOM',
+}
+
+export class ImportCatalogFileDto {
+  @IsEnum(CatalogFileSource)
+  sourceType!: CatalogFileSource;
+
+  @Matches(/^[A-Za-z]{2}$/)
+  state!: string;
+
+  @IsOptional()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/)
+  referenceMonth?: string;
+
+  @IsString()
+  @Length(1, 30)
+  version!: string;
+}
+
 export class BudgetItemDto {
   @IsOptional() @IsUUID() catalogItemId?: string;
   @IsOptional() @IsEnum(BudgetItemKind) kind?: BudgetItemKind;

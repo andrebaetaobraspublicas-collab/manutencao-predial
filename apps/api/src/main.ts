@@ -6,11 +6,6 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
-// Evita falha de serialização de campos BigInt, como tamanho de arquivos.
-(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function toJSON() {
-  return this.toString();
-};
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.getHttpAdapter().getInstance().set('trust proxy', 1);

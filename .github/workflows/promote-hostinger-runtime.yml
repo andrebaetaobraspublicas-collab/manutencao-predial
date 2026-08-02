@@ -71,7 +71,7 @@ jobs:
           set -euo pipefail
           remote="${SSH_USER}@${SSH_HOST}"
           release_file="${APP_ROOT}/apps/api/dist/release-sha.txt"
-          process_pattern="lsnode:/home/${SSH_USER}/domains/api.gestaodepredios.com.br/.builds/cur"
+          process_pattern="^lsnode:/home/${SSH_USER}/domains/api.gestaodepredios.com.br/.builds/cur$"
 
           ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" "$remote" \
             "printf '%s\\n' '$RELEASE_SHA' > '$release_file'; pids=\$(pgrep -u '$SSH_USER' -f '$process_pattern' || true); if [[ -n \"\$pids\" ]]; then kill -TERM \$pids; fi"

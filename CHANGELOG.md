@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2 — Promoção Passenger com correspondência exata
+
+- Limitada a reciclagem automática ao processo Passenger exato da API, sem atingir a sessão SSH
+  responsável pela promoção.
+- Mantidas a carimbagem do SHA, a verificação pública da release e a checagem do banco antes de
+  concluir o deploy.
+
 ## 0.9.1 — Promoção automática do runtime Hostinger
 
 - Adicionado workflow pós-CI que aguarda o build conectado ao GitHub, carimba o SHA e recicla

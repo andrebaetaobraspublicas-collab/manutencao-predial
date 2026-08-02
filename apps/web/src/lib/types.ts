@@ -231,6 +231,8 @@ export type Contract = {
   currentValue: string | number;
   measuredValue: string | number;
   paidValue: string | number;
+  adjustmentBaseDate?: string | null;
+  adjustmentIndex?: string | null;
   administrativeProcess?: string | null;
   supplier: { id: string; legalName: string; tradeName?: string | null };
   manager?: { id: string; name: string } | null;

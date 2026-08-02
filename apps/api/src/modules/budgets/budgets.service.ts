@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import { AuditAction, BudgetItemKind, BudgetStatus, Prisma } from '../../generated/prisma/client';
+import { AuditAction, BudgetItemKind, BudgetStage, BudgetStatus, Prisma, WorkOrderStatus } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CatalogFileSource, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
 import { parseCustomWorkbook, parseOfficialSinapiWorkbook } from './xlsx-catalog-parser';
@@ -122,16 +122,31 @@ export class BudgetsService {
         catalog: { select: { id: true, referenceMonth: true, state: true, version: true } }, _count: { select: { items: true, revisions: true } } } });
   }
 
-  async getBudget(tenantId: string, workOrderId: string) {
-    const budget = await this.prisma.workOrderBudget.findFirst({ where: { tenantId, workOrderId },
+  async getBudget(tenantId: string, workOrderId: string, stage: BudgetStage = BudgetStage.PLANNED) {
+    const budget = await this.prisma.workOrderBudget.findFirst({ where: { tenantId, workOrderId, stage },
       include: { workOrder: true, catalog: true, items: { include: { catalogItem: true } },
         revisions: { orderBy: { version: 'desc' } }, submittedBy: { select: { name: true } }, approvedBy: { select: { name: true } } } });
     if (!budget) throw new NotFoundException('Orçamento não encontrado para esta OS.');
     return budget;
   }
 
-  async saveBudget(tenantId: string, actorUserId: string, workOrderId: string, dto: SaveBudgetDto) {
-    const current = await this.prisma.workOrderBudget.findFirst({ where: { tenantId, workOrderId } });
+  async getBudgetStages(tenantId: string, workOrderId: string) {
+    const workOrder = await this.prisma.workOrder.findFirst({
+      where: { id: workOrderId, tenantId, deletedAt: null },
+      select: { id: true, number: true, title: true },
+    });
+    if (!workOrder) throw new NotFoundException('Ordem de serviço não encontrada.');
+    const budgets = await this.prisma.workOrderBudget.findMany({
+      where: { tenantId, workOrderId },
+      orderBy: { stage: 'asc' },
+      include: { items: true, catalog: true, revisions: { orderBy: { version: 'desc' } } },
+    });
+    return { workOrder, budgets };
+  }
+
+  async saveBudget(tenantId: string, actorUserId: string, workOrderId: string, dto: SaveBudgetDto,
+    stage: BudgetStage = BudgetStage.PLANNED) {
+    const current = await this.prisma.workOrderBudget.findFirst({ where: { tenantId, workOrderId, stage } });
     if (current && current.status !== BudgetStatus.DRAFT && current.status !== BudgetStatus.REJECTED) {
       throw new BadRequestException('Somente orçamentos em rascunho ou rejeitados podem ser editados.');
     }
@@ -144,6 +159,13 @@ export class BudgetsService {
     ]);
     if (!workOrder) throw new NotFoundException('Ordem de serviço não encontrada.');
     if (dto.catalogId && !selectedCatalog) throw new BadRequestException('Catálogo SINAPI inválido para a organização.');
+    const finalBudgetStatuses = new Set<WorkOrderStatus>([
+      WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.WAITING_APPROVAL,
+      WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED,
+    ]);
+    if (stage === BudgetStage.FINAL_EXECUTED && !finalBudgetStatuses.has(workOrder.status)) {
+      throw new BadRequestException('O orçamento final executado só pode ser registrado após o início da execução.');
+    }
     const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
     const items = dto.items.map((item) => {
       const catalog = item.catalogItemId ? catalogById.get(item.catalogItemId) : undefined;
@@ -173,7 +195,7 @@ export class BudgetsService {
           items: { create: items.map((item) => ({ ...item, tenantId })) },
         }, include: { items: true, workOrder: true } });
       } else {
-        budget = await tx.workOrderBudget.create({ data: { tenantId, workOrderId,
+        budget = await tx.workOrderBudget.create({ data: { tenantId, workOrderId, stage,
           catalogId: dto.catalogId, referenceMonth: dto.referenceMonth, state: dto.state?.toUpperCase(),
           subtotal, bdiPercentage: bdi, total, notes: dto.notes,
           items: { create: items.map((item) => ({ ...item, tenantId })) },
@@ -181,7 +203,7 @@ export class BudgetsService {
       }
       await this.revision(tx, budget, actorUserId, current ? 'Edição do orçamento' : 'Criação do orçamento');
       await this.audit(tx, tenantId, actorUserId, current ? AuditAction.UPDATE : AuditAction.CREATE,
-        'WorkOrderBudget', budget.id, { version: budget.version, total: budget.total.toString() });
+        'WorkOrderBudget', budget.id, { stage, version: budget.version, total: budget.total.toString() });
       return budget;
     });
   }
@@ -205,11 +227,14 @@ export class BudgetsService {
         canceledAt: dto.status === BudgetStatus.CANCELED ? now : undefined,
       }, include: { items: true, workOrder: true } });
       if (dto.status === BudgetStatus.APPROVED) {
-        await tx.workOrder.update({ where: { id: current.workOrderId }, data: { approvedCost: current.total } });
+        const costData = current.stage === BudgetStage.PLANNED ? { estimatedCost: current.total }
+          : current.stage === BudgetStage.APPROVED ? { approvedCost: current.total }
+          : { finalCost: current.total };
+        await tx.workOrder.update({ where: { id: current.workOrderId }, data: costData });
       }
       await this.revision(tx, updated, actorUserId, dto.note ?? `Transição para ${dto.status}`);
       await this.audit(tx, tenantId, actorUserId, AuditAction.STATUS_CHANGE, 'WorkOrderBudget', id,
-        { from: current.status, to: dto.status, version: updated.version });
+        { stage: current.stage, from: current.status, to: dto.status, version: updated.version });
       return updated;
     });
   }

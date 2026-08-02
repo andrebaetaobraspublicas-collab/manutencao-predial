@@ -8,6 +8,7 @@ import {
   CreateCommitmentDto,
   CreateCommitmentMovementDto,
   CreateMeasurementDto,
+  ConsolidateMeasurementDto,
   TransitionMeasurementDto,
 } from './dto/finance.dto';
 import { FinanceService } from './finance.service';
@@ -47,6 +48,11 @@ export class FinanceController {
   @Roles(...WRITE) @Post('measurements')
   createMeasurement(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateMeasurementDto) {
     return this.service.createMeasurement(user.tenantId, user.userId, dto);
+  }
+
+  @Roles(...WRITE) @Post('measurements/consolidate-final-budgets')
+  consolidate(@CurrentUser() user: AuthenticatedUser, @Body() dto: ConsolidateMeasurementDto) {
+    return this.service.consolidateFinalBudgets(user.tenantId, user.userId, dto);
   }
 
   @Roles(...WRITE) @Post('measurements/:id/transitions')

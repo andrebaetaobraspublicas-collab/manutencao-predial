@@ -5,7 +5,8 @@ import {
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
-import { CreateAssetDto, CreateMaintenancePlanDto, UpdateAssetDto, UpdateMaintenancePlanDto } from './dto/maintenance.dto';
+import { CreateAssetDto, CreateMaintenancePlanDto, IntelligentMaintenanceDto, UpdateAssetDto, UpdateMaintenancePlanDto } from './dto/maintenance.dto';
+import { availableMaintenanceSystems, INTELLIGENCE_VERSION, recommendMaintenance } from './maintenance-intelligence';
 import { nextOccurrence } from './maintenance-recurrence';
 
 @Injectable()
@@ -48,6 +49,76 @@ export class MaintenanceService {
     include: { building: { select: { id: true, code: true, name: true } }, asset: { select: { id: true, tag: true, name: true } },
       contract: { select: { id: true, code: true } }, supplier: { select: { id: true, legalName: true, tradeName: true } },
       _count: { select: { generatedWorkOrders: true, generations: true } } } }); }
+
+  intelligentSystems() { return { version: INTELLIGENCE_VERSION, systems: availableMaintenanceSystems() }; }
+
+  async previewIntelligent(tenantId: string, dto: IntelligentMaintenanceDto) {
+    const building = await this.prisma.building.findFirst({ where: { id: dto.buildingId, tenantId, deletedAt: null },
+      select: { id: true, code: true, name: true, type: true, constructionYear: true, grossAreaM2: true, floors: true } });
+    if (!building) throw new BadRequestException('Edificação inválida.');
+    const validSystems = new Set(availableMaintenanceSystems());
+    const systems = dto.systems.map((item) => item.trim().toUpperCase());
+    const invalid = systems.filter((item) => !validSystems.has(item));
+    if (invalid.length) throw new BadRequestException(`Sistemas não reconhecidos: ${invalid.join(', ')}.`);
+    const recommendations = recommendMaintenance({ buildingType: building.type ?? undefined,
+      constructionYear: building.constructionYear, environmentalExposure: dto.environmentalExposure,
+      occupationIntensity: dto.occupationIntensity, systems,
+      startDate: dto.startDate ? new Date(dto.startDate) : new Date() });
+    return { version: INTELLIGENCE_VERSION, generatedAt: new Date().toISOString(), building,
+      assumptions: { environmentalExposure: dto.environmentalExposure, occupationIntensity: dto.occupationIntensity,
+        humanValidationRequired: true, normativeTextReproduced: false }, recommendations };
+  }
+
+  async createIntelligent(tenantId: string, actorUserId: string, actorRole: MembershipRole,
+    dto: IntelligentMaintenanceDto) {
+    const preview = await this.previewIntelligent(tenantId, dto);
+    await this.validatePlanReferences(tenantId, { buildingId: dto.buildingId, contractId: dto.contractId, supplierId: dto.supplierId });
+    const selected = dto.selectedCodes?.length ? new Set(dto.selectedCodes) : null;
+    const recommendations = preview.recommendations.filter((item) => !selected || selected.has(item.code));
+    if (!recommendations.length) throw new BadRequestException('Selecione ao menos uma recomendação.');
+    const catalogs = await this.prisma.operationalCatalogItem.findMany({ where: { tenantId,
+      kind: OperationalCatalogKind.CATEGORY, active: true, deletedAt: null } });
+    const categoryByCode = new Map(catalogs.map((item) => [item.code, item.id]));
+    const categoryCode = (system: string) => system.includes('ELETR') || system === 'SPDA' || system === 'GERADOR' ? 'ELETRICA'
+      : ['RESERVATORIOS', 'BOMBAS', 'HIDRAULICO'].includes(system) ? 'HIDRAULICA'
+      : system === 'AR_CONDICIONADO' ? 'CLIMATIZACAO' : 'GERAL';
+    const result = await this.prisma.$transaction(async (tx) => {
+      const createdIds: string[] = []; const skippedCodes: string[] = [];
+      for (const recommendation of recommendations) {
+        const name = `[${recommendation.code}] ${recommendation.title}`;
+        const existing = await tx.maintenancePlan.findFirst({ where: { tenantId, buildingId: dto.buildingId,
+          name, active: true } });
+        if (existing) { skippedCodes.push(recommendation.code); continue; }
+        const created = await tx.maintenancePlan.create({ data: {
+          tenantId, buildingId: dto.buildingId, contractId: dto.contractId, supplierId: dto.supplierId,
+          categoryId: categoryByCode.get(categoryCode(recommendation.system)), name,
+          titleTemplate: `${recommendation.title} — {data}`, description: `${recommendation.objective}\n\n${recommendation.rationale}`,
+          type: recommendation.type, frequencyUnit: recommendation.frequencyUnit,
+          frequencyValue: recommendation.frequencyValue, nextDueAt: new Date(recommendation.nextDueAt),
+          defaultPriority: recommendation.priority, generationHorizonDays: dto.horizonDays,
+          checklistTemplate: { items: recommendation.checklist.map((label, index) => ({ label, required: true, sortOrder: index })) },
+          generationSource: 'INTELLIGENT_RULE_ENGINE', riskScore: recommendation.riskScore,
+          recommendationVersion: INTELLIGENCE_VERSION, technicalBasis: {
+            code: recommendation.code, system: recommendation.system, criticality: recommendation.criticality,
+            rationale: recommendation.rationale, procedure: recommendation.procedure,
+            acceptanceCriteria: recommendation.acceptanceCriteria, technicalReferences: recommendation.technicalReferences,
+            estimatedHours: recommendation.estimatedHours, specialty: recommendation.specialty,
+            humanValidationRequired: true,
+          },
+        } });
+        createdIds.push(created.id);
+      }
+      await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE, 'IntelligentMaintenanceBatch', dto.buildingId,
+        { version: INTELLIGENCE_VERSION, createdIds, skippedCodes, systems: dto.systems });
+      return { createdIds, skippedCodes };
+    });
+    const generation = dto.generateWorkOrders
+      ? await this.generate(tenantId, actorUserId, actorRole, dto.horizonDays)
+      : { generated: 0, skipped: 0, failed: 0, workOrderIds: [] as string[] };
+    return { version: INTELLIGENCE_VERSION, recommendations: recommendations.length,
+      plansCreated: result.createdIds.length, plansSkipped: result.skippedCodes.length,
+      planIds: result.createdIds, skippedCodes: result.skippedCodes, workOrders: generation };
+  }
 
   async createPlan(tenantId: string, actorUserId: string, dto: CreateMaintenancePlanDto) {
     await this.validatePlanReferences(tenantId, dto);

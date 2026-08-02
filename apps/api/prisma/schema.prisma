@@ -173,6 +173,12 @@ enum BudgetStatus {
   CANCELED
 }
 
+enum BudgetStage {
+  PLANNED
+  APPROVED
+  FINAL_EXECUTED
+}
+
 enum BudgetItemKind {
   SERVICE
   INPUT
@@ -908,7 +914,7 @@ model WorkOrder {
   pendencies                  WorkOrderPendency[]
   attachments                 WorkOrderAttachment[]
   statusHistory               WorkOrderStatusHistory[]
-  budget                      WorkOrderBudget?
+  budgets                     WorkOrderBudget[]
   measurementItems            MeasurementItem[]
   maintenancePlanId           String?                    @db.Char(36)
   preventiveScheduledFor      DateTime?
@@ -1008,36 +1014,40 @@ model WorkOrderStatusHistory {
 }
 
 model WorkOrderBudget {
-  id                String           @id @default(uuid()) @db.Char(36)
-  tenantId          String           @db.Char(36)
-  workOrderId       String           @unique @db.Char(36)
-  status            BudgetStatus     @default(DRAFT)
-  version           Int              @default(1)
-  catalogId         String?          @db.Char(36)
-  submittedByUserId String?          @db.Char(36)
-  approvedByUserId  String?          @db.Char(36)
-  referenceMonth    String?          @db.VarChar(7)
-  state             String?          @db.Char(2)
-  subtotal          Decimal          @default(0) @db.Decimal(16, 2)
-  bdiPercentage     Decimal          @default(0) @db.Decimal(9, 6)
-  total             Decimal          @default(0) @db.Decimal(16, 2)
-  notes             String?          @db.Text
+  id                String            @id @default(uuid()) @db.Char(36)
+  tenantId          String            @db.Char(36)
+  workOrderId       String            @db.Char(36)
+  stage             BudgetStage       @default(PLANNED)
+  status            BudgetStatus      @default(DRAFT)
+  version           Int               @default(1)
+  catalogId         String?           @db.Char(36)
+  submittedByUserId String?           @db.Char(36)
+  approvedByUserId  String?           @db.Char(36)
+  referenceMonth    String?           @db.VarChar(7)
+  state             String?           @db.Char(2)
+  subtotal          Decimal           @default(0) @db.Decimal(16, 2)
+  bdiPercentage     Decimal           @default(0) @db.Decimal(9, 6)
+  total             Decimal           @default(0) @db.Decimal(16, 2)
+  notes             String?           @db.Text
   submittedAt       DateTime?
   approvedAt        DateTime?
   rejectedAt        DateTime?
   canceledAt        DateTime?
-  decisionNote      String?          @db.Text
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  workOrder         WorkOrder        @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  catalog           SinapiCatalog?   @relation(fields: [catalogId], references: [id], onDelete: SetNull)
-  submittedBy       User?            @relation("BudgetSubmitter", fields: [submittedByUserId], references: [id], onDelete: SetNull)
-  approvedBy        User?            @relation("BudgetApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  decisionNote      String?           @db.Text
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  workOrder         WorkOrder         @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalog           SinapiCatalog?    @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+  submittedBy       User?             @relation("BudgetSubmitter", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  approvedBy        User?             @relation("BudgetApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
   items             BudgetItem[]
   revisions         BudgetRevision[]
+  measurementItems  MeasurementItem[]
 
+  @@unique([workOrderId, stage])
   @@index([tenantId, status])
+  @@index([tenantId, stage, status])
   @@index([tenantId, catalogId])
 }
 
@@ -1170,22 +1180,25 @@ model Measurement {
 }
 
 model MeasurementItem {
-  id              String      @id @default(uuid()) @db.Char(36)
-  tenantId        String      @db.Char(36)
-  measurementId   String      @db.Char(36)
-  workOrderId     String      @db.Char(36)
-  description     String?     @db.Text
-  amount          Decimal     @db.Decimal(16, 2)
-  deductionAmount Decimal     @default(0) @db.Decimal(16, 2)
-  netAmount       Decimal     @db.Decimal(16, 2)
+  id              String           @id @default(uuid()) @db.Char(36)
+  tenantId        String           @db.Char(36)
+  measurementId   String           @db.Char(36)
+  workOrderId     String           @db.Char(36)
+  budgetId        String?          @db.Char(36)
+  description     String?          @db.Text
+  amount          Decimal          @db.Decimal(16, 2)
+  deductionAmount Decimal          @default(0) @db.Decimal(16, 2)
+  netAmount       Decimal          @db.Decimal(16, 2)
   snapshot        Json?
-  createdAt       DateTime    @default(now())
-  measurement     Measurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
-  workOrder       WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
-  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt       DateTime         @default(now())
+  measurement     Measurement      @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+  workOrder       WorkOrder        @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  budget          WorkOrderBudget? @relation(fields: [budgetId], references: [id], onDelete: SetNull)
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@unique([measurementId, workOrderId])
   @@index([workOrderId])
+  @@index([budgetId])
   @@index([tenantId, measurementId])
 }
 
@@ -1533,6 +1546,10 @@ model MaintenancePlan {
   advanceDays           Int                         @default(0)
   generationHorizonDays Int                         @default(30)
   checklistTemplate     Json?
+  generationSource      String?                     @db.VarChar(40)
+  technicalBasis        Json?
+  riskScore             Int?
+  recommendationVersion String?                     @db.VarChar(40)
   active                Boolean                     @default(true)
   suspendedAt           DateTime?
   lastErrorAt           DateTime?

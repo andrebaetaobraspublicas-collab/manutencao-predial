@@ -85,7 +85,7 @@ erDiagram
   WORK_ORDER ||--o{ WORK_ORDER_PENDENCY : bloqueia
   WORK_ORDER ||--o{ WORK_ORDER_ATTACHMENT : evidencia
   WORK_ORDER ||--o{ WORK_ORDER_STATUS_HISTORY : historiza
-  WORK_ORDER ||--o| WORK_ORDER_BUDGET : orca
+  WORK_ORDER ||--o{ WORK_ORDER_BUDGET : orca_por_estagio
   WORK_ORDER ||--o| SATISFACTION_RESPONSE : avalia
   WORK_ORDER ||--o{ MEASUREMENT_ITEM : mede
   OPERATIONAL_CATALOG_ITEM o|--o{ WORK_ORDER : classifica
@@ -307,6 +307,15 @@ exige migration nem seed adicional.
 - workflow de aprovação;
 - notificações e preferências;
 - jobs de geração de plano preventivo e relatório;
+
+## 11. Extensões operacionais v0.12
+
+- `WorkOrderBudget.stage` separa `PLANNED`, `APPROVED` e `FINAL_EXECUTED`; o par OS/estágio é
+  único e cada estágio conserva itens, workflow e revisões próprios.
+- `MeasurementItem.budgetId` aponta para o orçamento final usado na consolidação, preservando
+  rastreabilidade mesmo quando a OS ou o catálogo forem atualizados posteriormente.
+- planos recomendados pelo motor registram origem, versão da regra, pontuação de risco e base
+  técnica em JSON; a confirmação permanece uma decisão humana auditada.
 - documentos de terceirizados com criptografia e retenção reforçadas;
 - tabela de baseline de energia/água e leituras por imóvel;
 - outbox transacional para eventos externos quando e-mail/webhooks exigirem robustez.

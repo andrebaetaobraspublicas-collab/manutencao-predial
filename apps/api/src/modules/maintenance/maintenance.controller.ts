@@ -5,7 +5,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { MembershipRole } from '../../generated/prisma/client';
 import {
-  CreateAssetDto, CreateMaintenancePlanDto, GenerateMaintenanceQuery,
+  CreateAssetDto, CreateMaintenancePlanDto, GenerateMaintenanceQuery, IntelligentMaintenanceDto,
   UpdateAssetDto, UpdateMaintenancePlanDto,
 } from './dto/maintenance.dto';
 import { MaintenanceService } from './maintenance.service';
@@ -23,6 +23,11 @@ export class MaintenanceController {
   @Roles(...WRITE) @Post('assets') createAsset(@CurrentUser() u: AuthenticatedUser, @Body() d: CreateAssetDto) { return this.service.createAsset(u.tenantId, u.userId, d); }
   @Roles(...WRITE) @Patch('assets/:id') updateAsset(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() d: UpdateAssetDto) { return this.service.updateAsset(u.tenantId, u.userId, id, d); }
   @Roles(...READ) @Get('plans') plans(@CurrentUser() u: AuthenticatedUser) { return this.service.listPlans(u.tenantId); }
+  @Roles(...READ) @Get('intelligent/systems') intelligentSystems() { return this.service.intelligentSystems(); }
+  @Roles(...WRITE) @Post('intelligent/preview') intelligentPreview(@CurrentUser() u: AuthenticatedUser,
+    @Body() d: IntelligentMaintenanceDto) { return this.service.previewIntelligent(u.tenantId, d); }
+  @Roles(...WRITE) @Post('intelligent/create') intelligentCreate(@CurrentUser() u: AuthenticatedUser,
+    @Body() d: IntelligentMaintenanceDto) { return this.service.createIntelligent(u.tenantId, u.userId, u.role, d); }
   @Roles(...WRITE) @Post('plans') createPlan(@CurrentUser() u: AuthenticatedUser, @Body() d: CreateMaintenancePlanDto) { return this.service.createPlan(u.tenantId, u.userId, d); }
   @Roles(...WRITE) @Patch('plans/:id') updatePlan(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() d: UpdateMaintenancePlanDto) { return this.service.updatePlan(u.tenantId, u.userId, id, d); }
   @Roles(...WRITE) @Post('generate') generate(@CurrentUser() u: AuthenticatedUser, @Query() q: GenerateMaintenanceQuery) { return this.service.generate(u.tenantId, u.userId, u.role, q.horizonDays); }

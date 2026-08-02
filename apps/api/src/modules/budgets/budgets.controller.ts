@@ -7,7 +7,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { MembershipRole } from '../../generated/prisma/client';
 import { BudgetsService } from './budgets.service';
-import { ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
+import { BudgetStageQuery, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
 
 const READ = [MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER,
   MembershipRole.CONTRACT_MANAGER, MembershipRole.CONTRACT_INSPECTOR, MembershipRole.OPERATOR, MembershipRole.AUDITOR];
@@ -45,13 +45,21 @@ export class BudgetsController {
   list(@CurrentUser() user: AuthenticatedUser) { return this.service.listBudgets(user.tenantId); }
 
   @Roles(...READ) @Get('work-orders/:workOrderId')
-  get(@CurrentUser() user: AuthenticatedUser, @Param('workOrderId') workOrderId: string) {
-    return this.service.getBudget(user.tenantId, workOrderId);
+  get(@CurrentUser() user: AuthenticatedUser, @Param('workOrderId') workOrderId: string,
+    @Query() query: BudgetStageQuery) {
+    return this.service.getBudget(user.tenantId, workOrderId, query.stage);
+  }
+
+  @Roles(...READ) @Get('work-orders/:workOrderId/stages')
+  stages(@CurrentUser() user: AuthenticatedUser, @Param('workOrderId') workOrderId: string) {
+    return this.service.getBudgetStages(user.tenantId, workOrderId);
   }
 
   @Roles(...WRITE) @Put('work-orders/:workOrderId')
   save(@CurrentUser() user: AuthenticatedUser, @Param('workOrderId') workOrderId: string,
-    @Body() dto: SaveBudgetDto) { return this.service.saveBudget(user.tenantId, user.userId, workOrderId, dto); }
+    @Body() dto: SaveBudgetDto, @Query() query: BudgetStageQuery) {
+    return this.service.saveBudget(user.tenantId, user.userId, workOrderId, dto, query.stage);
+  }
 
   @Roles(...WRITE) @Post(':id/transitions')
   transition(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string,

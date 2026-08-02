@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.0 — custos executados e Plano Inteligente
+
+- Adicionados data-base/índice de reajuste e fotos na abertura da OS.
+- Implementados três orçamentos por OS, itens próprios e consolidação mensal do final executado.
+- Adicionado motor explicável de planos por sistemas, risco, criticidade, checklists e justificativa.
+- Ampliado seed cumulativo com dados sintéticos nos fluxos funcionais, sem apagar registros.
+- Adicionados migration, Swagger, documentação e testes do motor de recomendação.
+
 ## 0.10.0 — Piloto operacional e homologação
 
 - Adicionado painel tenant-aware do GP-044 com nove cenários operacionais, verificações

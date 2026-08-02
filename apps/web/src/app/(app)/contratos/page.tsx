@@ -9,7 +9,7 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { BRL, formatDate } from '@/lib/format';
 import type { Building, Contract, Supplier } from '@/lib/types';
 
-const EMPTY = { code: '', supplierId: '', object: '', type: 'INTEGRATED_MAINTENANCE', status: 'ACTIVE', startDate: '', endDate: '', originalValue: '', administrativeProcess: '', buildingIds: [] as string[], notes: '' };
+const EMPTY = { code: '', supplierId: '', object: '', type: 'INTEGRATED_MAINTENANCE', status: 'ACTIVE', startDate: '', endDate: '', originalValue: '', adjustmentBaseDate: '', adjustmentIndex: '', administrativeProcess: '', buildingIds: [] as string[], notes: '' };
 
 export default function ContractsPage() {
   const [items, setItems] = useState<Contract[]>([]); const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -27,6 +27,7 @@ export default function ContractsPage() {
   async function submit(event: FormEvent) { event.preventDefault(); setSubmitting(true); setError(''); try {
     await apiFetch('/contracts', { method: 'POST', body: JSON.stringify({ ...form, originalValue: Number(form.originalValue),
       administrativeProcess: form.administrativeProcess || undefined, buildingIds: form.buildingIds.length ? form.buildingIds : undefined,
+      adjustmentBaseDate: form.adjustmentBaseDate || undefined, adjustmentIndex: form.adjustmentIndex || undefined,
       notes: form.notes || undefined }) }); setForm({ ...EMPTY, supplierId: suppliers[0]?.id || '' }); setShowForm(false); setLoading(true); await load();
   } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Não foi possível cadastrar o contrato.'); } finally { setSubmitting(false); } }
   return <div className="page-container"><header className="page-header"><div className="page-title"><h1>Contratos</h1><p>Dossiê central de vigência, valores, fornecedores, OS, empenhos e eventos contratuais.</p></div><button className="btn btn-primary" type="button" onClick={() => setShowForm((value) => !value)}>{showForm ? <X size={16} /> : <Plus size={16} />}{showForm ? 'Fechar cadastro' : 'Novo contrato'}</button></header>
@@ -41,7 +42,9 @@ export default function ContractsPage() {
     <F c="col-3" l="Início da vigência *"><input className="input" required type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></F>
     <F c="col-3" l="Fim da vigência *"><input className="input" required type="date" value={form.endDate} onChange={(event) => setForm({ ...form, endDate: event.target.value })} /></F>
     <F c="col-4" l="Valor original (R$) *"><input className="input" required type="number" min="0.01" step="0.01" value={form.originalValue} onChange={(event) => setForm({ ...form, originalValue: event.target.value })} /></F>
-    <F c="col-8" l="Valor atual (calculado)"><input className="input" disabled value={form.originalValue ? BRL.format(Number(form.originalValue)) : 'Calculado automaticamente'} /></F>
+    <F c="col-3" l="Data-base do reajuste"><input className="input" type="date" value={form.adjustmentBaseDate} onChange={(event) => setForm({ ...form, adjustmentBaseDate: event.target.value })} /></F>
+    <F c="col-3" l="Índice de reajuste"><input className="input" placeholder="Ex.: IPCA" value={form.adjustmentIndex} onChange={(event) => setForm({ ...form, adjustmentIndex: event.target.value })} /></F>
+    <F c="col-2" l="Valor atual (calculado)"><input className="input" disabled value={form.originalValue ? BRL.format(Number(form.originalValue)) : 'Automático'} /></F>
     <F c="col-12" l="Edificações abrangidas"><div className="actions">{buildings.map((item) => <label className={`btn ${form.buildingIds.includes(item.id) ? 'btn-primary' : 'btn-secondary'}`} key={item.id}><input type="checkbox" checked={form.buildingIds.includes(item.id)} onChange={() => toggleBuilding(item.id)} style={{ display: 'none' }} />{item.code} — {item.name}</label>)}</div></F>
     <F c="col-12" l="Observações"><textarea className="textarea" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></F>
   </div></section><div className="form-footer"><button className="btn btn-secondary" type="button" onClick={() => setShowForm(false)}>Cancelar</button><button className="btn btn-primary" disabled={submitting || !form.supplierId}><Save size={16} /> {submitting ? 'Salvando…' : 'Salvar contrato'}</button></div></form> : null}

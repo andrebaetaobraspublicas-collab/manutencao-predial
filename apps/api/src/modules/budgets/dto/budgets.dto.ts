@@ -17,7 +17,13 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { BudgetItemKind, BudgetStatus, SinapiItemType } from '../../../generated/prisma/client';
+import { BudgetItemKind, BudgetStage, BudgetStatus, SinapiItemType } from '../../../generated/prisma/client';
+
+export class BudgetStageQuery {
+  @IsOptional()
+  @IsEnum(BudgetStage)
+  stage: BudgetStage = BudgetStage.PLANNED;
+}
 
 export class SinapiCatalogItemDto {
   @IsEnum(SinapiItemType) type!: SinapiItemType;

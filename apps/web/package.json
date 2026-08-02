@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
+    "hostinger:prepare": "node scripts/hostinger-prepare-standalone.mjs",
     "start": "next start --port 3000",
     "lint": "eslint ."
   },

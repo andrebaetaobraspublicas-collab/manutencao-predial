@@ -2,10 +2,11 @@
 ALTER TABLE `WorkOrderBudget`
   ADD COLUMN `stage` ENUM('PLANNED', 'APPROVED', 'FINAL_EXECUTED') NOT NULL DEFAULT 'PLANNED';
 
-DROP INDEX `WorkOrderBudget_workOrderId_key` ON `WorkOrderBudget`;
-
 CREATE UNIQUE INDEX `WorkOrderBudget_workOrderId_stage_key`
   ON `WorkOrderBudget`(`workOrderId`, `stage`);
+
+-- O novo índice composto preserva workOrderId como prefixo para a FK durante a troca.
+DROP INDEX `WorkOrderBudget_workOrderId_key` ON `WorkOrderBudget`;
 
 CREATE INDEX `WorkOrderBudget_tenantId_stage_status_idx`
   ON `WorkOrderBudget`(`tenantId`, `stage`, `status`);

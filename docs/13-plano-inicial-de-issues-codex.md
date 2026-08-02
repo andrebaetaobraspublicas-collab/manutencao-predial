@@ -130,7 +130,7 @@ A validação operacional do envio em produção depende da configuração de `E
 - reabertura explícita, motivo e contador;
 - indicador de reabertura em 30 dias.
 
-## Marco D — relatórios e piloto
+## Marco D — relatórios essenciais
 
 ### GP-030 — Relatórios essenciais do MVP
 
@@ -149,6 +149,79 @@ categoria, contrato, prioridade, período, idade, pendência e SLA. Também fora
 ficha individual da OS, contratos a vencer, espelho contratual e exportação financeira.
 Relatórios extensos acima de 5.000 linhas permanecem candidatos a processamento assíncrono.
 
+## Marco E — completar o desenho operacional
+
+Os módulos deste marco passam à frente da priorização da GP-031. A decisão completa o ciclo
+operacional e financeiro da OS antes do piloto formal. A GP-031 continua obrigatória antes de
+usar dados reais em produção; o adiamento de prioridade não elimina staging, backup ou ensaio de
+restauração.
+
+### GP-040 — Medições e empenhos
+
+**Resultado:** estruturas já modeladas tornam-se um fluxo mensal conciliável, da OS elegível à
+medição aprovada e aos movimentos do empenho.
+
+Critérios:
+
+- abrir competência de medição por contrato e período, sem sobreposição indevida;
+- selecionar somente OS concluídas, aceitas e elegíveis, impedindo inclusão duplicada;
+- manter rastreabilidade bidirecional entre medição, itens e OS;
+- suportar rascunho, submissão, glosa, correção, aprovação, liquidação e pagamento;
+- registrar empenho, reforço, anulação, liquidação e pagamento em ledger auditável;
+- conciliar valor contratado, medido, glosado, liquidado, pago e saldo;
+- usar `Decimal` em todos os cálculos financeiros e snapshot das bases aprovadas;
+- aplicar RBAC, `tenantId`, concorrência protegida e testes de isolamento entre organizações;
+- entregar telas de competência, conferência, aprovação, movimentos e relatório conciliado.
+
+### GP-041 — Orçamento e SINAPI
+
+**Resultado:** cada OS pode possuir orçamento versionado e aprovado, composto por serviços,
+insumos, produtividade, BDI e referências SINAPI importadas pelo cliente.
+
+Critérios:
+
+- importar base SINAPI com competência, UF, origem, versão e relatório de inconsistências;
+- cadastrar composições próprias sem sobrescrever a base oficial importada;
+- calcular materiais, mão de obra, equipamentos, custos indiretos, BDI e preço final com `Decimal`;
+- versionar orçamento da OS e registrar elaboração, revisão, aprovação e cancelamento;
+- congelar a composição aprovada usada na execução e na futura medição;
+- comparar orçado, autorizado, executado, medido, glosado e pago;
+- exportar orçamento e memória de cálculo em PDF e Excel/CSV reconciliados;
+- impedir leitura ou reutilização cruzada de bases, composições e preços entre tenants.
+
+### GP-042 — Planos de manutenção preventiva
+
+**Resultado:** planos recorrentes geram OS futuras de forma automática, idempotente e sempre
+subordinada ao agregado central da ordem de serviço.
+
+Critérios:
+
+- cadastrar plano, ativo/local, periodicidade, janela, categoria, checklist e responsáveis;
+- gerar OS recorrentes por horizonte configurável, sem duplicidade em reprocessamentos;
+- suportar suspensão, reprogramação, exceção e encerramento do plano com auditoria;
+- respeitar calendário, SLA, contrato vigente e indisponibilidade planejada;
+- vincular toda execução, evidência, custo, aceite e falha encontrada à OS gerada;
+- exibir calendário preventivo, atrasos, aderência e conversão de preventiva em corretiva;
+- executar gerador com retry, métricas, trava de concorrência e testes tenant-aware.
+
+### GP-043 — KPIs, SLAs e relatórios gerenciais
+
+**Resultado:** gestores acompanham tendência, meta, desvio e causa dos indicadores, com
+drill-down até os registros operacionais que formam cada medida.
+
+Critérios:
+
+- versionar definição, fórmula, fonte, unidade, direção, meta e periodicidade de cada KPI;
+- calcular histórico de SLA, MTTA, MTTR, backlog, reabertura, preventiva e execução financeira;
+- segmentar por período, edifício, contrato, fornecedor, categoria e prioridade;
+- manter a mesma base reconciliada em cards, séries, tabelas e exportações;
+- permitir drill-down da medida agregada para OS, medições e contratos autorizados;
+- produzir painel executivo, tendências, comparativos e caderno gerencial em PDF/CSV;
+- identificar atraso ou falha de cálculo, sem publicar medida parcial como definitiva;
+- garantir isolamento entre tenants também em agregações, caches e jobs assíncronos.
+
+## Marco F — staging, backup e piloto
+
 ### GP-031 — Staging, backup e piloto
 
 - staging isolado;
@@ -165,5 +238,7 @@ Relatórios extensos acima de 5.000 linhas permanecem candidatos a processamento
 GP-001 → GP-002 → GP-003
           ├─ GP-010 → GP-011 → GP-012
           └─ GP-020 → GP-021 → GP-022 → GP-023 → GP-024
-                                      └──────────────→ GP-030 → GP-031
+                                      └──────────────→ GP-030
+                                                       └→ GP-040 → GP-041 → GP-042 → GP-043
+                                                                                    └→ GP-031
 ```

@@ -72,7 +72,9 @@ const PENDENCY_ALLOWED_STATUSES = new Set([
 
 export default function WorkOrderDetailPage() {
   const params = useParams<{ id: string }>();
-  const id = params.id;
+  const id = typeof window === 'undefined'
+    ? params.id
+    : new URLSearchParams(window.location.search).get('id') || params.id;
   const [workOrder, setWorkOrder] = useState<DetailedWorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);

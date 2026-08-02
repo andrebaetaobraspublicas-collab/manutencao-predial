@@ -9,6 +9,7 @@ coverage/
 apps/api/src/generated/
 apps/api/uploads/
 apps/web/hostinger-output/
+apps/web/out/
 .mysql-data/
 *.log
 .DS_Store

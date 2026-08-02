@@ -137,7 +137,7 @@ export default function WorkOrdersPage() {
                   <tbody>{data.items.map((item) => {
                     const overdue = item.slaResolutionDeadline ? new Date(item.slaResolutionDeadline) < new Date() : false;
                     return <tr key={item.id}>
-                      <td><Link className="table-primary" href={`/ordens-servico/${item.id}`}>{item.number} — {item.title}</Link><span className="table-secondary">{item.locationDetail || item.description}</span></td>
+                      <td><Link className="table-primary" href={`/ordens-servico/detalhe?id=${item.id}`}>{item.number} — {item.title}</Link><span className="table-secondary">{item.locationDetail || item.description}</span></td>
                       <td><span className="table-primary">{item.building.code}</span><span className="table-secondary">{item.building.name}</span></td>
                       <td>{item.supplier ? <><span className="table-primary">{item.supplier.tradeName || item.supplier.legalName}</span><span className="table-secondary">{item.contracts.find((contract) => contract.isPrimary)?.contract.code || 'Sem contrato principal'}</span></> : <span className="badge neutral">Não definido</span>}</td>
                       <td><span className="table-primary">{item.requester.name}</span><span className="table-secondary">{item.requester.email}</span></td>

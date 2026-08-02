@@ -57,7 +57,7 @@ export default function NewWorkOrderPage() {
           estimatedCost: form.estimatedCost ? Number(form.estimatedCost) : undefined,
         }),
       });
-      router.push(`/ordens-servico/${created.id}`);
+      router.push(`/ordens-servico/detalhe?id=${created.id}`);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Não foi possível emitir a ordem de serviço.');
     } finally {

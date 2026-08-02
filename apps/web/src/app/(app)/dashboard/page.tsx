@@ -120,7 +120,7 @@ export default function DashboardPage() {
                   <tbody>
                     {data.workOrders.oldest.map((item) => (
                       <tr key={item.id}>
-                        <td><Link className="table-primary" href={`/ordens-servico/${item.id}`}>{item.number} — {item.title}</Link><span className="table-secondary">Aberta em {formatDate(item.openedAt)}</span></td>
+                        <td><Link className="table-primary" href={`/ordens-servico/detalhe?id=${item.id}`}>{item.number} — {item.title}</Link><span className="table-secondary">Aberta em {formatDate(item.openedAt)}</span></td>
                         <td><span className="table-primary">{item.building.code}</span><span className="table-secondary">{item.building.name}</span></td>
                         <td>{item.requester.name}</td>
                         <td><span className={`badge ${item.overdue ? 'danger' : 'neutral'}`}>{item.ageDays} dias</span></td>

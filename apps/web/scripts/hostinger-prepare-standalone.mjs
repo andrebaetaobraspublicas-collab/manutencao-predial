@@ -2,6 +2,12 @@ import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const packageRoot = process.cwd();
+
+if (process.env.HOSTINGER_STATIC_EXPORT === '1') {
+  console.log('Next.js static export prepared at apps/web/out');
+  process.exit(0);
+}
+
 const standaloneRoot = resolve(packageRoot, '.next', 'standalone');
 const outputRoot = resolve(packageRoot, 'hostinger-output');
 const standaloneApp = resolve(outputRoot, 'apps', 'web');

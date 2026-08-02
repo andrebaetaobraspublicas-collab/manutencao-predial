@@ -12,6 +12,7 @@
 - A API agora respeita a porta dinâmica `PORT` e possui bootstrap Hostinger com migração e seed idempotente.
 - Adicionado pacote standalone da API para o Web App da Hostinger, com geração Prisma antes do build e materialização do runtime no diretório configurado pelo hPanel.
 - Alinhado o fallback HTTP da API à porta 3000 exigida pela hospedagem gerenciada.
+- Adicionado preparo do runtime standalone do Next.js para incluir dependências rastreadas, arquivos estáticos e conteúdo público no artefato da Hostinger.
 
 ## 0.1.0 — Fundação técnica
 

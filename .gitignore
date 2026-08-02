@@ -8,6 +8,7 @@ coverage/
 !.env.production.example
 apps/api/src/generated/
 apps/api/uploads/
+apps/web/hostinger-output/
 .mysql-data/
 *.log
 .DS_Store

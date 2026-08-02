@@ -1,14 +1,18 @@
-import { cpSync, existsSync, mkdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const packageRoot = process.cwd();
 const standaloneRoot = resolve(packageRoot, '.next', 'standalone');
-const standaloneApp = resolve(standaloneRoot, 'apps', 'web');
+const outputRoot = resolve(packageRoot, 'hostinger-output');
+const standaloneApp = resolve(outputRoot, 'apps', 'web');
 const serverEntry = resolve(standaloneApp, 'server.js');
 
-if (!existsSync(serverEntry)) {
+if (!existsSync(resolve(standaloneRoot, 'apps', 'web', 'server.js'))) {
   throw new Error('Missing Next.js standalone entry apps/web/server.js');
 }
+
+rmSync(outputRoot, { recursive: true, force: true });
+cpSync(standaloneRoot, outputRoot, { recursive: true });
 
 const staticSource = resolve(packageRoot, '.next', 'static');
 const staticTarget = resolve(standaloneApp, '.next', 'static');
@@ -20,4 +24,14 @@ if (existsSync(publicSource)) {
   cpSync(publicSource, resolve(standaloneApp, 'public'), { recursive: true });
 }
 
-console.log('Next.js standalone output prepared for Hostinger');
+writeFileSync(
+  resolve(outputRoot, 'server.js'),
+  "require('./apps/web/server.js');\n",
+  'utf8',
+);
+
+if (!existsSync(serverEntry)) {
+  throw new Error('Missing copied Next.js standalone entry apps/web/server.js');
+}
+
+console.log('Next.js standalone output prepared at apps/web/hostinger-output');

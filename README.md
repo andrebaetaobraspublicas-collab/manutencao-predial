@@ -1,4 +1,4 @@
-# Gestão de Prédios — v0.6.0
+# Gestão de Prédios — v0.7.0
 
 Base inicial do SaaS hospedado no domínio `www.gestaodepredios.com.br`, com:
 
@@ -11,6 +11,10 @@ Base inicial do SaaS hospedado no domínio `www.gestaodepredios.com.br`, com:
 - edificações, fornecedores, contratos e ordens de serviço;
 - backlog analítico por fornecedor, edificação e demandante;
 - pendências, histórico de status, fotos e PDFs privados;
+- geocodificação confirmada com fallback manual;
+- catálogos, checklists e SLA configurável com calendários/turnos;
+- comentários, menções e notificações transacionais;
+- aceite, fechamento, elegibilidade de medição e reabertura auditáveis;
 - dashboard e primeiro relatório PDF;
 - documentação preparada para continuidade no Codex.
 
@@ -62,7 +66,7 @@ E-mail: admin@gestaodepredios.com.br
 Senha: valor configurado em SEED_ADMIN_PASSWORD
 ```
 
-Nunca use a senha de desenvolvimento em produção; configure uma senha exclusiva no ambiente da hospedagem.
+Nunca use a senha de desenvolvimento em produção; configure uma senha exclusiva no ambiente da hospedagem. O seed cria a credencial apenas quando a conta ainda não existe e não restaura senha, papel, situação ou sequência em execuções posteriores.
 
 ## E-mail de convites e recuperação
 

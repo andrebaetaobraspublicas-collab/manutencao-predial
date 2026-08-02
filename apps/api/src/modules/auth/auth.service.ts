@@ -28,6 +28,7 @@ import type { JwtPayload } from './jwt-payload.type';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { OperationsService } from '../operations/operations.service';
 
 export type IssuedSession = {
   accessToken: string;
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly mail: MailService,
+    private readonly operations: OperationsService,
   ) {}
 
   async acceptInvitation(dto: AcceptInvitationDto) {
@@ -413,6 +415,8 @@ export class AuthService {
           currentPeriodEnd: trialEndsAt,
         },
       });
+
+      await this.operations.provisionTenantDefaults(tenant.id, tenant.timezone, tx);
 
       return { tenant, user, membership };
     });

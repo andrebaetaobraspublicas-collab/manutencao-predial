@@ -17,6 +17,7 @@ type TenantFixture = {
   workOrderId: string;
   attachmentId: string;
   membershipId: string;
+  categoryId: string;
 };
 
 describe('isolamento multiempresa', () => {
@@ -115,6 +116,28 @@ describe('isolamento multiempresa', () => {
       .post(`/api/v1/members/${tenantB.membershipId}/revoke-sessions`)
       .expect(404);
   });
+
+  it('isola catálogos, comentários e fluxos robustos da OS', async () => {
+    await tenantA.agent
+      .patch(`/api/v1/operations/catalogs/${tenantB.categoryId}`)
+      .send({ name: 'Tentativa cruzada' })
+      .expect(404);
+    await tenantA.agent
+      .get(`/api/v1/operations/catalogs/${tenantB.categoryId}/checklist-template`)
+      .expect(404);
+    await tenantA.agent
+      .post(`/api/v1/work-orders/${tenantB.workOrderId}/comments`)
+      .send({ body: 'Comentário cruzado deve ser recusado.' })
+      .expect(404);
+    await tenantA.agent
+      .post(`/api/v1/work-orders/${tenantB.workOrderId}/close`)
+      .send({ measurementEligible: false })
+      .expect(404);
+    await tenantA.agent
+      .post(`/api/v1/work-orders/${tenantB.workOrderId}/reopen`)
+      .send({ reason: 'Tentativa de reabertura em outra organização.' })
+      .expect(404);
+  });
 });
 
 async function createTenantFixture(
@@ -190,6 +213,9 @@ async function createTenantFixture(
     .expect(201);
 
   const members = await agent.get('/api/v1/members').expect(200);
+  const categories = await agent
+    .get('/api/v1/operations/catalogs?kind=CATEGORY')
+    .expect(200);
 
   return {
     agent,
@@ -199,5 +225,6 @@ async function createTenantFixture(
     workOrderId: workOrder.body.id,
     attachmentId: attachment.body.id,
     membershipId: members.body[0].id,
+    categoryId: categories.body[0].id,
   };
 }

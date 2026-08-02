@@ -9,7 +9,9 @@ import {
   KpiDirection,
   MembershipRole,
   MembershipStatus,
+  OperationalCatalogKind,
   PrismaClient,
+  SlaTimeMode,
   SubscriptionStatus,
   TenantStatus,
   UserStatus,
@@ -29,7 +31,6 @@ function requireSeedAdminPassword(): string {
   return value;
 }
 
-const seedAdminPassword = requireSeedAdminPassword();
 const seedAdminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@gestaodepredios.com.br';
 
 const prisma = new PrismaClient({
@@ -54,8 +55,136 @@ const kpis = [
   ['SAFETY_COMPLIANCE', 'Conformidade documental de segurança do trabalho', KpiCategory.SAFETY, '%', KpiDirection.HIGHER_IS_BETTER, 100],
 ] as const;
 
+const defaultSlaByPriority: Record<
+  WorkOrderPriority,
+  { responseMinutes: number; resolutionMinutes: number }
+> = {
+  LOW: { responseMinutes: 1440, resolutionMinutes: 7200 },
+  NORMAL: { responseMinutes: 480, resolutionMinutes: 4320 },
+  HIGH: { responseMinutes: 240, resolutionMinutes: 1440 },
+  URGENT: { responseMinutes: 60, resolutionMinutes: 480 },
+  CRITICAL: { responseMinutes: 15, resolutionMinutes: 240 },
+};
+
+async function provisionOperationalSeed(tenantId: string, timezone: string) {
+  const catalogDefinitions = [
+    {
+      kind: OperationalCatalogKind.CATEGORY,
+      code: 'GERAL',
+      name: 'Serviços gerais',
+      requireAcceptance: true,
+    },
+    {
+      kind: OperationalCatalogKind.CATEGORY,
+      code: 'HIDRAULICA',
+      name: 'Hidráulica',
+      defaultPriority: WorkOrderPriority.HIGH,
+      requirePhotoBefore: true,
+      requirePhotoAfter: true,
+      requireChecklist: true,
+      requireFinalCost: true,
+      requireAcceptance: true,
+    },
+    {
+      kind: OperationalCatalogKind.CATEGORY,
+      code: 'ELETRICA',
+      name: 'Elétrica',
+      defaultPriority: WorkOrderPriority.HIGH,
+      requirePhotoBefore: true,
+      requirePhotoAfter: true,
+      requireChecklist: true,
+      requireAcceptance: true,
+    },
+    {
+      kind: OperationalCatalogKind.CATEGORY,
+      code: 'CLIMATIZACAO',
+      name: 'Climatização',
+      defaultPriority: WorkOrderPriority.NORMAL,
+      requireChecklist: true,
+      requireAcceptance: true,
+    },
+    { kind: OperationalCatalogKind.SPECIALTY, code: 'HIDRAULICA', name: 'Hidráulica' },
+    { kind: OperationalCatalogKind.SPECIALTY, code: 'ELETRICA', name: 'Elétrica' },
+    { kind: OperationalCatalogKind.SPECIALTY, code: 'HVAC', name: 'Climatização e HVAC' },
+    { kind: OperationalCatalogKind.ENVIRONMENT, code: 'BANHEIRO', name: 'Banheiro' },
+    { kind: OperationalCatalogKind.ENVIRONMENT, code: 'AREA_TECNICA', name: 'Área técnica' },
+    { kind: OperationalCatalogKind.ENVIRONMENT, code: 'ESCRITORIO', name: 'Escritório' },
+    { kind: OperationalCatalogKind.CAUSE, code: 'DESGASTE', name: 'Desgaste natural' },
+    { kind: OperationalCatalogKind.CAUSE, code: 'FALHA_COMPONENTE', name: 'Falha de componente' },
+    { kind: OperationalCatalogKind.CAUSE, code: 'NAO_IDENTIFICADA', name: 'Não identificada' },
+  ] as const;
+
+  const catalogs = new Map<string, Awaited<ReturnType<typeof prisma.operationalCatalogItem.upsert>>>();
+  for (const definition of catalogDefinitions) {
+    const item = await prisma.operationalCatalogItem.upsert({
+      where: {
+        tenantId_kind_code: {
+          tenantId,
+          kind: definition.kind,
+          code: definition.code,
+        },
+      },
+      create: { tenantId, ...definition },
+      update: {},
+    });
+    catalogs.set(`${definition.kind}:${definition.code}`, item);
+  }
+
+  const checklistByCategory = {
+    HIDRAULICA: ['Isolar o abastecimento', 'Executar reparo e teste de estanqueidade'],
+    ELETRICA: ['Desenergizar e sinalizar o circuito', 'Testar proteções antes da energização'],
+    CLIMATIZACAO: ['Verificar filtros e dreno', 'Registrar temperatura após estabilização'],
+  } as const;
+  for (const [categoryCode, labels] of Object.entries(checklistByCategory)) {
+    const category = catalogs.get(`${OperationalCatalogKind.CATEGORY}:${categoryCode}`)!;
+    for (const [sortOrder, label] of labels.entries()) {
+      const existing = await prisma.checklistTemplateItem.findFirst({
+        where: { tenantId, categoryId: category.id, label },
+      });
+      if (!existing) {
+        await prisma.checklistTemplateItem.create({
+          data: { tenantId, categoryId: category.id, label, required: true, sortOrder },
+        });
+      }
+    }
+  }
+
+  const calendar = await prisma.slaCalendar.upsert({
+    where: { tenantId_code: { tenantId, code: 'PADRAO_24X7' } },
+    create: {
+      tenantId,
+      code: 'PADRAO_24X7',
+      name: 'Calendário corrido 24x7',
+      timezone,
+      timeMode: SlaTimeMode.CALENDAR,
+      businessDays: [0, 1, 2, 3, 4, 5, 6],
+    },
+    update: {},
+  });
+  const policies = new Map<WorkOrderPriority, Awaited<ReturnType<typeof prisma.slaPolicy.upsert>>>();
+  for (const priority of Object.values(WorkOrderPriority)) {
+    const rule = defaultSlaByPriority[priority];
+    const policy = await prisma.slaPolicy.upsert({
+      where: { tenantId_code: { tenantId, code: `PADRAO_${priority}` } },
+      create: {
+        tenantId,
+        calendarId: calendar.id,
+        code: `PADRAO_${priority}`,
+        name: `SLA padrão ${priority}`,
+        priority,
+        responseMinutes: rule.responseMinutes,
+        resolutionMinutes: rule.resolutionMinutes,
+        warningMinutesBefore: Math.min(60, rule.responseMinutes),
+      },
+      update: {},
+    });
+    policies.set(priority, policy);
+  }
+
+  return { catalogs, calendar, policies };
+}
+
 async function main() {
-  const seedAdminPasswordHash = await hash(seedAdminPassword, 12);
   const plans = await Promise.all([
     prisma.saaSPlan.upsert({
       where: { code: 'TRIAL_30D' },
@@ -132,22 +261,26 @@ async function main() {
       trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
   });
+  const operational = await provisionOperationalSeed(tenant.id, tenant.timezone);
 
-  const user = await prisma.user.upsert({
+  const existingSeedUser = await prisma.user.findUnique({
     where: { email: seedAdminEmail },
-    update: { passwordHash: seedAdminPasswordHash },
-    create: {
+  });
+  const user =
+    existingSeedUser ??
+    (await prisma.user.create({
+      data: {
       name: 'Administrador de Demonstração',
       email: seedAdminEmail,
-      passwordHash: seedAdminPasswordHash,
+      passwordHash: await hash(requireSeedAdminPassword(), 12),
       status: UserStatus.ACTIVE,
       emailVerifiedAt: new Date(),
-    },
-  });
+      },
+    }));
 
   await prisma.tenantMembership.upsert({
     where: { tenantId_userId: { tenantId: tenant.id, userId: user.id } },
-    update: { status: MembershipStatus.ACTIVE, role: MembershipRole.OWNER },
+    update: {},
     create: {
       tenantId: tenant.id,
       userId: user.id,
@@ -188,6 +321,10 @@ async function main() {
       latitude: -15.7991,
       longitude: -47.8645,
       geocodedAt: new Date(),
+      geocodingProvider: 'SEED',
+      geocodingAccuracy: 'verified-demo-coordinate',
+      geocodingConfirmedAt: new Date(),
+      geocodingConfirmedByUserId: user.id,
       grossAreaM2: 18500,
       floors: 12,
     },
@@ -254,6 +391,31 @@ async function main() {
     ];
 
     for (const example of examples) {
+      const categoryCode = example.title.includes('Vazamento')
+        ? 'HIDRAULICA'
+        : example.title.includes('climatiza')
+          ? 'CLIMATIZACAO'
+          : 'ELETRICA';
+      const category = operational.catalogs.get(
+        `${OperationalCatalogKind.CATEGORY}:${categoryCode}`,
+      )!;
+      const slaPolicy = operational.policies.get(example.priority)!;
+      const slaResponseDeadline = new Date(
+        example.openedAt.getTime() +
+          defaultSlaByPriority[example.priority].responseMinutes * 60_000,
+      );
+      const slaResolutionDeadline = new Date(
+        example.openedAt.getTime() +
+          defaultSlaByPriority[example.priority].resolutionMinutes * 60_000,
+      );
+      const slaResolutionWarningAt = new Date(
+        slaResolutionDeadline.getTime() -
+          Math.min(
+            slaPolicy.warningMinutesBefore,
+            defaultSlaByPriority[example.priority].resolutionMinutes,
+          ) *
+            60_000,
+      );
       const workOrder = await prisma.workOrder.create({
         data: {
           tenantId: tenant.id,
@@ -261,6 +423,8 @@ async function main() {
           requesterUserId: user.id,
           createdByUserId: user.id,
           supplierId: supplier.id,
+          categoryId: category.id,
+          slaPolicyId: slaPolicy.id,
           number: example.number,
           title: example.title,
           description: example.description,
@@ -268,8 +432,41 @@ async function main() {
           status: example.status,
           hasOpenPendency: example.status === WorkOrderStatus.PENDING,
           openedAt: example.openedAt,
-          slaResponseDeadline: new Date(example.openedAt.getTime() + 8 * 60 * 60 * 1000),
-          slaResolutionDeadline: new Date(example.openedAt.getTime() + 72 * 60 * 60 * 1000),
+          slaResponseDeadline,
+          slaResolutionDeadline,
+          slaResolutionWarningAt,
+          slaSnapshot: {
+            policy: {
+              id: slaPolicy.id,
+              code: slaPolicy.code,
+              responseMinutes: slaPolicy.responseMinutes,
+              resolutionMinutes: slaPolicy.resolutionMinutes,
+              warningMinutesBefore: slaPolicy.warningMinutesBefore,
+            },
+            calendar: {
+              id: operational.calendar.id,
+              code: operational.calendar.code,
+              timezone: operational.calendar.timezone,
+              timeMode: operational.calendar.timeMode,
+            },
+            startAt: example.openedAt.toISOString(),
+            responseDeadline: slaResponseDeadline.toISOString(),
+            resolutionDeadline: slaResolutionDeadline.toISOString(),
+            resolutionWarningAt: slaResolutionWarningAt.toISOString(),
+            capturedAt: new Date().toISOString(),
+          },
+          operationalCriteriaSnapshot: {
+            categoryId: category.id,
+            categoryCode: category.code,
+            categoryName: category.name,
+            requirePhotoBefore: category.requirePhotoBefore,
+            requirePhotoDuring: category.requirePhotoDuring,
+            requirePhotoAfter: category.requirePhotoAfter,
+            requireChecklist: category.requireChecklist,
+            requireFinalCost: category.requireFinalCost,
+            requireAcceptance: category.requireAcceptance,
+            capturedAt: new Date().toISOString(),
+          },
           contracts: { create: { contractId: contract.id, isPrimary: true } },
           statusHistory: {
             create: {
@@ -280,6 +477,24 @@ async function main() {
           },
         },
       });
+
+      const templateItems = await prisma.checklistTemplateItem.findMany({
+        where: { tenantId: tenant.id, categoryId: category.id, active: true },
+        orderBy: { sortOrder: 'asc' },
+      });
+      if (templateItems.length) {
+        await prisma.workOrderChecklistItem.createMany({
+          data: templateItems.map((item) => ({
+            tenantId: tenant.id,
+            workOrderId: workOrder.id,
+            templateItemId: item.id,
+            label: item.label,
+            description: item.description,
+            required: item.required,
+            sortOrder: item.sortOrder,
+          })),
+        });
+      }
 
       if (example.status === WorkOrderStatus.PENDING) {
         await prisma.workOrderPendency.create({
@@ -297,7 +512,7 @@ async function main() {
     await prisma.tenantSequence.upsert({
       where: { tenantId_key: { tenantId: tenant.id, key: 'WORK_ORDER:2026' } },
       create: { tenantId: tenant.id, key: 'WORK_ORDER:2026', currentValue: 3 },
-      update: { currentValue: 3 },
+      update: {},
     });
   }
 

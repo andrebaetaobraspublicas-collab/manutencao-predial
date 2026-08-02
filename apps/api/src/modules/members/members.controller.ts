@@ -10,6 +10,7 @@ import { UpdateMemberDto } from './dto/update-member.dto';
 import { MembersService } from './members.service';
 
 const ADMIN_ROLES = [MembershipRole.OWNER, MembershipRole.ADMIN] as const;
+const DIRECTORY_ROLES = Object.values(MembershipRole);
 
 @ApiTags('Usuários e convites')
 @Controller('members')
@@ -21,6 +22,13 @@ export class MembersController {
   @ApiOperation({ summary: 'Lista os membros da organização autenticada' })
   list(@CurrentUser() user: AuthenticatedUser) {
     return this.members.list(user.tenantId);
+  }
+
+  @Roles(...DIRECTORY_ROLES)
+  @Get('directory')
+  @ApiOperation({ summary: 'Diretório mínimo de membros ativos da organização' })
+  directory(@CurrentUser() user: AuthenticatedUser) {
+    return this.members.directory(user.tenantId);
   }
 
   @Get('invitations')

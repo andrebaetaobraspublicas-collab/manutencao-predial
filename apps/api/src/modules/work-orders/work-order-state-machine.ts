@@ -21,7 +21,8 @@ const transitions: Record<WorkOrderStatus, WorkOrderStatus[]> = {
   IN_PROGRESS: ['PENDING', 'WAITING_APPROVAL', 'COMPLETED', 'CANCELED'],
   PENDING: ['ASSIGNED', 'IN_PROGRESS', 'WAITING_APPROVAL', 'CANCELED'],
   WAITING_APPROVAL: ['IN_PROGRESS', 'PENDING', 'COMPLETED', 'CANCELED'],
-  COMPLETED: ['CLOSED', 'IN_PROGRESS'],
+  // Fechamento e reabertura possuem fluxos dedicados com validações e auditoria.
+  COMPLETED: [],
   CLOSED: [],
   CANCELED: [],
 };

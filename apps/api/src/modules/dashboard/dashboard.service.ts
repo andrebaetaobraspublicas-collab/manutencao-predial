@@ -133,7 +133,13 @@ export class DashboardService {
         },
       }),
       this.prisma.satisfactionResponse.aggregate({
-        where: { workOrder: { tenantId, deletedAt: null } },
+        where: {
+          workOrder: {
+            tenantId,
+            deletedAt: null,
+            status: { in: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED] },
+          },
+        },
         _avg: { score: true, npsScore: true },
         _count: { _all: true },
       }),

@@ -88,6 +88,12 @@ erDiagram
   WORK_ORDER ||--o| WORK_ORDER_BUDGET : orca
   WORK_ORDER ||--o| SATISFACTION_RESPONSE : avalia
   WORK_ORDER ||--o{ MEASUREMENT_ITEM : mede
+  OPERATIONAL_CATALOG_ITEM o|--o{ WORK_ORDER : classifica
+  SLA_POLICY o|--o{ WORK_ORDER : rege
+  WORK_ORDER ||--o{ WORK_ORDER_COMMENT : comenta
+  WORK_ORDER ||--o{ WORK_ORDER_CHECKLIST_ITEM : verifica
+  WORK_ORDER_CHECKLIST_ITEM ||--o{ WORK_ORDER_CHECKLIST_RESPONSE : historiza
+  WORK_ORDER ||--o{ WORK_ORDER_REOPENING : reabre
 
   WORK_ORDER {
     char36 id PK
@@ -102,6 +108,11 @@ erDiagram
     datetime openedAt
     datetime slaResolutionDeadline
     decimal finalCost
+    text solution
+    bool measurementEligible
+    int reopenCount
+    json slaSnapshot
+    json operationalCriteriaSnapshot
   }
   WORK_ORDER_PENDENCY {
     char36 id PK
@@ -122,6 +133,17 @@ erDiagram
     char64 sha256
   }
 ```
+
+### 3.1 Extensões operacionais da v0.7
+
+- `OperationalCatalogItem` mantém categorias, especialidades, ambientes e causas por tenant. Categorias carregam prioridade e critérios de evidência, checklist, custo e aceite.
+- `ChecklistTemplateItem` define o modelo ativo; `WorkOrderChecklistItem` é o snapshot da OS e `WorkOrderChecklistResponse` é append-only, preservando todas as respostas.
+- `SlaCalendar`, `SlaHoliday` e `SlaPolicy` modelam tempo corrido/útil, feriados, múltiplos turnos e precedência tenant/contrato/categoria.
+- A OS armazena `slaSnapshot` e `operationalCriteriaSnapshot`, evitando que alterações futuras de configuração mudem seu histórico.
+- `WorkOrderComment` e `WorkOrderCommentMention` registram comunicação cronológica sem rotas de edição/exclusão.
+- `WorkOrderReopening` preserva motivo, estado, aceite, custos, avaliação e o ciclo completo de SLA do fechamento anterior, além do indicador de reabertura em 30 dias. A avaliação corrente é removida atomicamente na reabertura para que o novo ciclo não reutilize a nota anterior.
+- `NotificationPreference`, `Notification` e `NotificationOutbox` implementam preferências, caixa interna e entrega transacional com retry.
+- `GeocodingCache` isola por tenant as consultas normalizadas, candidatos e expiração do cache.
 
 ## 4. Contratos e financeiro
 

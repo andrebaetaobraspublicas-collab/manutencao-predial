@@ -18,6 +18,26 @@ export class CreateWorkOrderDto {
   @IsUUID()
   buildingId!: string;
 
+  @ApiPropertyOptional({ description: 'Categoria operacional da OS.' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ description: 'Especialidade técnica da OS.' })
+  @IsOptional()
+  @IsUUID()
+  specialtyId?: string;
+
+  @ApiPropertyOptional({ description: 'Ambiente onde o serviço será executado.' })
+  @IsOptional()
+  @IsUUID()
+  environmentId?: string;
+
+  @ApiPropertyOptional({ description: 'Causa identificada para a ocorrência.' })
+  @IsOptional()
+  @IsUUID()
+  causeId?: string;
+
   @ApiProperty({ example: 'Vazamento no banheiro do 3º pavimento' })
   @IsString()
   @Length(3, 220)

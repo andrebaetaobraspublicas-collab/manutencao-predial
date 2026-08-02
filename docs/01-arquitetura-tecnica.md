@@ -82,7 +82,13 @@ flowchart LR
     BLD[Edificações] --> CORE
     SUP[Fornecedores] --> CORE
     CON[Contratos] --> CORE
+    OPS[Catálogos, checklists e SLA] --> CORE
+    GEO[Geocodificação] --> CORE
+    NOTIF[Notificações e outbox] --> CORE
     WO[Ordens de serviço] --> CORE
+    WO --> OPS
+    WO --> NOTIF
+    BLD --> GEO
     DASH[Dashboard] --> WO
     DASH --> CON
     REP[Relatórios] --> WO
@@ -91,7 +97,7 @@ flowchart LR
     PRISMA --> MYSQL[(MySQL)]
 ```
 
-Módulos planejados devem seguir o mesmo padrão: controller, DTO, service/use cases, políticas de domínio e testes.
+Módulos novos devem seguir o mesmo padrão: controller, DTO, service/use cases, políticas de domínio e testes. A v0.7 adiciona `operations`, `geocoding` e `notifications`; o worker da outbox processa eventos idempotentes e também varre alertas de SLA/contrato por tenant.
 
 ## 6. Camadas da API
 
@@ -100,7 +106,7 @@ Módulos planejados devem seguir o mesmo padrão: controller, DTO, service/use c
 3. **Domínio:** máquina de estados, fórmulas, invariantes e políticas.
 4. **Infraestrutura:** Prisma, Stripe, arquivos, e-mail e geocodificação.
 
-A versão inicial ainda possui alguns acessos de infraestrutura diretamente nos services. O roadmap prevê interfaces para `StoragePort`, `GeocodingPort`, `BillingPort` e `NotificationPort` antes de adicionar novos provedores.
+A versão inicial ainda possui alguns acessos de infraestrutura diretamente nos services. Geocodificação utiliza um port para alternar provedores; armazenamento e billing ainda devem ganhar `StoragePort` e `BillingPort` antes de novos provedores.
 
 ## 7. Autenticação e autorização
 
@@ -153,7 +159,7 @@ sequenceDiagram
     participant F as Fiscal/Gestor
 
     R->>API: abre OS
-    API->>DB: gera sequência e prazos SLA
+    API->>DB: gera sequência, snapshot de critérios e prazos SLA
     API-->>R: número da OS
     O->>API: tria e atribui
     API->>DB: status + histórico
@@ -162,9 +168,9 @@ sequenceDiagram
       O->>API: registra pendência
       API->>DB: status PENDING + prazo
     end
-    O->>API: conclui
-    F->>API: valida e fecha
-    API->>DB: custo final + histórico
+    O->>API: conclui com solução, checklist e evidências
+    F->>API: aceita e fecha
+    API->>DB: aceite + custo final + histórico + outbox
     R->>API: envia satisfação
 ```
 

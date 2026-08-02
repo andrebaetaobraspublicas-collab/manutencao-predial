@@ -22,9 +22,13 @@ import {
   MembershipRole,
 } from '../../generated/prisma/client';
 import { AddPendencyDto } from './dto/add-pendency.dto';
+import { AddCommentDto } from './dto/add-comment.dto';
+import { CloseWorkOrderDto } from './dto/close-work-order.dto';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { ListWorkOrdersQuery } from './dto/list-work-orders.query';
 import { ResolvePendencyDto } from './dto/resolve-pendency.dto';
+import { ReopenWorkOrderDto } from './dto/reopen-work-order.dto';
+import { RespondChecklistDto } from './dto/respond-checklist.dto';
 import { SubmitSatisfactionDto } from './dto/submit-satisfaction.dto';
 import { TransitionWorkOrderDto } from './dto/transition-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
@@ -47,6 +51,14 @@ const CREATE_ROLES = [
 const ATTACHMENT_WRITE_ROLES = [
   ...OPERATIONAL_ROLES,
   MembershipRole.REQUESTER,
+];
+
+const ACCEPTANCE_ROLES = [
+  MembershipRole.OWNER,
+  MembershipRole.ADMIN,
+  MembershipRole.MANAGER,
+  MembershipRole.CONTRACT_MANAGER,
+  MembershipRole.CONTRACT_INSPECTOR,
 ];
 
 @ApiTags('Ordens de serviço')
@@ -94,6 +106,47 @@ export class WorkOrdersController {
     @Body() dto: TransitionWorkOrderDto,
   ) {
     return this.service.transition(user.tenantId, user.userId, id, dto);
+  }
+
+  @Roles(...CREATE_ROLES)
+  @Post(':id/comments')
+  addComment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AddCommentDto,
+  ) {
+    return this.service.addComment(user.tenantId, user.userId, user.role, id, dto);
+  }
+
+  @Roles(...OPERATIONAL_ROLES)
+  @Post(':id/checklist/:itemId/responses')
+  respondChecklist(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() dto: RespondChecklistDto,
+  ) {
+    return this.service.respondChecklist(user.tenantId, user.userId, id, itemId, dto);
+  }
+
+  @Roles(...ACCEPTANCE_ROLES)
+  @Post(':id/close')
+  close(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CloseWorkOrderDto,
+  ) {
+    return this.service.close(user.tenantId, user.userId, id, dto);
+  }
+
+  @Roles(...ACCEPTANCE_ROLES)
+  @Post(':id/reopen')
+  reopen(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: ReopenWorkOrderDto,
+  ) {
+    return this.service.reopen(user.tenantId, user.userId, id, dto);
   }
 
   @Roles(...OPERATIONAL_ROLES)

@@ -14,6 +14,7 @@ import {
   PackageSearch,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   UserRound,
   UsersRound,
   Wrench,
@@ -25,6 +26,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
 import type { CurrentSession } from '@/lib/types';
 import { LoadingPanel } from './loading';
+import { NotificationBell } from './notification-bell';
 
 const NAVIGATION = [
   {
@@ -50,6 +52,8 @@ const NAVIGATION = [
       { href: '/planos-manutencao', label: 'Planos de manutenção', icon: PackageSearch, disabled: true },
       { href: '/indicadores', label: 'KPIs e SLAs', icon: BarChart3, disabled: true },
       { href: '/relatorios', label: 'Relatórios', icon: FileBarChart, disabled: true },
+      { href: '/notificacoes', label: 'Notificações', icon: Bell },
+      { href: '/configuracoes-operacionais', label: 'Configuração operacional', icon: SlidersHorizontal, managerOnly: true },
       { href: '/administracao', label: 'Administração', icon: Settings, adminOnly: true },
       { href: '/conta', label: 'Minha conta', icon: UserRound },
     ],
@@ -135,6 +139,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 if ('adminOnly' in item && item.adminOnly && !['OWNER', 'ADMIN'].includes(session.role)) {
                   return null;
                 }
+                if ('managerOnly' in item && item.managerOnly && !['OWNER', 'ADMIN', 'MANAGER'].includes(session.role)) {
+                  return null;
+                }
                 return item.disabled ? (
                   <span
                     className="nav-link"
@@ -187,9 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="topbar-actions">
-            <button className="icon-button" type="button" aria-label="Notificações" title="Notificações previstas para o MVP">
-              <Bell size={18} />
-            </button>
+            <NotificationBell />
             <span className="badge success topbar-label"><ShieldCheck size={13} /> sessão protegida</span>
             <button className="btn btn-ghost" type="button" onClick={logout}>
               <LogOut size={16} /> <span className="topbar-label">Sair</span>

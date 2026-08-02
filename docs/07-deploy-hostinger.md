@@ -48,11 +48,30 @@ UPLOAD_ROOT=/data/uploads
 MAX_UPLOAD_MB=20
 NEXT_PUBLIC_API_URL=https://api.gestaodepredios.com.br/api/v1
 NEXT_PUBLIC_MAP_STYLE_URL=https://provedor-de-mapas/style.json
+GEOCODING_PROVIDER=disabled
+GEOCODING_API_KEY=
+GEOCODING_CACHE_DAYS=30
+GEOCODING_NEGATIVE_CACHE_MINUTES=15
+GEOCODING_TENANT_RATE_LIMIT_HOUR=60
+GEOCODING_MEMBERSHIP_RATE_LIMIT_HOUR=20
+NOTIFICATION_WORKER_ENABLED=true
+NOTIFICATION_POLL_INTERVAL_MS=5000
+NOTIFICATION_ALERT_SCAN_INTERVAL_MS=60000
+NOTIFICATION_SLA_WARNING_MINUTES=120
+NOTIFICATION_SLA_MAX_WARNING_MINUTES=10080
+NOTIFICATION_SLA_LOOKBACK_DAYS=30
+NOTIFICATION_CONTRACT_EXPIRING_DAYS=30
 STRIPE_SECRET_KEY=...
 STRIPE_WEBHOOK_SECRET=...
 ```
 
 Nunca versionar `.env` de produção. O repositório fornece `.env.production.example` apenas como modelo. Como `DATABASE_URL` é uma URL, caracteres especiais do usuário ou da senha (`@`, `:`, `/`, `#`, `%` e outros) devem ser codificados por percent-encoding; não monte essa URL por concatenação no Compose.
+
+`GEOCODING_PROVIDER=disabled` é o padrão seguro de produção e mantém o marcador manual. Para
+consulta automática, configure explicitamente `geoapify` (com chave) ou `nominatim` (com
+identificação e limites compatíveis). `SEED_ADMIN_PASSWORD` é exigida somente na criação
+inicial do usuário demo e deve ter ao menos 12 caracteres; execuções posteriores do seed preservam
+senha, papel, situação e sequência existentes.
 
 ## 5. Preparação do VPS
 
@@ -119,10 +138,13 @@ Fluxo recomendado:
 1. gerar migração em branch de desenvolvimento;
 2. revisar SQL e impacto;
 3. executar em banco de staging restaurado de backup anonimizado;
-4. fazer backup de produção;
-5. aplicar `prisma migrate deploy`;
-6. publicar aplicações compatíveis;
-7. executar smoke tests.
+4. compilar e validar o artefato antes de alterar o banco;
+5. ativar manutenção para impedir novos tenants e gravações de OS;
+6. fazer e validar backup de produção;
+7. conferir timezone da sessão, índices e `_prisma_migrations`;
+8. aplicar `prisma migrate deploy` e o seed idempotente;
+9. publicar as aplicações compatíveis e executar smoke tests;
+10. liberar o tráfego somente após validar dados e worker de notificações.
 
 Migrações destrutivas devem seguir expansão/contração: adicionar estrutura, migrar dados, trocar código e remover somente em versão posterior.
 
@@ -164,6 +186,10 @@ Preferir tags ou commits aprovados, não atualizar produção diretamente de uma
 - login e refresh;
 - consulta de dashboard;
 - emissão e transição de OS de teste;
+- consulta/ajuste manual de geocodificação e persistência de proveniência;
+- cálculo de SLA útil com turno/feriado e instante correto de aviso;
+- comentário, menção autorizada, checklist e caixa de notificações;
+- conclusão, aceite, bloqueios de medição e reabertura de uma OS não medida;
 - upload e download de PDF/imagem;
 - geração do relatório de backlog;
 - abertura do mapa;
@@ -179,6 +205,10 @@ Rollback de aplicação pode usar a imagem/tag anterior. Rollback de banco não 
 - backup antes da mudança;
 - plano de restauração documentado;
 - janela de manutenção quando necessário.
+
+Para `20260802210000_operational_core`, siga também o `ROLLBACK.md` da própria migração. MySQL
+faz commit implícito em DDL; em falha parcial, restaure o backup ou reconcilie cuidadosamente os
+objetos e o ledger com `prisma migrate resolve` a partir de `apps/api`.
 
 ## 14. Alternativa sem VPS
 

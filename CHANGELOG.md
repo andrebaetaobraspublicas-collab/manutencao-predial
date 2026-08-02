@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.0 — Núcleo operacional configurável
+
+- Implementada geocodificação confirmada com cache, limites, ajuste de marcador e fallback manual.
+- Adicionados catálogos multi-tenant de categorias, especialidades, ambientes e causas.
+- Substituído o SLA fixo por políticas com precedência tenant/contrato/categoria, calendários, feriados e turnos.
+- Adicionados comentários cronológicos com menções e checklists históricos por categoria.
+- Adicionadas regras configuráveis de evidências antes/durante/depois e bloqueios de conclusão.
+- Adicionadas notificações internas e por e-mail com preferências, outbox transacional, retry e alertas de SLA/contrato.
+- Adicionados fechamento com aceite/custo/elegibilidade e reabertura explícita com motivo, contador e indicador de 30 dias.
+- Adicionados snapshots de SLA e critérios operacionais por OS para preservar o histórico.
+- Adicionada migration `20260802210000_operational_core`, provisionamento de defaults para tenants novos e seed operacional idempotente.
+- Endurecidas concorrência, autorização por objeto, abrangência contratual e integridade entre fechamento, medição e reabertura.
+- Preservado o ciclo anterior de SLA em reaberturas e adotado aviso persistido no calendário útil.
+- Preservada a avaliação anterior no histórico da reabertura, com limpeza atômica do ciclo corrente e proteção contra corrida.
+- Revalidada a autorização de notificações na entrega e leitura, inclusive após rebaixamento de papel.
+
 ## 0.6.0 — Conta SaaS e acesso de equipes
 
 - Adicionada administração de membros com isolamento por tenant e proteção hierárquica de papéis.

@@ -62,6 +62,24 @@ export class MembersService {
     }));
   }
 
+  directory(tenantId: string) {
+    const now = new Date();
+    return this.prisma.tenantMembership.findMany({
+      where: {
+        tenantId,
+        status: MembershipStatus.ACTIVE,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        user: { status: UserStatus.ACTIVE, deletedAt: null },
+      },
+      orderBy: [{ user: { name: 'asc' } }, { role: 'asc' }],
+      select: {
+        id: true,
+        role: true,
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+  }
+
   listInvitations(tenantId: string) {
     return this.prisma.tenantInvitation.findMany({
       where: { tenantId },

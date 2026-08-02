@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, Length } from 'class-validator';
 import { WorkOrderStatus } from '../../../generated/prisma/client';
 
 export class TransitionWorkOrderDto {
@@ -7,14 +7,15 @@ export class TransitionWorkOrderDto {
   @IsEnum(WorkOrderStatus)
   toStatus!: WorkOrderStatus;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Solução executada; obrigatória ao concluir a OS.' })
   @IsOptional()
   @IsString()
-  note?: string;
+  @Length(3, 10_000)
+  solution?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  finalCost?: number;
+  @IsString()
+  @Length(1, 5_000)
+  note?: string;
 }

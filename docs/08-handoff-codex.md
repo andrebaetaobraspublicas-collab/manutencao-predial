@@ -213,3 +213,10 @@ Modelo de handoff:
 ## Próxima issue recomendada
 ...
 ```
+
+## 13. Estado do handoff da v0.7.0
+
+GP-020 a GP-024 estão implementados localmente, com migration versionada, rollback, API, interface
+estática Hostinger e testes unitários. A entrega ainda não equivale a deploy: o próximo agente deve
+executar a migration em MySQL de staging restaurado, testes e2e multi-tenant, smoke de timezone/outbox
+e o roteiro de publicação de `docs/07-deploy-hostinger.md` antes de promover para produção.

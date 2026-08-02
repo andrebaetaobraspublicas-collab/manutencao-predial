@@ -48,6 +48,7 @@ Exemplo de erro:
 | Método | Rota | Perfil |
 |---|---|---|
 | GET | `/members` | proprietário ou administrador |
+| GET | `/members/directory` | qualquer membro autenticado; somente vínculos/usuários ativos |
 | GET | `/members/invitations` | proprietário ou administrador |
 | POST | `/members/invitations` | proprietário ou administrador |
 | PATCH | `/members/:membershipId` | proprietário ou administrador, com proteção hierárquica |
@@ -76,6 +77,7 @@ Login:
 | POST | `/buildings` | gestor |
 | PATCH | `/buildings/:id` | gestor |
 | DELETE | `/buildings/:id` | administrador |
+| POST | `/geocoding/search` | gestor |
 
 Criação:
 
@@ -90,6 +92,10 @@ Criação:
   "postalCode": "70000-000",
   "latitude": -15.79,
   "longitude": -47.88,
+  "geocodingConfirmed": true,
+  "geocodingProvider": "nominatim",
+  "geocodingLookupId": "uuid",
+  "geocodingCandidateId": "identificador-do-candidato",
   "grossAreaM2": 12500
 }
 ```
@@ -137,6 +143,10 @@ Criação:
 | GET | `/work-orders/:id` | detalhe integral |
 | PATCH | `/work-orders/:id` | altera dados editáveis |
 | POST | `/work-orders/:id/transitions` | muda status |
+| POST | `/work-orders/:id/comments` | adiciona comentário imutável e menções |
+| POST | `/work-orders/:id/checklist/:itemId/responses` | adiciona resposta histórica ao checklist |
+| POST | `/work-orders/:id/close` | registra aceite e fecha |
+| POST | `/work-orders/:id/reopen` | reabre com motivo obrigatório |
 | POST | `/work-orders/:id/pendencies` | cria pendência |
 | PATCH | `/work-orders/:id/pendencies/:pendencyId/resolve` | resolve pendência |
 | POST | `/work-orders/:id/satisfaction` | registra avaliação |
@@ -164,6 +174,10 @@ Criação:
 ```json
 {
   "buildingId": "uuid",
+  "categoryId": "uuid",
+  "specialtyId": "uuid",
+  "environmentId": "uuid",
+  "causeId": "uuid",
   "title": "Vazamento no 3º pavimento",
   "description": "Vazamento contínuo próximo à prumada.",
   "locationDetail": "Banheiro masculino",
@@ -184,6 +198,35 @@ Transição:
 }
 ```
 
+Ao transicionar para `COMPLETED`, o corpo também exige `solution`. `CLOSED` e a volta para `IN_PROGRESS` não são aceitos pela rota genérica; use os fluxos dedicados:
+
+```json
+{
+  "solution": "Registro substituído e instalação testada.",
+  "toStatus": "COMPLETED"
+}
+```
+
+```json
+{
+  "finalCost": 1850.50,
+  "measurementEligible": true,
+  "acceptanceNote": "Serviço conferido em vistoria."
+}
+```
+
+O aceitante é sempre o usuário autenticado; a API não aceita identidade delegada no payload.
+Fechamento e reabertura exigem papel gerencial/fiscal. Quando `measurementEligible=true`, o
+contrato principal deve abranger a edificação, estar `ACTIVE`/`EXPIRING` e vigente; o custo final
+deve estar aprovado e a OS não pode integrar medição não rejeitada. Reabrir OS já medida exige
+primeiro um fluxo financeiro formal de estorno.
+
+```json
+{
+  "reason": "A falha reapareceu após a vistoria e exige nova intervenção."
+}
+```
+
 Pendência:
 
 ```json
@@ -197,6 +240,39 @@ Upload multipart:
 
 - campo `kind`: valor de `AttachmentKind`;
 - campo `file`: arquivo único.
+
+### 6.1 Catálogos, checklist e SLA
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| GET/POST | `/operations/catalogs` | lista/cria itens operacionais |
+| PATCH/DELETE | `/operations/catalogs/:id` | altera/desativa item |
+| GET/PUT | `/operations/catalogs/:categoryId/checklist-template` | consulta/substitui template ativo |
+| GET/POST | `/operations/sla/calendars` | lista/cria calendários |
+| PATCH | `/operations/sla/calendars/:id` | altera dias, janela e turnos |
+| POST | `/operations/sla/calendars/:id/holidays` | adiciona feriado |
+| DELETE | `/operations/sla/calendars/:id/holidays/:holidayId` | desativa feriado |
+| GET/POST | `/operations/sla/policies` | lista/cria políticas; acesso de configuração |
+| PATCH | `/operations/sla/policies/:id` | altera/desativa política |
+| POST | `/operations/sla/calculate` | simula a política e os prazos aplicáveis |
+
+A precedência de SLA é contrato+categoria, contrato, categoria e tenant. Cada prioridade mantém
+um fallback global ativo. A OS persiste política, prazos, instante do aviso e snapshot completo;
+mudanças posteriores não recalculam retroativamente registros existentes. Reabertura inicia novo
+ciclo de SLA e preserva integralmente o ciclo anterior.
+
+### 6.2 Notificações
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| GET | `/notifications` | lista a caixa interna paginada |
+| GET | `/notifications/unread-count` | total não lido |
+| PATCH | `/notifications/:id/read` | marca uma como lida |
+| PATCH | `/notifications/read-all` | marca todas como lidas |
+| GET/PATCH | `/notifications/preferences` | consulta/atualiza canais por evento |
+| GET | `/notifications/outbox/metrics` | saúde tenant-scoped para owner/admin |
+
+Eventos de domínio são gravados na `NotificationOutbox` dentro da mesma transação da OS. O worker entrega caixa interna/e-mail, respeita preferências e aplica deduplicação e retry exponencial. A autorização é reavaliada na entrega e na leitura: após rebaixamento para `REQUESTER`, listagem, contagem e marcação ficam limitadas às notificações vinculadas às próprias OS, e alertas contratuais deixam de ser visíveis.
 
 ## 7. Dashboard e relatórios
 
@@ -228,10 +304,6 @@ Mudanças aditivas permanecem em `/api/v1`. Alterações incompatíveis exigem:
 ## 10. Endpoints necessários para completar o MVP
 
 - transferência formal de propriedade da organização;
-- geocodificação confirmada;
-- comentários/checklists da OS;
-- catálogo e configuração de SLA;
-- notificações;
 - anexos genéricos;
 - catálogo de relatórios e exportações;
 - consulta de entitlement/limites de plano.

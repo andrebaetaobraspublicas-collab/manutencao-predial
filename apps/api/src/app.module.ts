@@ -14,6 +14,9 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { MailModule } from './common/mail/mail.module';
 import { MembersModule } from './modules/members/members.module';
+import { GeocodingModule } from './modules/geocoding/geocoding.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OperationsModule } from './modules/operations/operations.module';
 
 configureBigIntJsonSerialization();
 
@@ -28,6 +31,9 @@ configureBigIntJsonSerialization();
     MailModule,
     AuthModule,
     MembersModule,
+    GeocodingModule,
+    NotificationsModule,
+    OperationsModule,
     HealthModule,
     BuildingsModule,
     SuppliersModule,

@@ -5,6 +5,7 @@ export type MariaDbAdapterOptions = {
   password: string;
   database: string;
   connectionLimit: number;
+  timezone: string;
 };
 
 export function parseMySqlUrl(databaseUrl: string): MariaDbAdapterOptions {
@@ -26,5 +27,6 @@ export function parseMySqlUrl(databaseUrl: string): MariaDbAdapterOptions {
     password: decodeURIComponent(parsed.password),
     database,
     connectionLimit: Number(process.env.DB_CONNECTION_LIMIT ?? 10),
+    timezone: 'Z',
   };
 }

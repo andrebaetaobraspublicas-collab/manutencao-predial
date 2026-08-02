@@ -81,6 +81,8 @@ A validação operacional do envio em produção depende da configuração de `E
 
 ### GP-020 — Geocodificação confirmada
 
+**Estado em 2 de agosto de 2026:** implementado na v0.7.0, com confirmação vinculada à consulta do tenant, cache e limites. A produção exige provedor explicitamente configurado; o modo manual permanece disponível.
+
 - endereço → coordenadas;
 - exibir resultado e exigir confirmação;
 - ajuste do marcador;
@@ -90,6 +92,8 @@ A validação operacional do envio em produção depende da configuração de `E
 
 ### GP-021 — Catálogos e SLA configurável
 
+**Estado em 2 de agosto de 2026:** implementado na v0.7.0, incluindo precedência de políticas, calendários, feriados, turnos, snapshots por OS e provisionamento para tenants novos.
+
 - categorias, especialidades, ambientes e causas;
 - prioridade e SLA por tenant/contrato/categoria;
 - calendário útil, feriados e jornadas;
@@ -97,6 +101,8 @@ A validação operacional do envio em produção depende da configuração de `E
 - migração dos SLAs fixos atuais.
 
 ### GP-022 — Comentários, checklists e evidências
+
+**Estado em 2 de agosto de 2026:** implementado na v0.7.0, com comentários imutáveis, menções, respostas históricas e bloqueio de conclusão conforme snapshot da categoria.
 
 - comentários cronológicos e menções;
 - checklist por categoria;
@@ -106,6 +112,8 @@ A validação operacional do envio em produção depende da configuração de `E
 
 ### GP-023 — Notificações
 
+**Estado em 2 de agosto de 2026:** implementado na v0.7.0 com caixa interna/e-mail, preferências, outbox transacional, retry, métricas e scanners tenant-scoped para SLA e contratos.
+
 - eventos de OS, pendência, SLA e contrato;
 - preferências do usuário;
 - outbox transacional;
@@ -113,6 +121,8 @@ A validação operacional do envio em produção depende da configuração de `E
 - retentativa e observabilidade.
 
 ### GP-024 — Aceite, fechamento e reabertura
+
+**Estado em 2 de agosto de 2026:** implementado na v0.7.0 com fechamento dedicado, validação de custo/medição, concorrência protegida e reabertura formal com histórico e indicador de 30 dias.
 
 - solução executada e responsável pelo aceite;
 - custo final e elegibilidade para medição;

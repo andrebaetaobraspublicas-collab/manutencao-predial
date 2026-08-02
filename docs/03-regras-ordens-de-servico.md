@@ -59,6 +59,7 @@ stateDiagram-v2
   WAITING_APPROVAL --> CANCELED
   COMPLETED --> CLOSED
   COMPLETED --> IN_PROGRESS
+  CLOSED --> IN_PROGRESS
   CLOSED --> [*]
   CANCELED --> [*]
 ```
@@ -78,6 +79,7 @@ stateDiagram-v2
 | CANCELED | demanda anulada com justificativa |
 
 `COMPLETED` e `CLOSED` são distintos: conclusão é declaração operacional; fechamento é aceite e encerramento gerencial.
+As setas que saem de `COMPLETED` são operações dedicadas: `/close` e `/reopen`. A rota genérica de transição não fecha nem reabre uma OS.
 
 ## 5. Pendências
 
@@ -136,7 +138,10 @@ Toda consulta gerencial de backlog deve admitir, isolada ou conjuntamente:
 
 ## 8. SLA
 
-A fundação calcula prazos padrão por prioridade. Esses valores são apenas configuração inicial e devem migrar para uma tabela por tenant, contrato, categoria e calendário.
+A v0.7 calcula os prazos pela política ativa mais específica: contrato+categoria, contrato,
+categoria e tenant. Cada prioridade deve conservar um fallback global ativo. O calendário pode ser
+corrido ou útil, excluir feriados e possuir múltiplos turnos por dia. A OS guarda a política, os
+deadlines, o instante útil do aviso e um snapshot completo da regra aplicada.
 
 Exemplo inicial:
 
@@ -148,11 +153,8 @@ Exemplo inicial:
 | Urgente | 1 h | 8 h |
 | Crítica | 15 min | 4 h |
 
-Evoluções obrigatórias:
+Evoluções posteriores:
 
-- calendário útil ou corrido;
-- feriados e jornadas;
-- SLA específico por contrato;
 - suspensão justificada;
 - primeiro atendimento e solução definitiva;
 - alertas antes do vencimento;
@@ -163,6 +165,7 @@ Evoluções obrigatórias:
 - Uma OS pode relacionar-se a vários contratos.
 - Um vínculo deve ser marcado como principal.
 - O fornecedor direto pode ser preenchido para facilitar a análise, mas deve ser consistente com o contrato principal quando existir.
+- Todo contrato vinculado deve abranger a edificação da OS.
 - Valores alocados por contrato permitem dividir uma OS entre instrumentos distintos.
 - A medição deve considerar somente vínculos elegíveis e aprovados.
 
@@ -202,11 +205,20 @@ Critérios mínimos recomendados para fechar:
 - checklist obrigatório concluído;
 - indicação de elegibilidade para medição.
 
-A fundação exige apenas a transição e a ausência de pendência. Os demais critérios devem ser adicionados no MVP antes de uso produtivo crítico.
+A v0.7 verifica esses critérios contra o snapshot da categoria. A conclusão exige solução,
+checklist e evidências; o fechamento dedicado registra o usuário autenticado como aceitante. Para
+marcar elegibilidade de medição, o contrato principal deve abranger a edificação, estar
+`ACTIVE`/`EXPIRING` e vigente, o custo final deve ser positivo e não superar o aprovado, e a OS não
+pode estar em medição não rejeitada.
 
 ## 12. Reabertura
 
-A fundação permite `COMPLETED → IN_PROGRESS`; uma OS já `CLOSED` é terminal. O MVP deve criar operação explícita de reabertura, com autorização, motivo, contador e vínculo com o evento anterior. Reabertura em até 30 dias alimenta o indicador de qualidade.
+A reabertura é uma operação explícita, autorizada e concorrente-segura. Exige motivo, incrementa
+contador e preserva fechamento, aceite, custos, política, três instantes de SLA e snapshot do ciclo
+anterior. `COMPLETED` e `CLOSED` podem voltar para `IN_PROGRESS`; reabertura em até 30 dias alimenta
+o indicador de qualidade. A avaliação anterior é preservada no histórico da reabertura e removida da
+resposta corrente, evitando contaminar CSAT/NPS do novo ciclo. Uma OS em medição não rejeitada exige
+estorno formal antes da reabertura.
 
 ## 13. Satisfação
 
@@ -217,6 +229,8 @@ Após `COMPLETED` ou `CLOSED`, o demandante pode registrar:
 - comentário.
 
 Para fins gerenciais, CSAT e NPS não devem ser misturados. O relatório sempre informa número de respostas e taxa de participação.
+O registro é revalidado sob lock da OS, impedindo avaliação concorrente com reabertura, e o dashboard
+agrega apenas respostas associadas a ordens atualmente concluídas ou fechadas.
 
 ## 14. Medição
 

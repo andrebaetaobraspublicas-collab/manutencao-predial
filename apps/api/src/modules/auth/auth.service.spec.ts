@@ -6,6 +6,7 @@ import { MailService } from '../../common/mail/mail.service';
 import { MembershipRole } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { OperationsService } from '../operations/operations.service';
 
 describe('AuthService — segurança de senha', () => {
   it('revoga todas as sessões após alteração autenticada', async () => {
@@ -29,6 +30,7 @@ describe('AuthService — segurança de senha', () => {
       new JwtService({ secret: 'test' }),
       new ConfigService(),
       {} as MailService,
+      {} as OperationsService,
     );
 
     await service.changePassword(
@@ -57,6 +59,7 @@ describe('AuthService — segurança de senha', () => {
       new JwtService({ secret: 'test' }),
       new ConfigService(),
       {} as MailService,
+      {} as OperationsService,
     );
 
     await expect(

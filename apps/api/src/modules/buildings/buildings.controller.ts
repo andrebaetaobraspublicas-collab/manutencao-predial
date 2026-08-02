@@ -26,7 +26,7 @@ export class BuildingsController {
   @Roles(MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER)
   @Post()
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateBuildingDto) {
-    return this.service.create(user.tenantId, dto);
+    return this.service.create(user.tenantId, user.userId, dto);
   }
 
   @Roles(MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER)
@@ -36,7 +36,7 @@ export class BuildingsController {
     @Param('id') id: string,
     @Body() dto: UpdateBuildingDto,
   ) {
-    return this.service.update(user.tenantId, id, dto);
+    return this.service.update(user.tenantId, user.userId, id, dto);
   }
 
   @Roles(MembershipRole.OWNER, MembershipRole.ADMIN)

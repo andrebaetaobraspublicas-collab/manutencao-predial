@@ -35,7 +35,7 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Gestão de Prédios API')
     .setDescription('API multi-tenant para manutenção predial e gestão de ordens de serviço.')
-    .setVersion('0.6.0')
+    .setVersion('0.7.0')
     .addCookieAuth('gp_access')
     .addBearerAuth()
     .build();

@@ -4,6 +4,130 @@ export type CurrentSession = {
   role: string;
 };
 
+export type WorkOrderPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | 'CRITICAL';
+export type WorkOrderStatus =
+  | 'OPEN'
+  | 'TRIAGED'
+  | 'ASSIGNED'
+  | 'IN_PROGRESS'
+  | 'PENDING'
+  | 'WAITING_APPROVAL'
+  | 'COMPLETED'
+  | 'CLOSED'
+  | 'CANCELED';
+
+export type CatalogKind = 'CATEGORY' | 'SPECIALTY' | 'ENVIRONMENT' | 'CAUSE';
+
+export type CatalogItem = {
+  id: string;
+  kind: CatalogKind;
+  code: string;
+  name: string;
+  description?: string | null;
+  active: boolean;
+  sortOrder?: number;
+  defaultPriority?: WorkOrderPriority | null;
+  parentId?: string | null;
+  parent?: { id: string; code: string; name: string; kind: CatalogKind } | null;
+  requirePhotoBefore?: boolean;
+  requirePhotoDuring?: boolean;
+  requirePhotoAfter?: boolean;
+  requireChecklist?: boolean;
+  requireFinalCost?: boolean;
+  requireAcceptance?: boolean;
+  _count?: { workOrders?: number };
+};
+
+export type WorkOrderCatalogs = {
+  categories: CatalogItem[];
+  specialties: CatalogItem[];
+  environments: CatalogItem[];
+  failureCauses: CatalogItem[];
+};
+
+export type WeeklyScheduleDay = {
+  weekday: number;
+  active: boolean;
+  periods: Array<{ start: string; end: string }>;
+};
+
+export type BusinessCalendar = {
+  id: string;
+  code: string;
+  name: string;
+  timezone: string;
+  timeMode: 'CALENDAR' | 'BUSINESS';
+  businessDays: number[];
+  workdayStart?: string | null;
+  workdayEnd?: string | null;
+  active: boolean;
+  weeklySchedule?: WeeklyScheduleDay[];
+  shifts?: Array<{ days: number[]; start: string; end: string }>;
+  holidays: Array<{ id?: string; date: string; name: string }>;
+};
+
+export type SlaPolicy = {
+  id: string;
+  code: string;
+  name: string;
+  priority: WorkOrderPriority;
+  categoryId?: string | null;
+  category?: Pick<CatalogItem, 'id' | 'code' | 'name'> | null;
+  contractId?: string | null;
+  contract?: { id: string; code: string; object: string } | null;
+  calendarId: string;
+  calendar?: Pick<BusinessCalendar, 'id' | 'name' | 'timezone'> | null;
+  responseMinutes: number;
+  resolutionMinutes: number;
+  warningMinutesBefore?: number | null;
+  warningMinutes?: number | null;
+  pauseOnPendency?: boolean;
+  active: boolean;
+  precedence?: number;
+};
+
+export type SlaPreview = {
+  policy?: Pick<SlaPolicy, 'id' | 'name' | 'responseMinutes' | 'resolutionMinutes' | 'pauseOnPendency'> | null;
+  calendar?: Pick<BusinessCalendar, 'id' | 'name' | 'timezone'> | null;
+  responseDeadline: string;
+  resolutionDeadline: string;
+  sourceLabel?: string;
+  warning?: string | null;
+};
+
+export type GeocodingCandidate = {
+  candidateId: string;
+  placeId?: string | null;
+  label: string;
+  latitude: number;
+  longitude: number;
+  provider: string;
+  accuracy?: string | null;
+};
+
+export type GeocodingPreview = {
+  lookupId: string;
+  expiresAt: string;
+  query: string;
+  provider: string;
+  cached: boolean;
+  candidates: GeocodingCandidate[];
+};
+
+export type BuildingLocationConfirmation = {
+  latitude: number;
+  longitude: number;
+  source: 'PROVIDER' | 'ADJUSTED' | 'MANUAL';
+  lookupId?: string | null;
+  candidateId?: string | null;
+  provider?: string | null;
+  accuracy?: string | null;
+  placeId?: string | null;
+  label?: string | null;
+  adjusted: boolean;
+  confirmedAt: string;
+};
+
 export type Member = {
   id: string;
   role: string;
@@ -22,6 +146,12 @@ export type Member = {
     emailVerifiedAt?: string | null;
     lastLoginAt?: string | null;
   };
+};
+
+export type TenantDirectoryMember = {
+  id: string;
+  role: string;
+  user: { id: string; name: string; email: string };
 };
 
 export type TenantInvitation = {
@@ -49,7 +179,18 @@ export type Building = {
   postalCode: string;
   latitude?: string | number | null;
   longitude?: string | number | null;
+  geocodedAt?: string | null;
+  geocodingConfirmedAt?: string | null;
+  geocodingProvider?: string | null;
+  geocodingAccuracy?: string | null;
+  geocodingPlaceId?: string | null;
+  geocodingLookupId?: string | null;
+  geocodingCandidateId?: string | null;
+  geocodingSource?: 'PROVIDER' | 'ADJUSTED' | 'MANUAL' | null;
+  geocodingConfirmed?: boolean;
   grossAreaM2?: string | number | null;
+  constructionYear?: number | null;
+  floors?: number | null;
   _count?: { workOrders: number; contracts: number };
 };
 
@@ -92,11 +233,24 @@ export type WorkOrder = {
   locationDetail?: string | null;
   status: string;
   priority: string;
+  origin?: string;
   openedAt: string;
   dueAt?: string | null;
   slaResolutionDeadline?: string | null;
   hasOpenPendency: boolean;
   finalCost?: string | number | null;
+  solution?: string | null;
+  measurementEligible?: boolean | null;
+  measurementIneligibilityReason?: string | null;
+  reopenCount?: number;
+  reopenedAt?: string | null;
+  lastReopenedAt?: string | null;
+  category?: Pick<CatalogItem, 'id' | 'code' | 'name'> | null;
+  specialty?: Pick<CatalogItem, 'id' | 'code' | 'name'> | null;
+  environment?: Pick<CatalogItem, 'id' | 'code' | 'name'> | null;
+  cause?: Pick<CatalogItem, 'id' | 'code' | 'name'> | null;
+  failureCause?: Pick<CatalogItem, 'id' | 'code' | 'name'> | null;
+  slaPolicy?: { id: string; name: string; calendar?: { id: string; name: string; timezone: string; timeMode?: string } } | null;
   building: { id: string; code: string; name: string; city?: string; state?: string };
   supplier?: { id: string; legalName: string; tradeName?: string | null } | null;
   requester: { id: string; name: string; email: string };
@@ -104,6 +258,152 @@ export type WorkOrder = {
   contracts: Array<{ isPrimary: boolean; contract: { id: string; code: string; object: string; status: string } }>;
   pendencies?: Array<{ id: string; reason: string; dueAt?: string | null; status: string }>;
   _count?: { attachments: number; statusHistory: number };
+};
+
+export type WorkOrderComment = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: { id: string; name: string; email?: string; role?: string };
+  mentions: Array<{ user: { id: string; name: string; email?: string } }>;
+};
+
+export type WorkOrderChecklistItem = {
+  id: string;
+  label: string;
+  description?: string | null;
+  required: boolean;
+  sortOrder: number;
+  responses: Array<{
+    id: string;
+    checked: boolean;
+    note?: string | null;
+    createdAt: string;
+    respondedBy: { id: string; name: string };
+  }>;
+};
+
+export type ChecklistItemType = 'BOOLEAN' | 'TEXT' | 'NUMBER' | 'CHOICE';
+
+export type ChecklistTemplateItem = {
+  id: string;
+  label: string;
+  description?: string | null;
+  type: ChecklistItemType;
+  required: boolean;
+  options?: string[] | null;
+  evidenceKind?: string | null;
+  sortOrder: number;
+};
+
+export type ChecklistTemplateSection = {
+  id: string;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
+  items: ChecklistTemplateItem[];
+};
+
+export type ChecklistTemplate = {
+  id: string;
+  name: string;
+  version: number;
+  active: boolean;
+  categoryId: string;
+  sections: ChecklistTemplateSection[];
+  evidencePolicy?: EvidencePolicy | null;
+};
+
+export type ChecklistResponseValue = boolean | string | number | null;
+
+export type ChecklistSubmission = {
+  id: string;
+  revision: number;
+  submittedAt: string;
+  submittedBy: { id: string; name: string };
+  responses: Array<{
+    itemId: string;
+    value: ChecklistResponseValue;
+    notApplicable: boolean;
+    notApplicableReason?: string | null;
+  }>;
+};
+
+export type WorkOrderChecklist = {
+  id: string;
+  template: ChecklistTemplate;
+  requiredItems: number;
+  completedRequiredItems: number;
+  latestSubmission?: ChecklistSubmission | null;
+  submissions?: ChecklistSubmission[];
+};
+
+export type EvidencePolicy = {
+  requireBefore: boolean;
+  requireDuring: boolean;
+  requireAfter: boolean;
+  minimumBefore: number;
+  minimumDuring: number;
+  minimumAfter: number;
+  requireTechnicalReport?: boolean;
+};
+
+export type ClosureReadinessCheck = {
+  code: string;
+  label: string;
+  detail?: string | null;
+  status: 'MET' | 'MISSING' | 'NOT_APPLICABLE';
+  section?: 'summary' | 'execution' | 'activity' | 'documents';
+};
+
+export type ClosureReadiness = {
+  ready: boolean;
+  blockers: string[];
+  checks: Record<string, boolean>;
+  canComplete?: boolean;
+  canClose?: boolean;
+};
+
+export type WorkOrderCapabilities = {
+  allowedTransitions: WorkOrderStatus[];
+  canEdit: boolean;
+  canComment: boolean;
+  canAddPendency: boolean;
+  canSubmitChecklist: boolean;
+  canComplete: boolean;
+  canClose: boolean;
+  canRejectCompletion: boolean;
+  canReopen: boolean;
+  allowedAttachmentKinds: string[];
+};
+
+export type AppNotification = {
+  id: string;
+  eventType: string;
+  title: string;
+  message: string;
+  body?: string;
+  severity?: 'INFO' | 'WARNING' | 'CRITICAL';
+  workOrderId?: string | null;
+  actionUrl?: string | null;
+  entityType?: 'WORK_ORDER' | 'CONTRACT' | 'BUILDING' | null;
+  entityId?: string | null;
+  readAt?: string | null;
+  createdAt: string;
+  actor?: { id: string; name: string } | null;
+};
+
+export type NotificationPage = Paginated<AppNotification> & { unreadCount: number };
+
+export type NotificationPreference = {
+  eventType: string;
+  label?: string;
+  description?: string;
+  inApp: boolean;
+  email: boolean;
+  inAppEnabled?: boolean;
+  emailEnabled?: boolean;
+  emailAvailable?: boolean;
 };
 
 export type Paginated<T> = {

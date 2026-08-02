@@ -1,5 +1,9 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { MembershipStatus } from '../../generated/prisma/client';
+import {
+  MembershipRole,
+  MembershipStatus,
+  UserStatus,
+} from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
@@ -167,15 +171,30 @@ export class ContractsService {
     const ids = [...new Set(userIds.filter((value): value is string => Boolean(value)))];
     if (!ids.length) return;
 
-    const count = await this.prisma.tenantMembership.count({
+    const now = new Date();
+    const memberships = await this.prisma.tenantMembership.findMany({
       where: {
         tenantId,
         userId: { in: ids },
         status: MembershipStatus.ACTIVE,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        role: {
+          in: [
+            MembershipRole.OWNER,
+            MembershipRole.ADMIN,
+            MembershipRole.MANAGER,
+            MembershipRole.CONTRACT_MANAGER,
+            MembershipRole.CONTRACT_INSPECTOR,
+          ],
+        },
+        user: { status: UserStatus.ACTIVE, deletedAt: null },
       },
+      select: { userId: true },
     });
-    if (count !== ids.length) {
-      throw new BadRequestException('Gestor ou fiscal não pertence à organização.');
+    if (new Set(memberships.map((membership) => membership.userId)).size !== ids.length) {
+      throw new BadRequestException(
+        'Gestor ou fiscal não possui papel gerencial ativo na organização.',
+      );
     }
   }
 }

@@ -13,6 +13,9 @@ Cobrem regras puras e rápidas:
 - fórmula e classificação de KPI;
 - limites de plano;
 - normalização de identificadores.
+- calendário de SLA com feriados, múltiplos turnos e aviso em tempo útil;
+- precedência e fallback global de políticas de SLA;
+- snapshot de critérios, revisão monotônica de checklist e prontidão de fechamento.
 
 ### Integração
 
@@ -25,6 +28,9 @@ Executados contra MySQL de teste:
 - migrações;
 - geração de medição;
 - isolamento multi-tenant.
+- outbox idempotente, retry, deduplicação e destinatário autorizado;
+- locks concorrentes de conclusão, checklist, pendência, anexo, fechamento e reabertura;
+- compatibilidade de migração com OS concluída/medida e snapshot legado.
 
 ### API/e2e
 
@@ -35,6 +41,12 @@ Executados contra MySQL de teste:
 - billing simulado;
 - relatórios;
 - códigos de erro e validação.
+- geocodificação confirmada vinculada a tenant, endereço, lookup e candidato;
+- contrato abrangendo a edificação da OS;
+- menções, diretório e notificações sem vazamento para `REQUESTER` de outra OS;
+- revogação de alertas contratuais e notificações históricas após rebaixamento para `REQUESTER`;
+- bloqueio de reabertura quando houver medição não rejeitada.
+- corrida entre avaliação e reabertura, com snapshot e limpeza da avaliação do ciclo anterior.
 
 ### Interface/e2e
 

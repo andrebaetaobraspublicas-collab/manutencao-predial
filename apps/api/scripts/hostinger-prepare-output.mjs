@@ -11,7 +11,7 @@ import { resolve } from 'node:path';
 const packageRoot = process.cwd();
 const prebuiltDir = resolve(packageRoot, 'prebuilt');
 const buildDir = resolve(packageRoot, 'dist');
-const outputDir = resolve(packageRoot, 'apps', 'api', 'dist');
+const outputDir = buildDir;
 const artifactDir = existsSync(resolve(buildDir, 'main.js')) ? buildDir : prebuiltDir;
 const artifactEntry = resolve(artifactDir, 'main.js');
 
@@ -19,9 +19,11 @@ if (!existsSync(artifactEntry)) {
   throw new Error('Missing compiled dist/main.js or fallback prebuilt/main.js');
 }
 
-rmSync(outputDir, { force: true, recursive: true });
-mkdirSync(outputDir, { recursive: true });
-cpSync(artifactDir, outputDir, { recursive: true });
+if (artifactDir !== outputDir) {
+  rmSync(outputDir, { force: true, recursive: true });
+  mkdirSync(outputDir, { recursive: true });
+  cpSync(artifactDir, outputDir, { recursive: true });
+}
 
 const sourcePackage = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8'));
 const runtimePackage = {
@@ -40,4 +42,4 @@ writeFileSync(
   'utf8',
 );
 
-console.log('Hostinger output prepared at apps/api/dist');
+console.log('Hostinger output prepared at dist');

@@ -116,7 +116,10 @@ docker compose -f docker-compose.prod.yml up -d
 
 O diagnóstico histórico do incidente de publicação está em `docs/14-diagnostico-fase-a.md`. O estado público deve ser verificado novamente por smoke test em cada deploy; resultados antigos não comprovam a disponibilidade da nova versão.
 
-As alterações da v0.8.0 descritas neste documento estão no repositório local e não devem ser consideradas publicadas na Hostinger até a execução do pipeline, smoke test e roteiro de aceite.
+A v0.8.0 foi publicada na Hostinger em **2 de agosto de 2026** a partir do commit `f636fcd`.
+Os deployments da API e do frontend foram concluídos, o smoke test público foi aprovado e a
+central de relatórios foi validada com sessão administrativa e dados reais da organização.
+Os logs da API registravam zero issues e zero errors na janela de uma hora após a promoção.
 
 ## 7. Bloqueadores antes de produção
 

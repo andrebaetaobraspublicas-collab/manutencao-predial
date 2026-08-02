@@ -21,7 +21,7 @@ export default function ContractsPage() {
     setItems(contracts); setSuppliers(supplierItems); setBuildings(buildingItems);
     setForm((current) => ({ ...current, supplierId: current.supplierId || supplierItems[0]?.id || '' }));
   } catch (cause) { setError(cause instanceof Error ? cause.message : 'Falha ao carregar contratos.'); } finally { setLoading(false); } }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
   async function openContract(id: string) { try { setDetail(await apiFetch<Contract>(`/contracts/${id}`)); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Falha ao abrir contrato.'); } }
   function toggleBuilding(id: string) { setForm((current) => ({ ...current, buildingIds: current.buildingIds.includes(id) ? current.buildingIds.filter((item) => item !== id) : [...current.buildingIds, id] })); }
   async function submit(event: FormEvent) { event.preventDefault(); setSubmitting(true); setError(''); try {

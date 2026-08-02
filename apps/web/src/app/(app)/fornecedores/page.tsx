@@ -21,7 +21,7 @@ export default function SuppliersPage() {
     apiFetch<Supplier[]>('/suppliers'), apiFetch<CatalogItem[]>('/operations/catalogs?kind=CATEGORY&active=true')]);
     setItems(suppliers); setCategories(catalog); setSelected((current) => current ? suppliers.find((item) => item.id === current.id) ?? null : null);
   } catch (cause) { setError(cause instanceof Error ? cause.message : 'Falha ao carregar fornecedores.'); } finally { setLoading(false); } }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
 
   async function submit(event: FormEvent) { event.preventDefault(); setSubmitting(true); setError(''); try {
     await apiFetch('/suppliers', { method: 'POST', body: JSON.stringify({ ...form,

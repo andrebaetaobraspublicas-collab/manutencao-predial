@@ -9,6 +9,7 @@
 - Validado Prisma, lint, testes e builds locais; validação Docker/MySQL permanece para o VPS.
 - Adicionados scripts de build separados para os Web Apps Next.js e NestJS da Hostinger.
 - Removida a senha demonstrativa do código e da tela; o seed agora exige `SEED_ADMIN_PASSWORD`.
+- A API agora respeita a porta dinâmica `PORT` e possui bootstrap Hostinger com migração e seed idempotente.
 
 ## 0.1.0 — Fundação técnica
 

@@ -164,8 +164,8 @@ Não há Docker nem MySQL local nesta máquina. Por isso `prisma migrate status`
 
 - banco: nenhuma mudança de schema ou dados;
 - APIs: nenhuma mudança de contrato funcional;
-- frontend: nenhuma mudança funcional;
-- publicação: nenhum redeploy foi disparado nesta fase até o domínio público ser corrigido.
+- frontend: adicionada exportação estática para a Hostinger; o detalhe da OS usa `/ordens-servico/detalhe?id=<id>`;
+- publicação: frontend v0.5.0 e API v0.2.8 implantados na Hostinger.
 
 ## 7. Validação executada
 
@@ -178,39 +178,37 @@ Não há Docker nem MySQL local nesta máquina. Por isso `prisma migrate status`
 | `npm run test` | aprovado: 1 suíte, 3 testes |
 | `npm run build` com variáveis obrigatórias de build | aprovado: NestJS + 10 rotas Next.js |
 | tipos da nova suíte e2e | aprovados pelo `tsc --noEmit` |
-| `npm run smoke:production` | reprovado: 4 de 4 verificações públicas falharam |
+| `npm run smoke:production` | aprovado: raiz, `www`, health e Swagger em HTTP 200 |
 | Docker build | não executado: Docker ausente nesta máquina |
 | migração/seed local | não executado: MySQL local ausente |
-| teste e2e local | não executado: MySQL local ausente |
+| teste e2e local | não executado: MySQL local ausente; aprovado na CI com MySQL real |
 
 ## 8. Publicação Hostinger
 
 ### Estado do painel
 
-- frontend `gestaodepredios.com.br`: processo `Running`, deployment v0.3.0 `Completed`, zero issues e zero errors nos logs da última hora;
+- frontend `gestaodepredios.com.br`: exportação estática Next.js v0.5.0, preset `React`, deployment `Completed`;
 - API `api.gestaodepredios.com.br`: processo `Running`, deployment v0.2.8 `Completed`, zero issues e zero errors nos logs da última hora;
 - DNS no hPanel: ALIAS de `@`, CNAME de `www` e CNAME de `api` aparecem cadastrados com TTL 300;
 - nameservers: Hostinger (`aurora.dns-parking.com` e `nebula.dns-parking.com`).
 
 ### Estado público
 
-- `https://gestaodepredios.com.br/`: HTTP 503;
-- `https://www.gestaodepredios.com.br/`: HTTP 503;
-- `https://api.gestaodepredios.com.br/api/v1/health`: HTTP 404;
-- `https://api.gestaodepredios.com.br/docs`: HTTP 404.
+- `https://gestaodepredios.com.br/`: HTTP 200;
+- `https://www.gestaodepredios.com.br/`: HTTP 200;
+- `https://api.gestaodepredios.com.br/api/v1/health`: HTTP 200;
+- `https://api.gestaodepredios.com.br/docs`: HTTP 200.
 
-Os cabeçalhos e páginas de erro são emitidos pelo CDN da Hostinger. Como os processos estão ativos e não registram erros, a evidência atual aponta para vínculo/roteamento de domínio no CDN, não para falha de compilação do código.
+O 503 era produzido antes de o Next.js receber a requisição. Como a primeira versão usa a API NestJS para toda a lógica, o frontend foi convertido para exportação estática, removendo a dependência do Passenger sem retirar funcionalidades do piloto.
 
 ## 9. Problemas, riscos e débitos técnicos
 
 ### Bloqueadores do piloto público
 
-1. corrigir o roteamento dos três hosts na Hostinger;
-2. executar novamente o smoke test até obter sucesso integral;
-3. executar a suíte e2e em MySQL e registrar o resultado;
-4. restringir o Remote MySQL atualmente liberado para `Any Host`;
-5. comprovar persistência e backup dos anexos no Web App gerenciado;
-6. testar restauração do banco e dos anexos.
+1. restringir o Remote MySQL atualmente liberado para `Any Host`;
+2. comprovar persistência e backup dos anexos no Web App gerenciado;
+3. testar restauração do banco e dos anexos;
+4. executar fluxo autenticado completo no piloto.
 
 ### Bloqueadores antes de dados reais de produção
 
@@ -228,8 +226,7 @@ Os cabeçalhos e páginas de erro são emitidos pelo CDN da Hostinger. Como os p
 Concluir o restante do Marco A na ordem:
 
 ```text
-roteamento público Hostinger
-→ CI com migrações e isolamento multiempresa
-→ GP-003 hardening inicial da API
+GP-003 hardening inicial da API
+→ backup e restauração de banco/anexos
 → somente então iniciar gestão de usuários e demais módulos do MVP
 ```

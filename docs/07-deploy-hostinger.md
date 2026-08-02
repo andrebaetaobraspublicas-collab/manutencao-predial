@@ -184,7 +184,8 @@ Rollback de aplicação pode usar a imagem/tag anterior. Rollback de banco não 
 
 Na hospedagem gerenciada compatível com Node.js:
 
-- criar aplicação Next.js e aplicação NestJS separadas;
+- publicar o frontend Next.js como aplicação estática (`React`, build `npm run build:web`, saída `apps/web/out`, variável `HOSTINGER_STATIC_EXPORT=1`, sem entry file);
+- publicar a API NestJS como Web App separada (`apps/api/dist` e entry `apps/api/dist/main.js`);
 - usar o MySQL fornecido no hPanel;
 - configurar variáveis por aplicação;
 - publicar por GitHub ou pacote;
@@ -193,3 +194,5 @@ Na hospedagem gerenciada compatível com Node.js:
 - verificar se há comando de release para migração.
 
 A alternativa somente é adequada após validar limites de runtime, processo persistente, tamanho de upload, cron/jobs, logs e backup.
+
+No piloto de 2 de agosto de 2026, a exportação estática foi escolhida porque o Passenger do Web App retornava 503 antes de iniciar o runtime Next.js. A lógica e os dados permanecem na API; a rota de detalhe da OS é gerada em `/ordens-servico/detalhe/?id=<id>` para ser compatível com hospedagem estática.

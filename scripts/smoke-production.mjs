@@ -34,7 +34,7 @@ let failures = 0;
 for (const check of checks) {
   try {
     const response = await fetch(check.url, {
-      redirect: 'manual',
+      redirect: 'follow',
       signal: AbortSignal.timeout(15_000),
     });
     const passed = await check.validate(response);

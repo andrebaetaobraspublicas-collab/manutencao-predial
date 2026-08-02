@@ -50,7 +50,7 @@ Depois, executar health check, fluxo autenticado, isolamento entre tenants, uplo
 - runtime standalone do Next.js validado com dependências rastreadas, `server.js`, arquivos estáticos e conteúdo público;
 - `npm audit --omit=dev` permaneceu sem vulnerabilidades conhecidas.
 
-As validações públicas de `/api/v1/health`, `/docs` e do frontend ficaram pendentes da publicação/propagação do DNS e do roteamento CDN. A regra temporária de MySQL remoto `Any Host` deve ser substituída por uma origem restrita assim que o IP de saída do runtime puder ser confirmado.
+Em 2 de agosto de 2026, a API foi corrigida para usar `apps/api/dist/main.js` e passou a responder publicamente. O frontend foi publicado como exportação estática Next.js v0.5.0 (`React`, `npm run build:web`, saída `apps/web/out`), eliminando o 503 do Passenger. A regra temporária de MySQL remoto `Any Host` deve ser substituída por uma origem restrita assim que o IP de saída do runtime puder ser confirmado.
 
 ## Diagnóstico da Fase A em 1º de agosto de 2026
 
@@ -62,8 +62,8 @@ As validações públicas de `/api/v1/health`, `/docs` e do frontend ficaram pen
 - nova suíte e2e de isolamento multiempresa compilou e foi integrada à CI;
 - a CI passou de `prisma db push` para `prisma migrate deploy`;
 - Dockerfiles passaram a usar `package-lock.json` e `npm ci`;
-- `npm run smoke:production` reprovou as quatro verificações: raiz 503, `www` 503, health 404 e Swagger 404;
-- hPanel confirmou frontend e API como `Running`, deployments `Completed` e zero erros nos logs da última hora;
-- o bloqueio público foi classificado como DNS/roteamento CDN e permanece aberto.
+- a CI executou MySQL, `prisma migrate deploy` e a suíte e2e de isolamento multiempresa com sucesso;
+- o frontend estático v0.5.0 e a API v0.2.8 foram publicados com deployments `Completed`;
+- `npm run smoke:production` aprovou as quatro verificações: raiz, `www`, health e Swagger em HTTP 200.
 
-Não executados localmente por ausência de Docker/MySQL: build das imagens, aplicação real da migração, seed e suíte e2e. Consulte `docs/14-diagnostico-fase-a.md`.
+Docker e MySQL continuam indisponíveis localmente nesta máquina; migrações e isolamento foram validados na CI com MySQL real. Consulte `docs/14-diagnostico-fase-a.md`.

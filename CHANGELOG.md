@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.1 — Promoção automática do runtime Hostinger
+
+- Adicionado workflow pós-CI que aguarda o build conectado ao GitHub, carimba o SHA e recicla
+  somente o Passenger da API.
+- A prontidão agora expõe o SHA efetivamente carregado pelo processo, permitindo comprovar que o
+  domínio público e o artefato `current` são a mesma release.
+- Mantido o auto-deploy da Hostinger para `main`, com verificação pública do banco antes de concluir
+  a promoção.
+
+## 0.9.0 — Núcleo gerencial e operacional
+
+- Implementados medições, empenhos, orçamento/SINAPI, manutenção preventiva, KPIs, SLAs e
+  relatórios gerenciais.
+- Adicionados gates de staging, backup, restauração e piloto controlado do GP-031.
+
 ## 0.8.0 — Relatórios essenciais do MVP
 
 - Adicionada central de relatórios com acesso por papéis gerenciais, contratuais e auditoria.

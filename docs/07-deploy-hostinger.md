@@ -259,11 +259,25 @@ Fluxo de promoção:
 1. desenvolver em branch dedicada;
 2. abrir PR para `main` e aguardar a CI de lint, testes e builds;
 3. revisar migration e compatibilidade de rollback quando houver mudança de banco;
-4. mesclar o PR aprovado em `main`;
-5. acompanhar os dois deployments automáticos no hPanel;
-6. validar `GET https://api.gestaodepredios.com.br/api/v1/health`;
-7. executar login, página gerencial e smoke tests proporcionais à mudança;
+4. mesclar o PR aprovado em `main` e aguardar o auto-deploy dos dois Web Apps;
+5. o workflow `Promote Hostinger runtime` confirma que o diretório `current` é posterior ao commit,
+   grava o SHA no artefato, recicla somente o Passenger da API e valida `/health/ready`;
+6. considerar a promoção concluída somente quando `release` for igual ao SHA do merge e o banco
+   estiver `reachable`;
+7. executar login, páginas gerenciais e smoke tests proporcionais à mudança;
 8. conferir runtime logs da API e registrar o commit publicado.
+
+Segredos/variáveis exigidos no GitHub:
+
+- secret `HOSTINGER_SSH_PRIVATE_KEY`;
+- secret `HOSTINGER_SSH_KNOWN_HOSTS` com a chave do host fixada;
+- variables `HOSTINGER_SSH_HOST`, `HOSTINGER_SSH_PORT` e `HOSTINGER_SSH_USER`;
+- environment `production` (adicionar aprovação obrigatória quando houver outro responsável pelo
+  piloto).
+
+O recycle é necessário porque o botão `Restart` do hPanel não substituiu o processo Passenger
+legado durante a promoção inicial da v0.9.0. O workflow limita o `pgrep` ao caminho exclusivo de
+`api.gestaodepredios.com.br` e falha se o SHA público não corresponder ao merge.
 
 Não versionar segredos. As variáveis continuam administradas separadamente em cada Web App. Como
 os dois serviços acompanham a mesma branch, qualquer commit em `main`, inclusive documentação,

@@ -157,8 +157,12 @@ piloto formal. A implementação deve manter a OS como agregado central e seguir
 **Estado em 2 de agosto de 2026:** GP-040 a GP-043 implementados na v0.9.0 com API, interface,
 migration, auditoria e testes unitários das regras puras. O GP-031 recebeu pipeline manual/tag,
 readiness, scripts de backup/restauração e roteiro do piloto. A instância pública isolada de
-staging ainda depende de capacidade adicional no plano Hostinger e de um ensaio operacional de
-restauração; produção não deve ser usada como substituta do staging.
+staging ainda depende de capacidade adicional no plano Hostinger. Para o GP-044, o proprietário
+autorizou excepcionalmente o uso do banco público atual, que ainda contém apenas dados de teste,
+sem criar staging. Essa exceção termina antes da entrada de usuários ou dados reais relevantes.
+
+**Estado do GP-044 em 2 de agosto de 2026:** painel de homologação, critérios automáticos,
+decisões auditáveis, aceite final bloqueante e exportações PDF/CSV implementados na v0.10.0.
 
 O detalhamento e os critérios de aceite estão em `docs/13-plano-inicial-de-issues-codex.md`.
 

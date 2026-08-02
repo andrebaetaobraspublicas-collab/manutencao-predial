@@ -19,6 +19,8 @@ Este diretório é a fonte de verdade funcional e técnica do produto. Atualize 
 13. [Estado verificável da implementação](12-status-da-implementacao.md)
 14. [Plano inicial de issues para o Codex](13-plano-inicial-de-issues-codex.md)
 15. [Diagnóstico e estabilização da Fase A](14-diagnostico-fase-a.md)
+16. [Staging, backup e roteiro do piloto](15-gp031-staging-backup-piloto.md)
+17. [Piloto operacional e homologação](16-gp044-piloto-homologacao.md)
 
 As decisões arquiteturais permanentes ficam em [`docs/adr`](adr/).
 

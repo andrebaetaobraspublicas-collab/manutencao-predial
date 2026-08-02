@@ -1,4 +1,4 @@
-# Estado verificável da implementação — v0.9.0
+# Estado verificável da implementação — v0.10.0
 
 Data de referência: **2 de agosto de 2026**.
 
@@ -43,6 +43,7 @@ Essa classificação deve ser preservada no frontend e na comunicação comercia
 | Preventiva v0.9 | ativos, planos e reserva idempotente plano/data antes da geração de OS |
 | KPIs v0.9 | sete indicadores centrais, versão de fórmula, tendência, painel e PDF/CSV |
 | GP-031 v0.9 | health live/ready, workflow da candidata, backup/restore e roteiro de aceite |
+| GP-044 v0.10 | painel de piloto, nove cenários, critérios automáticos, decisões auditáveis, aceite bloqueante e PDF/CSV |
 
 ## 3. Modelado, mas ainda sem fluxo completo
 
@@ -103,6 +104,10 @@ Na v0.9.0, o schema Prisma e a API foram ampliados de forma aditiva para GP-040 
 produção NestJS/Next.js foram aprovados localmente. A migration em MySQL vazio e a matriz e2e
 ampliada permanecem gates da CI por não haver Docker/MySQL local; o smoke da revisão publicada
 deve ser registrado após o auto-deploy.
+
+Na v0.10.0, o GP-044 foi validado por lint, builds NestJS/Next.js e **74 testes unitários em 20
+suítes**. A suíte e2e passou a verificar o isolamento das decisões do piloto e o bloqueio do aceite
+prematuro; sua execução com MySQL limpo permanece gate obrigatório da CI antes da promoção.
 
 ## 6. Validações de infraestrutura que permanecem obrigatórias
 

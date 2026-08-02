@@ -21,6 +21,7 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { KpisModule } from './modules/kpis/kpis.module';
+import { PilotModule } from './modules/pilot/pilot.module';
 
 configureBigIntJsonSerialization();
 
@@ -49,6 +50,7 @@ configureBigIntJsonSerialization();
     BudgetsModule,
     MaintenanceModule,
     KpisModule,
+    PilotModule,
     BillingModule,
   ],
 })

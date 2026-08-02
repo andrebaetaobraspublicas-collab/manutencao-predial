@@ -330,6 +330,21 @@ servidor com `Decimal`; rejeições e cancelamentos exigem justificativa.
 
 O endpoint de webhook usa corpo bruto e não exige sessão de usuário, mas exige assinatura Stripe válida.
 
+## 8.1 Piloto operacional e homologação
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| GET | `/pilot/overview` | consolida critérios automáticos, decisões e aceite do tenant |
+| POST | `/pilot/scenarios/:code/decision` | registra parecer append-only e referência de evidência |
+| POST | `/pilot/acceptance` | aprova ou rejeita formalmente o piloto |
+| GET | `/pilot/exports/homologation.csv` | exporta a matriz conciliada em CSV |
+| GET | `/pilot/exports/homologation.pdf` | exporta o relatório formal em PDF |
+
+A consulta e as exportações admitem perfis gerenciais, contratuais, de fiscalização e auditoria.
+Somente `OWNER`, `ADMIN` e `MANAGER` registram decisões. `APPROVED` é recusado enquanto qualquer
+checagem automática estiver pendente ou qualquer cenário não tiver decisão `PASSED`. Todos os
+dados e agregações são derivados do `tenantId` autenticado.
+
 ## 9. Versionamento
 
 Mudanças aditivas permanecem em `/api/v1`. Alterações incompatíveis exigem:

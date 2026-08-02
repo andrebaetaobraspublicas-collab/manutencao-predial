@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.0 — Piloto operacional e homologação
+
+- Adicionado painel tenant-aware do GP-044 com nove cenários operacionais, verificações
+  automáticas, parecer humano e referências de evidência.
+- Decisões, aceite final e exportações ficam registrados na trilha de auditoria append-only.
+- A aprovação final é bloqueada enquanto existir cenário automático pendente ou sem decisão
+  humana aprovada; regressões posteriores ao aceite tornam-se visíveis.
+- Adicionados relatório PDF, base CSV protegida contra fórmulas e testes de isolamento entre
+  organizações.
+- O staging foi excluído deste ciclo por decisão do proprietário; o banco público atual permanece
+  temporariamente destinado apenas a dados sintéticos de teste.
+
 ## 0.9.3 — Deploy isolado e resiliente da API
 
 - Separado o gatilho de build da API na branch técnica `deploy-api`, evitando concorrência com o

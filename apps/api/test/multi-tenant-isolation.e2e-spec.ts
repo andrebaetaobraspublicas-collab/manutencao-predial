@@ -172,6 +172,42 @@ describe('isolamento multiempresa', () => {
     expect(budgets.body).toHaveLength(1);
     expect(budgets.body[0].id).toBe(tenantA.budgetId);
   });
+
+  it('isola decisões e evidências do piloto por organização', async () => {
+    await tenantB.agent
+      .post('/api/v1/pilot/scenarios/ACCESS_SECURITY/decision')
+      .send({
+        outcome: 'PASSED',
+        note: 'Perfis e acessos conferidos pela organização B.',
+        evidenceReference: 'E2E-TENANT-B',
+      })
+      .expect(201);
+
+    const overviewA = await tenantA.agent.get('/api/v1/pilot/overview').expect(200);
+    const overviewB = await tenantB.agent.get('/api/v1/pilot/overview').expect(200);
+    const accessA = overviewA.body.scenarios.find(
+      (scenario: { code: string }) => scenario.code === 'ACCESS_SECURITY',
+    );
+    const accessB = overviewB.body.scenarios.find(
+      (scenario: { code: string }) => scenario.code === 'ACCESS_SECURITY',
+    );
+
+    expect(accessA.decision).toBeNull();
+    expect(accessB.decision.outcome).toBe('PASSED');
+    expect(accessB.decision.evidenceReference).toBe('E2E-TENANT-B');
+  });
+
+  it('bloqueia o aceite final enquanto houver cenários pendentes', async () => {
+    const response = await tenantA.agent
+      .post('/api/v1/pilot/acceptance')
+      .send({
+        outcome: 'APPROVED',
+        note: 'Tentativa de aceite antes da conclusão de todos os cenários.',
+      })
+      .expect(400);
+
+    expect(response.body.message).toContain('cenários');
+  });
 });
 
 async function createTenantFixture(

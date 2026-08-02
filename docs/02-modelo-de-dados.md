@@ -16,6 +16,8 @@ erDiagram
   TENANT ||--o{ TENANT_MEMBERSHIP : possui
   USER ||--o{ TENANT_MEMBERSHIP : participa
   TENANT_MEMBERSHIP ||--o{ REFRESH_SESSION : autentica
+  TENANT_MEMBERSHIP ||--o| TENANT_INVITATION : recebe
+  USER ||--o{ ACCOUNT_TOKEN : valida
   TENANT ||--o{ TENANT_SUBSCRIPTION : contrata
   SAAS_PLAN ||--o{ TENANT_SUBSCRIPTION : define
   TENANT ||--o{ AUDIT_LOG : registra
@@ -41,6 +43,24 @@ erDiagram
     char36 userId FK
     enum role
     datetime expiresAt
+    int sessionVersion
+  }
+  TENANT_INVITATION {
+    char36 id PK
+    char36 tenantId FK
+    char36 membershipId FK
+    char64 tokenHash UK
+    datetime expiresAt
+    datetime acceptedAt
+    datetime revokedAt
+  }
+  ACCOUNT_TOKEN {
+    char36 id PK
+    char36 userId FK
+    enum purpose
+    char64 tokenHash UK
+    datetime expiresAt
+    datetime consumedAt
   }
   TENANT_SUBSCRIPTION {
     char36 id PK
@@ -203,6 +223,8 @@ erDiagram
 |---|---|---|
 | Tenant | organização cliente | slug único; status controla entitlement |
 | TenantMembership | papel do usuário no tenant | um vínculo por usuário/tenant; acesso provisório respeita expiração |
+| TenantInvitation | convite de entrada na organização | token armazenado somente em hash; uso único; validade de 72 horas; pertence ao tenant e ao vínculo |
+| AccountToken | redefinição de senha e verificação de e-mail | token em hash, finalidade explícita, uso único e expiração; nunca armazenar o valor bruto |
 | Building | imóvel gerenciado | código único no tenant; coordenadas devem formar par válido |
 | Supplier | fornecedor | documento fiscal único no tenant |
 | Contract | instrumento contratual | código único; data final posterior à inicial; fornecedor do mesmo tenant |

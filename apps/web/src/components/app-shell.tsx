@@ -14,6 +14,7 @@ import {
   PackageSearch,
   Settings,
   ShieldCheck,
+  UserRound,
   UsersRound,
   Wrench,
   X,
@@ -49,7 +50,8 @@ const NAVIGATION = [
       { href: '/planos-manutencao', label: 'Planos de manutenção', icon: PackageSearch, disabled: true },
       { href: '/indicadores', label: 'KPIs e SLAs', icon: BarChart3, disabled: true },
       { href: '/relatorios', label: 'Relatórios', icon: FileBarChart, disabled: true },
-      { href: '/administracao', label: 'Administração', icon: Settings, disabled: true },
+      { href: '/administracao', label: 'Administração', icon: Settings, adminOnly: true },
+      { href: '/conta', label: 'Minha conta', icon: UserRound },
     ],
   },
 ];
@@ -130,6 +132,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {section.items.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const Icon = item.icon;
+                if ('adminOnly' in item && item.adminOnly && !['OWNER', 'ADMIN'].includes(session.role)) {
+                  return null;
+                }
                 return item.disabled ? (
                   <span
                     className="nav-link"

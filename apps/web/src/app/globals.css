@@ -1042,6 +1042,72 @@ p {
   color: var(--text);
 }
 
+.simple-auth-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 28px 18px;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(19, 78, 112, 0.13), transparent 32%),
+    var(--background);
+}
+
+.auth-card {
+  width: min(100%, 480px);
+  padding: 30px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.auth-card > .btn,
+.auth-card > .notice + .btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 28px;
+  color: var(--primary);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.auth-link {
+  display: block;
+  margin-top: 18px;
+  color: var(--primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.auth-link:hover { text-decoration: underline; }
+.auth-hero-icon { margin-bottom: 14px; color: var(--primary); }
+
+.compact-control {
+  min-width: 165px;
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.table-actions .btn {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 0.68rem;
+}
+
 .mobile-overlay {
   display: none;
 }

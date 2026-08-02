@@ -45,6 +45,9 @@ Critérios:
 
 ### GP-010 — Gestão de usuários e convites
 
+**Estado em 2 de agosto de 2026:** implementado na v0.6.0. Permanecem para evolução a
+transferência formal de propriedade e políticas comerciais de limite de usuários.
+
 - listar membros;
 - convidar usuário existente ou novo;
 - papéis permitidos;
@@ -54,6 +57,10 @@ Critérios:
 - telas administrativas.
 
 ### GP-011 — Senha e e-mail
+
+**Estado em 2 de agosto de 2026:** implementado na v0.6.0 com provedor Resend configurável.
+A validação operacional do envio em produção depende da configuração de `EMAIL_FROM` e
+`RESEND_API_KEY` no ambiente de hospedagem.
 
 - alteração autenticada;
 - esquecimento e redefinição com token de uso único;

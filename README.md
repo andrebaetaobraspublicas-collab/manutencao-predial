@@ -1,4 +1,4 @@
-# Gestão de Prédios — starter técnico v0.1
+# Gestão de Prédios — v0.6.0
 
 Base inicial do SaaS hospedado no domínio `www.gestaodepredios.com.br`, com:
 
@@ -63,6 +63,13 @@ Senha: valor configurado em SEED_ADMIN_PASSWORD
 ```
 
 Nunca use a senha de desenvolvimento em produção; configure uma senha exclusiva no ambiente da hospedagem.
+
+## E-mail de convites e recuperação
+
+A v0.6 usa a API da Resend para convites, redefinição de senha e verificação de e-mail.
+Configure `EMAIL_FROM` com um remetente de domínio validado e `RESEND_API_KEY` apenas no ambiente.
+Sem essas variáveis, o desenvolvimento registra o link no log; em produção, convites e verificações
+falham de forma explícita, enquanto a recuperação mantém resposta genérica para não enumerar contas.
 
 Validação antes de liberar o ambiente publicado:
 

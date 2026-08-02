@@ -31,6 +31,7 @@ Essa classificação deve ser preservada no frontend e na comunicação comercia
 | Billing | Checkout, Portal e processamento inicial de webhooks Stripe |
 | Operação | Dockerfiles, Compose de referência, Nginx, health check e instruções Hostinger |
 | Continuidade | AGENTS.md, ADRs, contrato de API, roadmap, critérios de qualidade e handoff Codex |
+| Conta SaaS v0.6 | lista de membros, convites de uso único, papéis, acesso provisório, suspensão, revogação de sessões, alteração/recuperação de senha e verificação de e-mail |
 
 ## 3. Modelado, mas ainda sem fluxo completo
 
@@ -47,8 +48,8 @@ Essas tabelas não equivalem a módulos concluídos. Elas reduzem retrabalho de 
 
 ## 4. Não implementado nesta versão
 
-- convites, administração integral de usuários e acesso provisório pela interface;
-- recuperação/alteração de senha e verificação de e-mail;
+- transferência formal da propriedade do tenant;
+- alteração de endereço de e-mail com reconfirmação;
 - MFA;
 - aplicação efetiva dos limites comerciais de cada plano;
 - geocodificação automática e ajuste manual do marcador;

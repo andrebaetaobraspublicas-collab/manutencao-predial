@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 — Conta SaaS e acesso de equipes
+
+- Adicionada administração de membros com isolamento por tenant e proteção hierárquica de papéis.
+- Adicionados convites por e-mail com token em hash, uso único, validade de 72 horas e acesso provisório.
+- Adicionadas suspensão, reativação e revogação de sessões com registro de auditoria.
+- Adicionadas alteração e recuperação de senha, com revogação global de sessões após troca sensível.
+- Adicionada verificação de e-mail e integração configurável com Resend.
+- Adicionadas telas de administração, conta, convite, recuperação, redefinição e verificação.
+- Adicionada migration `20260802180000_accounts_and_invitations` e ampliado o teste e2e multiempresa para membros.
+
 ## 0.1.2 — Diagnóstico e estabilização da Fase A
 
 - Adicionado diagnóstico verificável da arquitetura, módulos, banco, segurança, testes e publicação.

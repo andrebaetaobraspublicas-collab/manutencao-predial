@@ -12,6 +12,8 @@ import { HealthModule } from './modules/health/health.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
+import { MailModule } from './common/mail/mail.module';
+import { MembersModule } from './modules/members/members.module';
 
 configureBigIntJsonSerialization();
 
@@ -23,7 +25,9 @@ configureBigIntJsonSerialization();
       validate: validateEnvironment,
     }),
     PrismaModule,
+    MailModule,
     AuthModule,
+    MembersModule,
     HealthModule,
     BuildingsModule,
     SuppliersModule,

@@ -17,6 +17,11 @@ import { ACCESS_COOKIE, REFRESH_COOKIE } from './auth.constants';
 import { AuthService, type IssuedSession } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterTenantDto } from './dto/register-tenant.dto';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 
 @ApiTags('Autenticação')
 @Controller('auth')
@@ -74,6 +79,67 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.auth.me(user);
+  }
+
+  @Public()
+  @HttpCode(200)
+  @Post('invitations/inspect')
+  @ApiOperation({ summary: 'Valida um convite sem consumi-lo' })
+  inspectInvitation(@Body() dto: VerifyEmailDto) {
+    return this.auth.inspectInvitation(dto.token);
+  }
+
+  @Public()
+  @HttpCode(200)
+  @Post('invitations/accept')
+  @ApiOperation({ summary: 'Aceita um convite e ativa o vínculo com a organização' })
+  acceptInvitation(@Body() dto: AcceptInvitationDto) {
+    return this.auth.acceptInvitation(dto);
+  }
+
+  @HttpCode(204)
+  @Post('password/change')
+  @ApiOperation({ summary: 'Altera a senha autenticada e revoga todas as sessões' })
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.auth.changePassword(user, dto);
+    response.clearCookie(ACCESS_COOKIE, this.baseCookieOptions());
+    response.clearCookie(REFRESH_COOKIE, this.baseCookieOptions());
+  }
+
+  @Public()
+  @HttpCode(202)
+  @Post('password/forgot')
+  @ApiOperation({ summary: 'Solicita redefinição sem revelar se o e-mail existe' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.auth.requestPasswordReset(dto.email);
+    return { accepted: true };
+  }
+
+  @Public()
+  @HttpCode(204)
+  @Post('password/reset')
+  @ApiOperation({ summary: 'Redefine a senha com token de uso único' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto);
+  }
+
+  @HttpCode(202)
+  @Post('email-verification/request')
+  @ApiOperation({ summary: 'Envia confirmação ao e-mail da conta autenticada' })
+  requestEmailVerification(@CurrentUser() user: AuthenticatedUser) {
+    return this.auth.requestEmailVerification(user);
+  }
+
+  @Public()
+  @HttpCode(204)
+  @Post('email-verification/confirm')
+  @ApiOperation({ summary: 'Confirma o e-mail com token de uso único' })
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.auth.verifyEmail(dto.token);
   }
 
   private writeCookies(response: Response, session: IssuedSession): void {

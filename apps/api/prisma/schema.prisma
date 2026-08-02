@@ -238,6 +238,15 @@ enum AuditAction {
   EXPORT
   DOWNLOAD
   BILLING_CHANGE
+  INVITE
+  SESSION_REVOKE
+  PASSWORD_CHANGE
+  EMAIL_VERIFY
+}
+
+enum AccountTokenPurpose {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
 }
 
 model Tenant {
@@ -272,6 +281,7 @@ model Tenant {
   subscriptions        TenantSubscription[]
   auditLogs            AuditLog[]
   sequences            TenantSequence[]
+  invitations          TenantInvitation[]
 
   @@index([status])
   @@index([deletedAt])
@@ -304,6 +314,8 @@ model User {
   approvedMeasurements     Measurement[]             @relation("MeasurementApprover")
   registeredPenalties      ContractPenalty[]         @relation("PenaltyRegistrar")
   auditLogs                AuditLog[]                 @relation("AuditActor")
+  accountTokens            AccountToken[]
+  invitationsSent          TenantInvitation[]         @relation("InvitationSender")
 
   @@index([status])
   @@index([deletedAt])
@@ -318,11 +330,13 @@ model TenantMembership {
   invitedAt       DateTime?
   acceptedAt      DateTime?
   expiresAt       DateTime?
+  sessionVersion  Int               @default(0)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   user            User              @relation(fields: [userId], references: [id], onDelete: Restrict)
   refreshSessions RefreshSession[]
+  invitation     TenantInvitation?
 
   @@unique([tenantId, userId])
   @@index([tenantId, role, status])
@@ -344,6 +358,38 @@ model RefreshSession {
 
   @@index([userId, revokedAt, expiresAt])
   @@index([membershipId, revokedAt])
+}
+
+model TenantInvitation {
+  id              String           @id @default(uuid()) @db.Char(36)
+  tenantId        String           @db.Char(36)
+  membershipId    String           @unique @db.Char(36)
+  invitedByUserId String           @db.Char(36)
+  email           String           @db.VarChar(190)
+  tokenHash       String           @unique @db.Char(64)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime         @default(now())
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  membership      TenantMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  invitedBy       User             @relation("InvitationSender", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, email, acceptedAt, revokedAt])
+  @@index([expiresAt])
+}
+
+model AccountToken {
+  id         String              @id @default(uuid()) @db.Char(36)
+  userId     String              @db.Char(36)
+  purpose    AccountTokenPurpose
+  tokenHash  String              @unique @db.Char(64)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime            @default(now())
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, consumedAt, expiresAt])
 }
 
 model TenantSequence {

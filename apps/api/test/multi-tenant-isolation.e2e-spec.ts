@@ -16,6 +16,7 @@ type TenantFixture = {
   contractId: string;
   workOrderId: string;
   attachmentId: string;
+  membershipId: string;
 };
 
 describe('isolamento multiempresa', () => {
@@ -99,6 +100,21 @@ describe('isolamento multiempresa', () => {
       )
       .expect(404);
   });
+
+  it('isola a administração de membros e a revogação de sessões', async () => {
+    const list = await tenantA.agent.get('/api/v1/members').expect(200);
+    expect(list.body).toHaveLength(1);
+    expect(list.body[0].id).toBe(tenantA.membershipId);
+    expect(list.body.some((item: { id: string }) => item.id === tenantB.membershipId)).toBe(false);
+
+    await tenantA.agent
+      .patch(`/api/v1/members/${tenantB.membershipId}`)
+      .send({ status: 'SUSPENDED' })
+      .expect(404);
+    await tenantA.agent
+      .post(`/api/v1/members/${tenantB.membershipId}/revoke-sessions`)
+      .expect(404);
+  });
 });
 
 async function createTenantFixture(
@@ -173,6 +189,8 @@ async function createTenantFixture(
     })
     .expect(201);
 
+  const members = await agent.get('/api/v1/members').expect(200);
+
   return {
     agent,
     buildingId: building.body.id,
@@ -180,5 +198,6 @@ async function createTenantFixture(
     contractId: contract.body.id,
     workOrderId: workOrder.body.id,
     attachmentId: attachment.body.id,
+    membershipId: members.body[0].id,
   };
 }

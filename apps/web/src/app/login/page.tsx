@@ -1,6 +1,7 @@
 'use client';
 
 import { Building2, Eye, EyeOff, LogIn } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
@@ -108,6 +109,7 @@ export default function LoginPage() {
             <button className="btn btn-primary" type="submit" disabled={submitting}>
               <LogIn size={18} /> {submitting ? 'Entrando…' : 'Entrar'}
             </button>
+            <Link className="auth-link" href="/esqueci-senha">Esqueci minha senha</Link>
           </form>
         </div>
       </section>

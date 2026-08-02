@@ -11,7 +11,9 @@
 
 ## Próxima issue
 
-A baseline de **GP-001** foi concluída, exceto pelo build Docker local indisponível nesta máquina. Continuar por **GP-002 — Testes de isolamento multi-tenant**, já iniciado na CI, e depois **GP-003 — Hardening inicial da API**. Não desenvolver um novo módulo antes de concluir os gates da Fase A registrados em `docs/14-diagnostico-fase-a.md`.
+A baseline de **GP-001/GP-002** foi concluída e **GP-010/GP-011** foi implementada na v0.6.0.
+Continuar por **GP-003 — Hardening inicial da API**, validar a migration v0.6 em MySQL/CI e
+configurar o provedor de e-mail antes de liberar convites no piloto.
 
 ## Prompt inicial recomendado
 

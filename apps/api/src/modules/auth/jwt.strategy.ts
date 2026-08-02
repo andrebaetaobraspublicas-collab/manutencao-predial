@@ -33,6 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         id: payload.membershipId,
         tenantId: payload.tenantId,
         userId: payload.sub,
+        sessionVersion: payload.sessionVersion,
         status: MembershipStatus.ACTIVE,
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         user: { status: UserStatus.ACTIVE, deletedAt: null },

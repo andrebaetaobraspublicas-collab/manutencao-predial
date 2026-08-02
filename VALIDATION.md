@@ -1,5 +1,15 @@
 # Registro de validação da fundação v0.1
 
+## Incremento v0.6.0 — conta SaaS
+
+- `prisma generate` aprovado após inclusão de convites, tokens de conta e versão de sessão;
+- lint TypeScript da API e lint ESLint do frontend aprovados;
+- sete testes unitários aprovados, incluindo revogação após troca de senha e isolamento de membros;
+- build NestJS aprovado;
+- exportação estática Next.js aprovada com 17 páginas, incluindo administração e todos os fluxos públicos de acesso;
+- suíte e2e multiempresa ampliada para impedir consulta, alteração e revogação cruzada de memberships;
+- execução da nova migration e da suíte e2e ampliada permanece para a CI/MySQL e para o próximo deploy.
+
 Consulte `docs/12-status-da-implementacao.md` para a matriz completa.
 
 ## Concluído no pacote original

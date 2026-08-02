@@ -35,6 +35,27 @@ Exemplo de erro:
 | POST | `/auth/refresh` | rotaciona sessão |
 | POST | `/auth/logout` | revoga refresh e limpa cookies |
 | GET | `/auth/me` | retorna usuário, tenant e papel atuais |
+| POST | `/auth/invitations/inspect` | valida convite sem consumi-lo |
+| POST | `/auth/invitations/accept` | aceita convite e ativa o vínculo |
+| POST | `/auth/password/change` | altera senha autenticada e revoga sessões |
+| POST | `/auth/password/forgot` | solicita recuperação sem enumerar contas |
+| POST | `/auth/password/reset` | redefine senha com token de uso único |
+| POST | `/auth/email-verification/request` | envia confirmação para a conta autenticada |
+| POST | `/auth/email-verification/confirm` | confirma o endereço com token de uso único |
+
+## 2.1 Usuários e convites
+
+| Método | Rota | Perfil |
+|---|---|---|
+| GET | `/members` | proprietário ou administrador |
+| GET | `/members/invitations` | proprietário ou administrador |
+| POST | `/members/invitations` | proprietário ou administrador |
+| PATCH | `/members/:membershipId` | proprietário ou administrador, com proteção hierárquica |
+| POST | `/members/:membershipId/revoke-sessions` | proprietário ou administrador, com proteção hierárquica |
+
+O `tenantId` de todas essas operações deriva do token. Convites não podem atribuir `OWNER`;
+administradores não podem conceder ou administrar outro `ADMIN`. Alterações de papel, situação
+ou validade revogam as sessões do vínculo e geram auditoria.
 
 Login:
 
@@ -206,8 +227,7 @@ Mudanças aditivas permanecem em `/api/v1`. Alterações incompatíveis exigem:
 
 ## 10. Endpoints necessários para completar o MVP
 
-- usuários, convites e acessos provisórios;
-- recuperação de senha e verificação de e-mail;
+- transferência formal de propriedade da organização;
 - geocodificação confirmada;
 - comentários/checklists da OS;
 - catálogo e configuração de SLA;

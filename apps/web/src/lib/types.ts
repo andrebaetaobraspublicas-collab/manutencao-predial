@@ -1,7 +1,38 @@
 export type CurrentSession = {
-  user: { id: string; name: string; email: string; phone?: string | null; status: string };
+  user: { id: string; name: string; email: string; phone?: string | null; status: string; emailVerifiedAt?: string | null };
   tenant: { id: string; name: string; slug: string; status: string; trialEndsAt?: string | null };
   role: string;
+};
+
+export type Member = {
+  id: string;
+  role: string;
+  status: string;
+  effectiveStatus: string;
+  invitedAt?: string | null;
+  acceptedAt?: string | null;
+  expiresAt?: string | null;
+  activeSessions: number;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+    status: string;
+    emailVerifiedAt?: string | null;
+    lastLoginAt?: string | null;
+  };
+};
+
+export type TenantInvitation = {
+  id: string;
+  email: string;
+  expiresAt: string;
+  acceptedAt?: string | null;
+  revokedAt?: string | null;
+  createdAt: string;
+  membership: { id: string; role: string; status: string };
+  invitedBy: { id: string; name: string };
 };
 
 export type Building = {

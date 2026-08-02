@@ -97,5 +97,6 @@ regressão. Segredos, cookies e dados pessoais nunca entram em issues ou logs de
 
 A correção do processo Passenger foi consolidada na v0.9.1 pelo workflow
 `Promote Hostinger runtime`, que passa a comprovar o SHA servido pelo domínio após cada CI de
-`main` aprovada.
+`main` aprovada. Na v0.9.2, a seleção do processo passou a usar correspondência exata e ancorada,
+evitando que a própria sessão SSH de promoção seja encerrada junto com o Passenger.
 

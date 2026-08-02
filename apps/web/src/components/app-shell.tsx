@@ -51,7 +51,7 @@ const NAVIGATION = [
     items: [
       { href: '/planos-manutencao', label: 'Planos de manutenção', icon: PackageSearch, disabled: true },
       { href: '/indicadores', label: 'KPIs e SLAs', icon: BarChart3, disabled: true },
-      { href: '/relatorios', label: 'Relatórios', icon: FileBarChart, disabled: true },
+      { href: '/relatorios', label: 'Relatórios', icon: FileBarChart, reportsOnly: true },
       { href: '/notificacoes', label: 'Notificações', icon: Bell },
       { href: '/configuracoes-operacionais', label: 'Configuração operacional', icon: SlidersHorizontal, managerOnly: true },
       { href: '/administracao', label: 'Administração', icon: Settings, adminOnly: true },
@@ -140,6 +140,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   return null;
                 }
                 if ('managerOnly' in item && item.managerOnly && !['OWNER', 'ADMIN', 'MANAGER'].includes(session.role)) {
+                  return null;
+                }
+                if (
+                  'reportsOnly' in item &&
+                  item.reportsOnly &&
+                  ![
+                    'OWNER',
+                    'ADMIN',
+                    'MANAGER',
+                    'CONTRACT_MANAGER',
+                    'CONTRACT_INSPECTOR',
+                    'AUDITOR',
+                  ].includes(session.role)
+                ) {
                   return null;
                 }
                 return item.disabled ? (

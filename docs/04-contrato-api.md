@@ -272,14 +272,25 @@ ciclo de SLA e preserva integralmente o ciclo anterior.
 | GET/PATCH | `/notifications/preferences` | consulta/atualiza canais por evento |
 | GET | `/notifications/outbox/metrics` | saúde tenant-scoped para owner/admin |
 
-Eventos de domínio são gravados na `NotificationOutbox` dentro da mesma transação da OS. O worker entrega caixa interna/e-mail, respeita preferências e aplica deduplicação e retry exponencial. A autorização é reavaliada na entrega e na leitura: após rebaixamento para `REQUESTER`, listagem, contagem e marcação ficam limitadas às notificações vinculadas às próprias OS, e alertas contratuais deixam de ser visíveis.
+Eventos de domínio são gravados na `NotificationOutbox` dentro da mesma transação da OS. O worker entrega caixa interna/e-mail, respeita preferências e aplica deduplicação e retry exponencial. A autorização é reavaliada na entrega e na leitura: após rebaixamento para `REQUESTER`, listagem, contagem e marcação ficam limitadas às notificações vinculadas às próprias OS, e alertas contratuais deixam de ser visíveis. Se o provedor de e-mail não estiver configurado, uma entrega interna bem-sucedida conclui o evento com anotação do canal indisponível; o evento falha quando nenhum canal habilitado puder entregar.
 
 ## 7. Dashboard e relatórios
 
 | Método | Rota | Finalidade |
 |---|---|---|
 | GET | `/dashboard/overview` | mapa, backlog, contratos e satisfação |
-| GET | `/reports/work-orders/backlog.pdf` | PDF inicial do backlog |
+| GET | `/reports/work-orders/backlog.pdf` | backlog filtrado em PDF |
+| GET | `/reports/work-orders/backlog.csv` | o mesmo backlog filtrado em CSV |
+| GET | `/reports/work-orders/:id.pdf` | ficha individual da OS |
+| GET | `/reports/contracts/expiring.pdf` | contratos a vencer em PDF |
+| GET | `/reports/contracts/expiring.csv` | os mesmos contratos a vencer em CSV |
+| GET | `/reports/contracts/:id/mirror.pdf` | espelho cadastral e financeiro do contrato |
+| GET | `/reports/contracts/:id/financial.csv` | medições, empenhos e saldos do contrato |
+
+O backlog aceita os filtros da listagem de OS e também `assignedToUserId`, `categoryId`,
+`contractId`, `ageMinDays` e `ageMaxDays`. Todas as consultas derivam o `tenantId` do token;
+PDF e CSV compartilham o mesmo dataset, ordenação e hash SHA-256. A exportação síncrona
+é limitada aos 5.000 registros mais antigos e informa quando houver truncamento.
 
 ## 8. Billing
 

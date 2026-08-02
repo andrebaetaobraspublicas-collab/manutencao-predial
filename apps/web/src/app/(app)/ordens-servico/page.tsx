@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Download, FilePlus2, Search, Wrench } from 'lucide-react';
+import { AlertTriangle, Download, FilePlus2, FileSpreadsheet, Search, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
@@ -74,6 +74,18 @@ export default function WorkOrdersPage() {
     return query.toString();
   }, [applied, page]);
 
+  const reportQueryString = useMemo(() => {
+    const query = new URLSearchParams();
+    if (applied.search) query.set('search', applied.search);
+    if (applied.status) query.set('status', applied.status);
+    if (applied.priority) query.set('priority', applied.priority);
+    if (applied.buildingId) query.set('buildingId', applied.buildingId);
+    if (applied.supplierId) query.set('supplierId', applied.supplierId);
+    if (applied.mode === 'pending') query.set('hasOpenPendency', 'true');
+    if (applied.mode === 'overdue') query.set('overdue', 'true');
+    return query.toString();
+  }, [applied]);
+
   const load = useCallback(() => {
     apiFetch<Paginated<WorkOrder>>(`/work-orders?${queryString}`)
       .then(setData)
@@ -104,7 +116,8 @@ export default function WorkOrdersPage() {
           <p>Controle analítico do backlog por edificação, fornecedor, demandante, prioridade, prazo e situação da execução.</p>
         </div>
         <div className="actions">
-          <a className="btn btn-secondary" href={apiFileUrl('/reports/work-orders/backlog.pdf')} target="_blank" rel="noreferrer"><Download size={16} /> Exportar PDF</a>
+          <a className="btn btn-secondary" href={apiFileUrl(`/reports/work-orders/backlog.pdf?${reportQueryString}`)} target="_blank" rel="noreferrer"><Download size={16} /> PDF do backlog</a>
+          <a className="btn btn-secondary" href={apiFileUrl(`/reports/work-orders/backlog.csv?${reportQueryString}`)}><FileSpreadsheet size={16} /> CSV</a>
           <Link className="btn btn-primary" href="/ordens-servico/nova"><FilePlus2 size={16} /> Emitir OS</Link>
         </div>
       </header>

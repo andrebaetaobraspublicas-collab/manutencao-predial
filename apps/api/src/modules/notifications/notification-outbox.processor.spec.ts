@@ -106,6 +106,8 @@ describe('NotificationOutboxProcessor', () => {
       notificationOutbox: { updateMany },
     } as unknown as PrismaService;
     const mail = {
+      isAvailable: jest.fn().mockReturnValue(true),
+      isConfigured: jest.fn().mockReturnValue(true),
       sendEmail: jest
         .fn()
         .mockRejectedValue(new MailDeliveryError('Limite temporário', true, 429)),
@@ -169,7 +171,11 @@ describe('NotificationOutboxProcessor', () => {
       notification: { upsert: jest.fn() },
       notificationOutbox: { updateMany },
     } as unknown as PrismaService;
-    const mail = { sendEmail: jest.fn() } as unknown as MailService;
+    const mail = {
+      isAvailable: jest.fn().mockReturnValue(true),
+      isConfigured: jest.fn().mockReturnValue(true),
+      sendEmail: jest.fn(),
+    } as unknown as MailService;
     const processor = new NotificationOutboxProcessor(
       prisma,
       mail,
@@ -208,6 +214,63 @@ describe('NotificationOutboxProcessor', () => {
         status: NotificationOutboxStatus.SENT,
         processedAt: expect.any(Date),
         lastError: expect.stringContaining('sem acesso a contratos'),
+      }),
+    });
+  });
+
+  it('conclui a entrega interna quando o canal de e-mail não está configurado', async () => {
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    const prisma = {
+      tenantMembership: {
+        findFirst: jest.fn().mockResolvedValue({
+          userId: 'user-a',
+          role: MembershipRole.OPERATOR,
+          user: { name: 'Usuário', email: 'usuario@example.test' },
+        }),
+      },
+      notificationPreference: { findUnique: jest.fn().mockResolvedValue(null) },
+      notification: { upsert: jest.fn().mockResolvedValue({}) },
+      notificationOutbox: { updateMany },
+    } as unknown as PrismaService;
+    const mail = {
+      isAvailable: jest.fn().mockReturnValue(false),
+      isConfigured: jest.fn().mockReturnValue(false),
+      sendEmail: jest.fn(),
+    } as unknown as MailService;
+    const processor = new NotificationOutboxProcessor(
+      prisma,
+      mail,
+      new ConfigService({ NODE_ENV: 'production' }),
+      {} as NotificationOutboxService,
+    );
+    const event = {
+      id: 'event-in-app',
+      tenantId: 'tenant-a',
+      recipientUserId: 'user-a',
+      eventKey: 'notification:event-in-app',
+      eventType: NotificationEventType.WORK_ORDER_CREATED,
+      payload: { title: 'Nova OS', message: 'Uma OS foi criada.' },
+      status: NotificationOutboxStatus.PROCESSING,
+      attempts: 1,
+      availableAt: new Date(),
+      processedAt: null,
+      lastError: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } satisfies NotificationOutbox;
+
+    await (
+      processor as unknown as { processClaimed(value: NotificationOutbox): Promise<void> }
+    ).processClaimed(event);
+
+    expect(prisma.notification.upsert).toHaveBeenCalled();
+    expect(mail.sendEmail).not.toHaveBeenCalled();
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: event.id, status: NotificationOutboxStatus.PROCESSING },
+      data: expect.objectContaining({
+        status: NotificationOutboxStatus.SENT,
+        processedAt: expect.any(Date),
+        lastError: expect.stringContaining('canal de e-mail indisponível'),
       }),
     });
   });

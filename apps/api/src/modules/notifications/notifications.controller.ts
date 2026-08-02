@@ -65,7 +65,11 @@ export class NotificationsController {
       )),
       // Contadores do processo agregam todos os tenants e, por isso, não são
       // expostos a um administrador de organização.
-      worker: { enabled: worker.enabled, running: worker.running },
+      worker: {
+        enabled: worker.enabled,
+        running: worker.running,
+        emailConfigured: worker.emailConfigured,
+      },
     };
   }
 

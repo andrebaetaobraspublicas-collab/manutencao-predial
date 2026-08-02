@@ -1,4 +1,4 @@
-# Estado verificável da implementação — v0.7.0
+# Estado verificável da implementação — v0.8.0
 
 Data de referência: **2 de agosto de 2026**.
 
@@ -37,6 +37,7 @@ Essa classificação deve ser preservada no frontend e na comunicação comercia
 | SLA v0.7 | políticas por tenant/contrato/categoria, calendário corrido/útil, feriados, turnos, snapshots e alertas |
 | Notificações v0.7 | caixa interna, preferências, e-mail, outbox transacional, retry, métricas e scanner de SLA/contratos |
 | Fechamento v0.7 | solução, aceite, custo final, elegibilidade de medição e reabertura formal auditada |
+| Relatórios v0.8 | backlog PDF/CSV reconciliado, ficha de OS, contratos a vencer, espelho contratual, financeiro, filtros e hash SHA-256 |
 
 ## 3. Modelado, mas ainda sem fluxo completo
 
@@ -60,7 +61,7 @@ Essas tabelas não equivalem a módulos concluídos. Elas reduzem retrabalho de 
 - importação SINAPI;
 - consolidação e workflow de medição;
 - gestão de mão de obra terceirizada;
-- catálogo completo de relatórios PDF/Excel;
+- relatórios assíncronos para volumes superiores a 5.000 linhas;
 - observabilidade e backup operados em produção;
 - antimalware para anexos;
 - CSRF token adicional, rate limiting e hardening final;
@@ -89,6 +90,10 @@ Em **1º de agosto de 2026**, a baseline também foi executada em ambiente com a
 
 Na v0.7.0, `prisma validate`, geração do client, lint da API e **59 testes unitários em 14 suítes** foram aprovados. A migration `20260802210000_operational_core` foi revisada com backfill, substituição segura de índice e rollback documentado. A aplicação da migration em MySQL limpo e os testes e2e continuam dependentes do ambiente de staging.
 
+Na v0.8.0, os builds de produção, o lint da API/frontend e **63 testes unitários em 16 suítes**
+foram aprovados. A suíte passou a cobrir os novos filtros tenant-aware, a reconciliação dos
+relatórios e a degradação segura do canal de e-mail. Esta versão não exige nova migration de banco.
+
 Na continuação da Fase A foram adicionados o smoke test público e uma suíte e2e de isolamento entre organizações. A suíte cobre edificações, fornecedores, contratos, OS, pendências e anexos; compilou localmente e foi integrada à CI, mas sua execução local depende de MySQL.
 
 ## 6. Validações de infraestrutura que permanecem obrigatórias
@@ -111,7 +116,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 O diagnóstico histórico do incidente de publicação está em `docs/14-diagnostico-fase-a.md`. O estado público deve ser verificado novamente por smoke test em cada deploy; resultados antigos não comprovam a disponibilidade da nova versão.
 
-As alterações da v0.7.0 descritas neste documento estão no repositório local e não devem ser consideradas publicadas na Hostinger até a execução do pipeline, migration, smoke test e roteiro de aceite.
+As alterações da v0.8.0 descritas neste documento estão no repositório local e não devem ser consideradas publicadas na Hostinger até a execução do pipeline, smoke test e roteiro de aceite.
 
 ## 7. Bloqueadores antes de produção
 

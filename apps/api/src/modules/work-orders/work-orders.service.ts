@@ -358,36 +358,7 @@ export class WorkOrdersService {
   }
 
   async list(tenantId: string, query: ListWorkOrdersQuery) {
-    const where: Prisma.WorkOrderWhereInput = {
-      tenantId,
-      deletedAt: null,
-      status: query.status,
-      priority: query.priority,
-      buildingId: query.buildingId,
-      supplierId: query.supplierId,
-      requesterUserId: query.requesterUserId,
-      hasOpenPendency: query.hasOpenPendency,
-    };
-
-    if (query.backlogOnly) where.status = { in: OPEN_WORK_ORDER_STATUSES };
-    if (query.overdue) {
-      where.status = { in: OPEN_WORK_ORDER_STATUSES };
-      where.slaResolutionDeadline = { lt: new Date() };
-    }
-    if (query.search?.trim()) {
-      const search = query.search.trim();
-      where.OR = [
-        { number: { contains: search } },
-        { title: { contains: search } },
-        { description: { contains: search } },
-      ];
-    }
-    if (query.openedFrom || query.openedTo) {
-      where.openedAt = {
-        gte: query.openedFrom ? new Date(query.openedFrom) : undefined,
-        lte: query.openedTo ? new Date(query.openedTo) : undefined,
-      };
-    }
+    const where = this.buildListWhere(tenantId, query);
 
     const skip = (query.page - 1) * query.pageSize;
     const [total, items] = await this.prisma.$transaction([
@@ -410,6 +381,106 @@ export class WorkOrdersService {
         totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
       },
     };
+  }
+
+  async listForReport(
+    tenantId: string,
+    query: ListWorkOrdersQuery,
+    limit = 5_000,
+  ) {
+    const where = this.buildListWhere(tenantId, query);
+    const safeLimit = Math.min(Math.max(limit, 1), 5_000);
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.workOrder.count({ where }),
+      this.prisma.workOrder.findMany({
+        where,
+        include: WORK_ORDER_INCLUDE,
+        orderBy: [{ openedAt: 'asc' }, { id: 'asc' }],
+        take: safeLimit,
+      }),
+    ]);
+    return { items, total, truncated: total > items.length };
+  }
+
+  private buildListWhere(
+    tenantId: string,
+    query: ListWorkOrdersQuery,
+    now = new Date(),
+  ): Prisma.WorkOrderWhereInput {
+    if (
+      query.ageMinDays !== undefined &&
+      query.ageMaxDays !== undefined &&
+      query.ageMinDays > query.ageMaxDays
+    ) {
+      throw new BadRequestException(
+        'A idade mínima do backlog não pode superar a idade máxima.',
+      );
+    }
+
+    const where: Prisma.WorkOrderWhereInput = {
+      tenantId,
+      deletedAt: null,
+      status: query.status,
+      priority: query.priority,
+      buildingId: query.buildingId,
+      supplierId: query.supplierId,
+      requesterUserId: query.requesterUserId,
+      assignedToUserId: query.assignedToUserId,
+      categoryId: query.categoryId,
+      hasOpenPendency: query.hasOpenPendency,
+    };
+
+    if (query.contractId) {
+      where.contracts = {
+        some: {
+          contractId: query.contractId,
+          contract: { tenantId, deletedAt: null },
+        },
+      };
+    }
+
+    if (query.backlogOnly) where.status = { in: OPEN_WORK_ORDER_STATUSES };
+    if (query.overdue) {
+      where.status = { in: OPEN_WORK_ORDER_STATUSES };
+      where.slaResolutionDeadline = { lt: now };
+    }
+    if (query.search?.trim()) {
+      const search = query.search.trim();
+      where.OR = [
+        { number: { contains: search } },
+        { title: { contains: search } },
+        { description: { contains: search } },
+      ];
+    }
+    if (
+      query.openedFrom ||
+      query.openedTo ||
+      query.ageMinDays !== undefined ||
+      query.ageMaxDays !== undefined
+    ) {
+      const dayMs = 24 * 60 * 60_000;
+      const ageMinimumDate =
+        query.ageMaxDays !== undefined
+          ? new Date(now.getTime() - (query.ageMaxDays + 1) * dayMs)
+          : undefined;
+      const ageMaximumDate =
+        query.ageMinDays !== undefined
+          ? new Date(now.getTime() - query.ageMinDays * dayMs)
+          : undefined;
+      const openedFrom = query.openedFrom ? new Date(query.openedFrom) : undefined;
+      const openedTo = query.openedTo ? new Date(query.openedTo) : undefined;
+      where.openedAt = {
+        gte:
+          openedFrom && ageMinimumDate
+            ? new Date(Math.max(openedFrom.getTime(), ageMinimumDate.getTime()))
+            : openedFrom ?? ageMinimumDate,
+        lte:
+          openedTo && ageMaximumDate
+            ? new Date(Math.min(openedTo.getTime(), ageMaximumDate.getTime()))
+            : openedTo ?? ageMaximumDate,
+      };
+    }
+    return where;
   }
 
   async getForUser(user: AuthenticatedUser, id: string) {

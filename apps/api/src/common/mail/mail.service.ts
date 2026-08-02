@@ -37,6 +37,20 @@ export class MailService {
 
   constructor(private readonly config: ConfigService) {}
 
+  isConfigured(): boolean {
+    return Boolean(
+      this.config.get<string>('RESEND_API_KEY') &&
+        this.config.get<string>('EMAIL_FROM'),
+    );
+  }
+
+  isAvailable(): boolean {
+    return (
+      this.isConfigured() ||
+      this.config.get<string>('NODE_ENV') !== 'production'
+    );
+  }
+
   async sendActionEmail(email: ActionEmail): Promise<void> {
     await this.sendEmail(email);
   }

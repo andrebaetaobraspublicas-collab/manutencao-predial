@@ -27,6 +27,7 @@ import { NotificationOutboxService } from './notification-outbox.service';
 export type NotificationWorkerSnapshot = {
   enabled: boolean;
   running: boolean;
+  emailConfigured: boolean;
   lastRunAt: Date | null;
   lastSuccessAt: Date | null;
   lastErrorAt: Date | null;
@@ -129,6 +130,7 @@ export class NotificationOutboxProcessor
     return {
       enabled: this.enabled,
       running: this.running,
+      emailConfigured: this.mail.isConfigured(),
       lastRunAt: this.lastRunAt,
       lastSuccessAt: this.lastSuccessAt,
       lastErrorAt: this.lastErrorAt,
@@ -628,7 +630,24 @@ export class NotificationOutboxProcessor
         });
       }
 
-      if (emailEnabled) {
+      let completionNote: string | undefined;
+      if (emailEnabled && !this.mail.isAvailable()) {
+        if (!inAppEnabled) {
+          throw new MailDeliveryError(
+            'O canal de e-mail está habilitado, mas o provedor não está configurado.',
+            false,
+          );
+        }
+        completionNote =
+          'Notificação interna entregue; canal de e-mail indisponível nesta instalação.';
+        this.logger.warn(
+          this.logData('notification_email_channel_unavailable', {
+            eventId: event.id,
+            tenantId: event.tenantId,
+            eventType: event.eventType,
+          }),
+        );
+      } else if (emailEnabled) {
         const absoluteActionUrl = payload.actionUrl
           ? new URL(payload.actionUrl, this.webBaseUrl()).toString()
           : undefined;
@@ -643,7 +662,7 @@ export class NotificationOutboxProcessor
         });
       }
 
-      await this.complete(event.id);
+      await this.complete(event.id, completionNote);
       this.processed += 1;
       this.logger.log(
         this.logData('notification_delivered', {
@@ -653,6 +672,7 @@ export class NotificationOutboxProcessor
           attempt: event.attempts,
           inAppEnabled,
           emailEnabled,
+          emailDelivered: emailEnabled && this.mail.isAvailable(),
         }),
       );
     } catch (error) {

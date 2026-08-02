@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0 — Relatórios essenciais do MVP
+
+- Adicionada central de relatórios com acesso por papéis gerenciais, contratuais e auditoria.
+- Adicionados backlog de OS filtrado e reconciliado em PDF/CSV, com limite explícito de 5.000 linhas.
+- Adicionados filtros por responsável, categoria, contrato, período e faixa de idade do backlog.
+- Adicionada ficha individual da OS em PDF com classificação, SLA, fechamento e histórico.
+- Adicionados contratos a vencer em PDF/CSV, espelho contratual em PDF e execução financeira em CSV.
+- Adicionados organização, filtros, data de emissão, paginação e hash SHA-256 aos documentos.
+- Reforçada a exportação CSV contra fórmulas injetadas e com BOM UTF-8 para uso no Excel.
+- Estabilizada a outbox quando o e-mail não está configurado: a entrega interna é concluída e o canal indisponível fica registrado nas métricas/logs.
+- Adicionados testes de isolamento por tenant nos filtros analíticos e relatórios.
+
 ## 0.7.0 — Núcleo operacional configurável
 
 - Implementada geocodificação confirmada com cache, limites, ajuste de marcador e fallback manual.

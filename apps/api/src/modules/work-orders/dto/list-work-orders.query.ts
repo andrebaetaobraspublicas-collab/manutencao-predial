@@ -37,6 +37,18 @@ export class ListWorkOrdersQuery {
   requesterUserId?: string;
 
   @IsOptional()
+  @IsUUID()
+  assignedToUserId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  contractId?: string;
+
+  @IsOptional()
   @Transform(toBoolean)
   @IsBoolean()
   hasOpenPendency?: boolean;
@@ -62,6 +74,20 @@ export class ListWorkOrdersQuery {
   @IsOptional()
   @IsDateString()
   openedTo?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(36500)
+  ageMinDays?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(36500)
+  ageMaxDays?: number;
 
   @IsOptional()
   @Type(() => Number)

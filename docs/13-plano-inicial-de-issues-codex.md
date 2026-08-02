@@ -143,6 +143,12 @@ A validação operacional do envio em produção depende da configuração de `E
 - PDF e Excel/CSV conciliados;
 - marca, filtros, paginação, data e assinatura/hash opcional.
 
+**Estado em 2 de agosto de 2026:** implementado na v0.8.0. O backlog compartilha o mesmo
+dataset em PDF/CSV e aceita filtros por edificação, fornecedor, demandante, responsável,
+categoria, contrato, prioridade, período, idade, pendência e SLA. Também foram entregues
+ficha individual da OS, contratos a vencer, espelho contratual e exportação financeira.
+Relatórios extensos acima de 5.000 linhas permanecem candidatos a processamento assíncrono.
+
 ### GP-031 — Staging, backup e piloto
 
 - staging isolado;

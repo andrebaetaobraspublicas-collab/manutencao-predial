@@ -1,0 +1,93 @@
+name: Promote Hostinger runtime
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hostinger-production-runtime
+  cancel-in-progress: false
+
+jobs:
+  promote-api:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+      SSH_HOST: ${{ vars.HOSTINGER_SSH_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_SSH_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_SSH_USER }}
+      APP_ROOT: /home/${{ vars.HOSTINGER_SSH_USER }}/domains/api.gestaodepredios.com.br/.builds/current/nodejs
+      READY_URL: https://api.gestaodepredios.com.br/api/v1/health/ready
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configure pinned SSH access
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+      - name: Wait for Hostinger build
+        run: |
+          set -euo pipefail
+          remote="${SSH_USER}@${SSH_HOST}"
+          commit_epoch="$(git show -s --format=%ct "$RELEASE_SHA")"
+          ready=false
+
+          for attempt in $(seq 1 90); do
+            target="$(ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" "$remote" "readlink -f '$APP_ROOT' 2>/dev/null || true")"
+            if [[ -n "$target" ]]; then
+              build_epoch="$(ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" "$remote" "stat -c %Y '$target' 2>/dev/null || echo 0")"
+              if [[ "$build_epoch" =~ ^[0-9]+$ ]] && (( build_epoch >= commit_epoch )); then
+                ready=true
+                break
+              fi
+            fi
+            sleep 10
+          done
+
+          if [[ "$ready" != true ]]; then
+            echo 'Hostinger did not expose a build newer than the promoted commit.' >&2
+            exit 1
+          fi
+
+      - name: Stamp release and recycle Passenger
+        run: |
+          set -euo pipefail
+          remote="${SSH_USER}@${SSH_HOST}"
+          release_file="${APP_ROOT}/apps/api/dist/release-sha.txt"
+          process_pattern="lsnode:/home/${SSH_USER}/domains/api.gestaodepredios.com.br/.builds/cur"
+
+          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" "$remote" \
+            "printf '%s\\n' '$RELEASE_SHA' > '$release_file'; pids=\$(pgrep -u '$SSH_USER' -f '$process_pattern' || true); if [[ -n \"\$pids\" ]]; then kill -TERM \$pids; fi"
+
+      - name: Verify promoted release
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            body="$(curl --fail --silent --show-error --max-time 15 "${READY_URL}?cb=$(date +%s)" || true)"
+            actual="$(jq -r '.release // empty' <<< "$body" 2>/dev/null || true)"
+            database="$(jq -r '.database // empty' <<< "$body" 2>/dev/null || true)"
+            if [[ "$actual" == "$RELEASE_SHA" && "$database" == 'reachable' ]]; then
+              echo "Release $RELEASE_SHA promoted and database reachable."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'The public API did not report the promoted release.' >&2
+          exit 1

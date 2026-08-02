@@ -82,3 +82,20 @@ duplicidade preventiva ou restauração pendente. Para cada incidente registrar:
 release SHA, tenant afetado, rota, impacto, evidência, contenção, causa, correção e teste de
 regressão. Segredos, cookies e dados pessoais nunca entram em issues ou logs de evidência.
 
+## 6. Evidência operacional de 2 de agosto de 2026
+
+- release funcional validada: `f5e84cce`, API `0.9.0`;
+- smoke público aprovado para raiz, `www`, health, readiness e Swagger;
+- backup lógico compactado: 20.998 bytes, SHA-256
+  `5e4b66c91cbacfc6f0a2855701a0e4a5cc49052fb2907d35379b1ad7b1b48c34`;
+- dump íntegro e contendo 54 tabelas;
+- restauração comprovada em `u296746636_gp_restore_208`: 54 tabelas e 4 migrations;
+- banco, usuário e arquivos temporários de credenciais removidos após o ensaio;
+- cópia externa preservada em `C:\Gestão de Prédios\backups` e cópia operacional no diretório
+  privado de backups da conta Hostinger;
+- staging público não criado: o plano permanece com 5/5 Web Apps e exige dois slots adicionais.
+
+A correção do processo Passenger foi consolidada na v0.9.1 pelo workflow
+`Promote Hostinger runtime`, que passa a comprovar o SHA servido pelo domínio após cada CI de
+`main` aprovada.
+

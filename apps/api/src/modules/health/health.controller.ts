@@ -1,6 +1,24 @@
 import { Controller, Get } from '@nestjs/common';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { Public } from '../../common/decorators/public.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+
+export function resolveReleaseSha(
+  releaseFile = join(__dirname, '..', '..', 'release-sha.txt'),
+) {
+  const environmentRelease = process.env.RELEASE_SHA?.trim();
+  if (environmentRelease) return environmentRelease.slice(0, 40);
+
+  try {
+    const fileRelease = readFileSync(releaseFile, 'utf8').trim();
+    if (fileRelease) return fileRelease.slice(0, 40);
+  } catch {
+    // O arquivo é materializado somente na promoção do runtime da Hostinger.
+  }
+
+  return 'unknown';
+}
 
 @Controller('health')
 export class HealthController {
@@ -14,7 +32,7 @@ export class HealthController {
       status: 'ok',
       service: 'gestao-de-predios-api',
       readiness: 'ready',
-      release: process.env.RELEASE_SHA?.slice(0, 40) ?? 'unknown',
+      release: resolveReleaseSha(),
       timestamp: new Date().toISOString(),
     };
   }
@@ -41,7 +59,7 @@ export class HealthController {
       readiness: 'ready',
       database: 'reachable',
       latencyMs: Date.now() - startedAt,
-      release: process.env.RELEASE_SHA?.slice(0, 40) ?? 'unknown',
+      release: resolveReleaseSha(),
       timestamp: new Date().toISOString(),
     };
   }

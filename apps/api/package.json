@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "build:api:hostinger": "npm run hostinger:deploy",
     "hostinger:deploy": "npm run prisma:generate && npm run prisma:deploy && npm run prisma:seed && npm run hostinger:verify",
     "hostinger:verify": "node -e \"const fs=require('node:fs');if(!fs.existsSync('dist/main.js')){throw new Error('Missing prebuilt dist/main.js')}console.log('Prebuilt API artifact verified')\"",
     "start": "node dist/main.js",

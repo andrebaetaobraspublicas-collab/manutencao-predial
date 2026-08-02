@@ -55,6 +55,11 @@ enum SupplierStatus {
   UNDER_REVIEW
 }
 
+enum SupplierKind {
+  COMPANY
+  CONSORTIUM
+}
+
 enum ContractType {
   PREVENTIVE_MAINTENANCE
   CORRECTIVE_MAINTENANCE
@@ -179,6 +184,18 @@ enum SinapiItemType {
   INPUT
   COMPOSITION
   SERVICE
+}
+
+enum CostRegime {
+  NON_EXEMPT
+  EXEMPT
+  NOT_APPLICABLE
+}
+
+enum CostCatalogKind {
+  INPUTS
+  COMPOSITIONS
+  MIXED
 }
 
 enum AssetStatus {
@@ -333,7 +350,12 @@ model Tenant {
   memberships          TenantMembership[]
   buildings            Building[]
   suppliers            Supplier[]
+  supplierServiceAreas SupplierServiceArea[]
+  consortiumMembers    SupplierConsortiumMember[]
   contracts            Contract[]
+  contractAmendments   ContractAmendment[]
+  contractAdjustments  ContractAdjustment[]
+  contractSubcontracts ContractSubcontract[]
   workOrders           WorkOrder[]
   workOrderPendencies  WorkOrderPendency[]
   workOrderAttachments WorkOrderAttachment[]
@@ -553,32 +575,75 @@ model Building {
 }
 
 model Supplier {
-  id               String            @id @default(uuid()) @db.Char(36)
-  tenantId         String            @db.Char(36)
-  legalName        String            @db.VarChar(200)
-  tradeName        String?           @db.VarChar(180)
-  taxId            String            @db.VarChar(24)
-  status           SupplierStatus    @default(ACTIVE)
-  email            String?           @db.VarChar(190)
-  phone            String?           @db.VarChar(30)
-  contactName      String?           @db.VarChar(160)
-  address          Json?
-  serviceAreas     Json?
-  notes            String?           @db.Text
-  rating           Decimal?          @db.Decimal(3, 2)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  deletedAt        DateTime?
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  contracts        Contract[]
-  directWorkOrders WorkOrder[]
-  penalties        ContractPenalty[]
-  kpiMeasurements  KpiMeasurement[]
-  maintenancePlans MaintenancePlan[]
+  id                     String                     @id @default(uuid()) @db.Char(36)
+  tenantId               String                     @db.Char(36)
+  legalName              String                     @db.VarChar(200)
+  tradeName              String?                    @db.VarChar(180)
+  taxId                  String                     @db.VarChar(24)
+  kind                   SupplierKind               @default(COMPANY)
+  status                 SupplierStatus             @default(ACTIVE)
+  email                  String?                    @db.VarChar(190)
+  phone                  String?                    @db.VarChar(30)
+  contactName            String?                    @db.VarChar(160)
+  addressLine1           String?                    @db.VarChar(240)
+  addressLine2           String?                    @db.VarChar(160)
+  district               String?                    @db.VarChar(120)
+  city                   String?                    @db.VarChar(120)
+  state                  String?                    @db.Char(2)
+  postalCode             String?                    @db.VarChar(12)
+  address                Json?
+  serviceAreas           Json?
+  notes                  String?                    @db.Text
+  rating                 Decimal?                   @db.Decimal(3, 2)
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+  deletedAt              DateTime?
+  tenant                 Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contracts              Contract[]
+  directWorkOrders       WorkOrder[]
+  penalties              ContractPenalty[]
+  serviceAreaLinks       SupplierServiceArea[]
+  consortiumMembers      SupplierConsortiumMember[] @relation("Consortium")
+  consortiumMemberships  SupplierConsortiumMember[] @relation("ConsortiumMember")
+  authorizedSubcontracts ContractSubcontract[]
+  kpiMeasurements        KpiMeasurement[]
+  maintenancePlans       MaintenancePlan[]
 
   @@unique([tenantId, taxId])
   @@index([tenantId, status, deletedAt])
   @@index([tenantId, legalName])
+}
+
+model SupplierServiceArea {
+  id         String                 @id @default(uuid()) @db.Char(36)
+  tenantId   String                 @db.Char(36)
+  supplierId String                 @db.Char(36)
+  categoryId String                 @db.Char(36)
+  createdAt  DateTime               @default(now())
+  deletedAt  DateTime?
+  tenant     Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  supplier   Supplier               @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  category   OperationalCatalogItem @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([supplierId, categoryId])
+  @@index([tenantId, categoryId, deletedAt])
+}
+
+model SupplierConsortiumMember {
+  id                      String    @id @default(uuid()) @db.Char(36)
+  tenantId                String    @db.Char(36)
+  consortiumId            String    @db.Char(36)
+  memberSupplierId        String    @db.Char(36)
+  participationPercentage Decimal?  @db.Decimal(7, 4)
+  isLeader                Boolean   @default(false)
+  createdAt               DateTime  @default(now())
+  deletedAt               DateTime?
+  tenant                  Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  consortium              Supplier  @relation("Consortium", fields: [consortiumId], references: [id], onDelete: Cascade)
+  member                  Supplier  @relation("ConsortiumMember", fields: [memberSupplierId], references: [id], onDelete: Restrict)
+
+  @@unique([consortiumId, memberSupplierId])
+  @@index([tenantId, memberSupplierId, deletedAt], map: "SupplierConsortium_tenant_member_deleted_idx")
 }
 
 model Contract {
@@ -640,6 +705,7 @@ model ContractBuilding {
 
 model ContractAmendment {
   id            String        @id @default(uuid()) @db.Char(36)
+  tenantId      String        @db.Char(36)
   contractId    String        @db.Char(36)
   number        String        @db.VarChar(60)
   type          AmendmentType
@@ -649,14 +715,19 @@ model ContractAmendment {
   endDateBefore DateTime?
   endDateAfter  DateTime?
   valueChange   Decimal?      @db.Decimal(16, 2)
+  status        String        @default("ACTIVE") @db.VarChar(30)
+  canceledAt    DateTime?
   createdAt     DateTime      @default(now())
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   contract      Contract      @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@unique([contractId, number])
+  @@index([tenantId, contractId, status])
 }
 
 model ContractAdjustment {
   id              String         @id @default(uuid()) @db.Char(36)
+  tenantId        String         @db.Char(36)
   contractId      String         @db.Char(36)
   type            AdjustmentType
   referencePeriod String         @db.VarChar(20)
@@ -666,15 +737,21 @@ model ContractAdjustment {
   amount          Decimal?       @db.Decimal(16, 2)
   indexName       String?        @db.VarChar(100)
   notes           String?        @db.Text
+  status          String         @default("ACTIVE") @db.VarChar(30)
+  canceledAt      DateTime?
   createdAt       DateTime       @default(now())
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   contract        Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId, contractId, type, referencePeriod], map: "ContractAdjustment_tenant_contract_period_idx")
   @@index([contractId, type, referencePeriod])
 }
 
 model ContractSubcontract {
   id                 String    @id @default(uuid()) @db.Char(36)
+  tenantId           String    @db.Char(36)
   contractId         String    @db.Char(36)
+  supplierId         String?   @db.Char(36)
   subcontractorName  String    @db.VarChar(200)
   subcontractorTaxId String?   @db.VarChar(24)
   scope              String    @db.Text
@@ -682,10 +759,17 @@ model ContractSubcontract {
   startDate          DateTime?
   endDate            DateTime?
   approvedAt         DateTime?
+  authorizationCase  String?   @db.VarChar(120)
+  status             String    @default("AUTHORIZED") @db.VarChar(30)
+  canceledAt         DateTime?
   createdAt          DateTime  @default(now())
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   contract           Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  supplier           Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
+  @@index([tenantId, contractId, status])
   @@index([contractId])
+  @@index([supplierId])
 }
 
 model ContractPenalty {
@@ -1010,6 +1094,8 @@ model SinapiCatalog {
   referenceMonth   String              @db.VarChar(7)
   state            String              @db.Char(2)
   source           String              @default("SINAPI") @db.VarChar(40)
+  priceRegime      CostRegime          @default(NOT_APPLICABLE)
+  catalogKind      CostCatalogKind     @default(MIXED)
   version          String              @db.VarChar(40)
   checksum         String?             @db.Char(64)
   itemCount        Int                 @default(0)
@@ -1020,7 +1106,7 @@ model SinapiCatalog {
   items            SinapiCatalogItem[]
   budgets          WorkOrderBudget[]
 
-  @@unique([tenantId, state, referenceMonth, source, version])
+  @@unique([tenantId, state, referenceMonth, source, version, priceRegime, catalogKind], map: "SinapiCatalog_scope_version_key")
   @@index([tenantId, active, referenceMonth])
 }
 
@@ -1148,6 +1234,7 @@ model OperationalCatalogItem {
   maintenancePlanCategories  MaintenancePlan[]        @relation("MaintenancePlanCategory")
   maintenancePlanSpecialties MaintenancePlan[]        @relation("MaintenancePlanSpecialty")
   causeWorkOrders            WorkOrder[]              @relation("WorkOrderCause")
+  supplierServiceAreas       SupplierServiceArea[]
 
   @@unique([tenantId, kind, code])
   @@index([tenantId, kind, active, sortOrder])

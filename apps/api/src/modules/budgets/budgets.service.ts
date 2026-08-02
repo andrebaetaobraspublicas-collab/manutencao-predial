@@ -2,7 +2,8 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { createHash } from 'node:crypto';
 import { AuditAction, BudgetItemKind, BudgetStatus, Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
+import { CatalogFileSource, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
+import { parseCustomWorkbook, parseOfficialSinapiWorkbook } from './xlsx-catalog-parser';
 
 const TRANSITIONS: Record<BudgetStatus, BudgetStatus[]> = {
   DRAFT: [BudgetStatus.SUBMITTED, BudgetStatus.CANCELED],
@@ -51,6 +52,68 @@ export class BudgetsService {
       }
       throw error;
     });
+  }
+
+  async importWorkbook(tenantId: string, actorUserId: string, dto: ImportCatalogFileDto,
+    file?: Express.Multer.File) {
+    if (!file?.buffer?.length) throw new BadRequestException('Selecione uma planilha XLSX.');
+    if (!file.originalname.toLowerCase().endsWith('.xlsx')) {
+      throw new BadRequestException('O importador aceita somente arquivos .xlsx.');
+    }
+    const checksum = createHash('sha256').update(file.buffer).digest('hex');
+    const catalogs = dto.sourceType === CatalogFileSource.SINAPI
+      ? await parseOfficialSinapiWorkbook(file.buffer, dto.state)
+      : [await parseCustomWorkbook(file.buffer)];
+    if (dto.sourceType === CatalogFileSource.CUSTOM && !dto.referenceMonth) {
+      throw new BadRequestException('Informe a competência da tabela própria.');
+    }
+    const source = dto.sourceType === CatalogFileSource.SINAPI ? 'SINAPI' : 'PROPRIO';
+    for (const parsed of catalogs) {
+      const keys = parsed.items.map((item) => `${item.type}:${item.code}`);
+      if (new Set(keys).size !== keys.length) {
+        throw new BadRequestException(`A aba ${parsed.sheet} possui códigos duplicados para o mesmo tipo.`);
+      }
+    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const result: Array<{ id: string; source: string; sheet: string; referenceMonth: string;
+          state: string; priceRegime: string; catalogKind: string; itemCount: number; skipped: number; checksum: string }> = [];
+        for (const parsed of catalogs) {
+          const catalogVersion = dto.sourceType === CatalogFileSource.SINAPI
+            ? `${dto.version.trim()}-${parsed.sheet}`
+            : dto.version.trim();
+          const catalog = await tx.sinapiCatalog.create({ data: {
+            tenantId, importedByUserId: actorUserId,
+            referenceMonth: parsed.referenceMonth || dto.referenceMonth!, state: dto.state.toUpperCase(),
+            source, version: catalogVersion, checksum, itemCount: parsed.items.length,
+            priceRegime: parsed.priceRegime, catalogKind: parsed.catalogKind,
+          } });
+          for (let index = 0; index < parsed.items.length; index += 500) {
+            await tx.sinapiCatalogItem.createMany({ data: parsed.items.slice(index, index + 500).map((item) => ({
+              tenantId, catalogId: catalog.id, type: item.type, code: item.code,
+              description: item.description, unit: item.unit, unitCost: item.unitCost,
+              compositionData: item.compositionData as Prisma.InputJsonValue | undefined,
+            })) });
+          }
+          await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE, 'SinapiCatalog', catalog.id, {
+            source, sheet: parsed.sheet, referenceMonth: catalog.referenceMonth, state: catalog.state,
+            priceRegime: parsed.priceRegime, catalogKind: parsed.catalogKind, checksum,
+            itemCount: parsed.items.length, skipped: parsed.skipped,
+          });
+          result.push({ id: catalog.id, source, sheet: parsed.sheet, referenceMonth: catalog.referenceMonth,
+            state: catalog.state, priceRegime: parsed.priceRegime, catalogKind: parsed.catalogKind,
+            itemCount: parsed.items.length, skipped: parsed.skipped, checksum });
+        }
+        return { fileName: file.originalname, checksum, catalogs: result,
+          totalItems: result.reduce((sum, item) => sum + item.itemCount, 0),
+          totalSkipped: result.reduce((sum, item) => sum + item.skipped, 0) };
+      }, { maxWait: 20_000, timeout: 180_000 });
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Esta versão da tabela já foi importada para a UF e competência informadas.');
+      }
+      throw error;
+    }
   }
 
   listBudgets(tenantId: string) {

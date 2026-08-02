@@ -6,7 +6,7 @@ on:
     types: [completed]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: hostinger-production-runtime
@@ -24,12 +24,21 @@ jobs:
       SSH_HOST: ${{ vars.HOSTINGER_SSH_HOST }}
       SSH_PORT: ${{ vars.HOSTINGER_SSH_PORT }}
       SSH_USER: ${{ vars.HOSTINGER_SSH_USER }}
+      API_DEPLOY_BRANCH: deploy-api
       APP_ROOT: /home/${{ vars.HOSTINGER_SSH_USER }}/domains/api.gestaodepredios.com.br/.builds/current/nodejs
       READY_URL: https://api.gestaodepredios.com.br/api/v1/health/ready
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Trigger isolated Hostinger API build
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit --allow-empty -m "Deploy API ${RELEASE_SHA}"
+          git push --force origin "HEAD:refs/heads/${API_DEPLOY_BRANCH}"
 
       - name: Configure pinned SSH access
         env:
@@ -48,11 +57,12 @@ jobs:
           remote="${SSH_USER}@${SSH_HOST}"
           commit_epoch="$(git show -s --format=%ct "$RELEASE_SHA")"
           ready=false
+          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10)
 
           for attempt in $(seq 1 90); do
-            target="$(ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" "$remote" "readlink -f '$APP_ROOT' 2>/dev/null || true")"
+            target="$(ssh "${ssh_args[@]}" "$remote" "readlink -f '$APP_ROOT' 2>/dev/null || true" 2>/dev/null || true)"
             if [[ -n "$target" ]]; then
-              build_epoch="$(ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" "$remote" "stat -c %Y '$target' 2>/dev/null || echo 0")"
+              build_epoch="$(ssh "${ssh_args[@]}" "$remote" "stat -c %Y '$target' 2>/dev/null || echo 0" 2>/dev/null || true)"
               if [[ "$build_epoch" =~ ^[0-9]+$ ]] && (( build_epoch >= commit_epoch )); then
                 ready=true
                 break
@@ -72,9 +82,22 @@ jobs:
           remote="${SSH_USER}@${SSH_HOST}"
           release_file="${APP_ROOT}/apps/api/dist/release-sha.txt"
           process_pattern="^lsnode:/home/${SSH_USER}/domains/api.gestaodepredios.com.br/.builds/cur$"
+          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10)
+          stamped=false
 
-          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" "$remote" \
-            "printf '%s\\n' '$RELEASE_SHA' > '$release_file'; pids=\$(pgrep -u '$SSH_USER' -f '$process_pattern' || true); if [[ -n \"\$pids\" ]]; then kill -TERM \$pids; fi"
+          for attempt in $(seq 1 12); do
+            if ssh "${ssh_args[@]}" "$remote" \
+              "printf '%s\\n' '$RELEASE_SHA' > '$release_file'; pids=\$(pgrep -u '$SSH_USER' -f '$process_pattern' || true); if [[ -n \"\$pids\" ]]; then kill -TERM \$pids; fi"; then
+              stamped=true
+              break
+            fi
+            sleep 5
+          done
+
+          if [[ "$stamped" != true ]]; then
+            echo 'Could not stamp and recycle the Hostinger API runtime.' >&2
+            exit 1
+          fi
 
       - name: Verify promoted release
         run: |

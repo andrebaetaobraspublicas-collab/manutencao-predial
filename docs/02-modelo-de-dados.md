@@ -288,6 +288,16 @@ A tabela `WorkOrder` possui índices compostos para:
 
 Antes de criar novos índices, analisar consultas reais com `EXPLAIN` e métricas de produção.
 
+## 7.1 Registros de homologação do GP-044
+
+O piloto não cria uma estrutura operacional paralela. Cada decisão de cenário usa `AuditLog` com
+`entityType = PilotHomologation` e o código do cenário em `entityId`; o aceite final usa
+`entityType = PilotAcceptance`. Novas decisões são acrescentadas, nunca sobrescritas, e a leitura
+considera o registro mais recente do tenant. Exportações também geram auditoria com ator e data.
+
+Como o GP-044 apenas consolida entidades já existentes e usa a trilha append-only, a v0.10.0 não
+exige migration nem seed adicional.
+
 ## 8. Evoluções previstas do schema
 
 - comentários e menções na OS;

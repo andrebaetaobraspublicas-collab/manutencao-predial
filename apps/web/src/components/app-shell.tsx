@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  BadgeCheck,
   Calculator,
   Bell,
   Building2,
@@ -53,6 +54,7 @@ const NAVIGATION = [
     items: [
       { href: '/planos-manutencao', label: 'Planos de manutenção', icon: PackageSearch },
       { href: '/indicadores', label: 'KPIs e SLAs', icon: BarChart3 },
+      { href: '/piloto', label: 'Piloto e homologação', icon: BadgeCheck, reportsOnly: true },
       { href: '/relatorios', label: 'Relatórios', icon: FileBarChart, reportsOnly: true },
       { href: '/notificacoes', label: 'Notificações', icon: Bell },
       { href: '/configuracoes-operacionais', label: 'Configuração operacional', icon: SlidersHorizontal, managerOnly: true },

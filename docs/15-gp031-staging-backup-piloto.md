@@ -104,3 +104,11 @@ Na v0.9.3, o frontend permanece conectado à `main`, enquanto a API passa a acom
 técnica `deploy-api`. O workflow atualiza essa branch somente depois da CI de `main`, cria um novo
 gatilho mesmo em reexecuções e tolera indisponibilidades SSH breves durante a troca do artefato.
 
+## 7. Exceção temporária para o GP-044
+
+Por decisão expressa do proprietário em 2 de agosto de 2026, o GP-044 é executado sem o item de
+staging. O banco ligado ao domínio público ainda é destinado a testes e não contém dados úteis de
+produção; por isso, ele será usado no piloto com dados sintéticos. A exceção não elimina backup,
+restauração, isolamento, auditoria nem smoke de release e não autoriza a entrada de dados reais.
+Antes do início comercial, staging isolado volta a ser gate obrigatório.
+

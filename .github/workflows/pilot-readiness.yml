@@ -55,5 +55,6 @@ jobs:
           path: |
             apps/api/prisma/migrations
             docs/15-gp031-staging-backup-piloto.md
+            docs/16-gp044-piloto-homologacao.md
             package-lock.json
           retention-days: 90

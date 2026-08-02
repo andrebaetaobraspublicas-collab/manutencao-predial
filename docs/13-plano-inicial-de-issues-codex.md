@@ -236,6 +236,23 @@ plano Hostinger atual não apresenta slot livre. Consulte `docs/15-gp031-staging
 - roteiro de aceite do cliente piloto;
 - registro de incidentes e feedback.
 
+### GP-044 — Piloto operacional e homologação
+
+**Resultado:** o responsável executa, evidencia e homologa o núcleo operacional em uma única
+matriz tenant-aware, sem planilha paralela.
+
+Critérios:
+
+- consolidar cadastro, ciclo da OS, financeiro, SINAPI, preventiva, KPIs, segurança, backup e
+  aceite de usuários em cenários objetivos;
+- calcular automaticamente prontidão a partir das entidades reais do mesmo tenant;
+- preservar cada parecer e referência de evidência na auditoria append-only;
+- bloquear aceite final até todas as verificações e decisões estarem aprovadas;
+- sinalizar regressão quando uma condição automática deixar de valer após o aceite;
+- exportar a mesma matriz reconciliada em PDF e CSV;
+- comprovar por e2e que decisões e evidências não atravessam organizações;
+- não criar staging neste ciclo, conforme decisão do proprietário para o banco público de testes.
+
 ## Ordem recomendada
 
 ```text
@@ -244,5 +261,5 @@ GP-001 → GP-002 → GP-003
           └─ GP-020 → GP-021 → GP-022 → GP-023 → GP-024
                                       └──────────────→ GP-030
                                                        └→ GP-040 → GP-041 → GP-042 → GP-043
-                                                                                    └→ GP-031
+                                                                                    └→ GP-031 → GP-044
 ```

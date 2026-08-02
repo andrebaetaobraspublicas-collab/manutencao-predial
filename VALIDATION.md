@@ -51,3 +51,19 @@ Depois, executar health check, fluxo autenticado, isolamento entre tenants, uplo
 - `npm audit --omit=dev` permaneceu sem vulnerabilidades conhecidas.
 
 As validações públicas de `/api/v1/health`, `/docs` e do frontend ficaram pendentes da publicação/propagação do DNS e do roteamento CDN. A regra temporária de MySQL remoto `Any Host` deve ser substituída por uma origem restrita assim que o IP de saída do runtime puder ser confirmado.
+
+## Diagnóstico da Fase A em 1º de agosto de 2026
+
+- `npm ci` aprovado com 1.089 pacotes e zero vulnerabilidades conhecidas;
+- Prisma validado com URL MySQL sintaticamente válida para build;
+- lint da API e do frontend aprovado;
+- três testes unitários aprovados;
+- build NestJS e build Next.js das dez rotas aprovados;
+- nova suíte e2e de isolamento multiempresa compilou e foi integrada à CI;
+- a CI passou de `prisma db push` para `prisma migrate deploy`;
+- Dockerfiles passaram a usar `package-lock.json` e `npm ci`;
+- `npm run smoke:production` reprovou as quatro verificações: raiz 503, `www` 503, health 404 e Swagger 404;
+- hPanel confirmou frontend e API como `Running`, deployments `Completed` e zero erros nos logs da última hora;
+- o bloqueio público foi classificado como DNS/roteamento CDN e permanece aberto.
+
+Não executados localmente por ausência de Docker/MySQL: build das imagens, aplicação real da migração, seed e suíte e2e. Consulte `docs/14-diagnostico-fase-a.md`.

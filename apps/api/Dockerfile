@@ -6,10 +6,10 @@ WORKDIR /app
 ARG DATABASE_URL=mysql://build:build@127.0.0.1:3306/gestaopredios
 ENV DATABASE_URL=$DATABASE_URL
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
-RUN npm install
+RUN npm ci
 
 COPY . .
 RUN npm run prisma:generate -w @gestaopredios/api   && npm run build -w @gestaopredios/api

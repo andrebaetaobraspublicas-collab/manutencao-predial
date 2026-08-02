@@ -9,23 +9,22 @@
 5. `docs/08-handoff-codex.md`
 6. ADRs relacionados à tarefa
 
-## Primeira issue
+## Próxima issue
 
-Começar por **GP-001 — Baseline instalável, lockfile e migração inicial**. Não desenvolver um novo módulo antes de comprovar instalação, geração Prisma, migração, seed, lint, testes, builds e Docker.
+A baseline de **GP-001** foi concluída, exceto pelo build Docker local indisponível nesta máquina. Continuar por **GP-002 — Testes de isolamento multi-tenant**, já iniciado na CI, e depois **GP-003 — Hardening inicial da API**. Não desenvolver um novo módulo antes de concluir os gates da Fase A registrados em `docs/14-diagnostico-fase-a.md`.
 
 ## Prompt inicial recomendado
 
 ```text
-Trabalhe no repositório Gestão de Prédios e execute a issue GP-001 descrita em
-docs/13-plano-inicial-de-issues-codex.md.
+Trabalhe no repositório Gestão de Prédios e continue a Fase A descrita em
+docs/14-diagnostico-fase-a.md.
 
 Leia AGENTS.md, docs/12-status-da-implementacao.md e os ADRs antes de alterar
 qualquer arquivo. Preserve Node.js/TypeScript, NestJS, Next.js, MySQL/Prisma,
 monólito modular, cookies HttpOnly e isolamento por tenant.
 
-Instale as dependências, gere package-lock.json e o client Prisma, valide o
-schema, gere e revise a migração initial_schema, execute seed, lint, testes,
-builds e Docker. Corrija os erros encontrados sem ampliar o escopo funcional.
+Conclua GP-002 e GP-003, valide as migrações versionadas e o isolamento entre
+organizações em MySQL, corrija o roteamento público da Hostinger e execute os
+smoke tests. Corrija os erros encontrados sem ampliar o escopo funcional.
 Mostre os comandos e resultados reais; não declare sucesso sem execução.
-Atualize VALIDATION.md, CHANGELOG.md e a documentação pertinente.
 ```

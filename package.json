@@ -27,7 +27,8 @@
     "db:migrate": "npm run prisma:migrate -w @gestaopredios/api",
     "db:deploy": "npm run prisma:deploy -w @gestaopredios/api",
     "db:seed": "npm run prisma:seed -w @gestaopredios/api",
-    "db:studio": "npm run prisma:studio -w @gestaopredios/api"
+    "db:studio": "npm run prisma:studio -w @gestaopredios/api",
+    "smoke:production": "node scripts/smoke-production.mjs"
   },
   "overrides": {
     "ajv@>=8": "8.20.0",

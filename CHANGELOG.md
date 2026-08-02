@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.2 — Diagnóstico e estabilização da Fase A
+
+- Adicionado diagnóstico verificável da arquitetura, módulos, banco, segurança, testes e publicação.
+- Adicionada suíte e2e de isolamento entre organizações para edificações, fornecedores, contratos, OS, pendências e anexos.
+- A CI agora aplica as migrações versionadas com `prisma migrate deploy` e executa os testes multiempresa.
+- Dockerfiles da API e do frontend agora usam `package-lock.json` e `npm ci` para builds determinísticos.
+- Adicionado smoke test dos domínios públicos, health da API e Swagger.
+- Registrado o bloqueio atual de roteamento Hostinger: frontend HTTP 503 e API HTTP 404, apesar dos processos ativos.
+
 ## 0.1.1 — Baseline instalável e candidata a piloto
 
 - Adicionado `package-lock.json` reproduzível e migração inicial MySQL versionada.

@@ -150,11 +150,10 @@ Usar `EXPLAIN`, medir p95/p99 e verificar planos após mudança de índice.
 checkout
 → npm ci
 → prisma validate/generate
+→ prisma migrate deploy em MySQL de teste
 → lint
 → unit tests
-→ subir MySQL de serviço
-→ migrations + seed de teste
-→ integration/e2e
+→ integration/e2e multiempresa
 → build API
 → build Web
 → imagem Docker

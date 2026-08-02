@@ -85,12 +85,15 @@ Em **1º de agosto de 2026**, a baseline também foi executada em ambiente com a
 - builds NestJS e Next.js de produção aprovados;
 - auditoria npm sem vulnerabilidades conhecidas.
 
-## 6. Validações que permanecem obrigatórias no primeiro ambiente local/Codex
+Na continuação da Fase A foram adicionados o smoke test público e uma suíte e2e de isolamento entre organizações. A suíte cobre edificações, fornecedores, contratos, OS, pendências e anexos; compilou localmente e foi integrada à CI, mas sua execução local depende de MySQL.
 
-Ainda **não foram afirmados como concluídos**, por ausência de Docker/MySQL local e do ambiente Hostinger autenticado:
+## 6. Validações de infraestrutura que permanecem obrigatórias
 
-- inicialização do MySQL e smoke tests de navegador/API;
-- build das imagens Docker.
+Ainda **não foram afirmados como concluídos** nesta máquina, por ausência de Docker/MySQL local:
+
+- build das imagens Docker;
+- aplicação das migrações e seed em banco local limpo;
+- execução local da suíte e2e multiempresa.
 
 Sequência obrigatória no VPS/staging:
 
@@ -102,7 +105,7 @@ docker compose -f docker-compose.prod.yml run --rm api npm run prisma:seed -w @g
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Depois, executar os smoke tests documentados e registrar os resultados em `VALIDATION.md`.
+O ambiente Hostinger autenticado foi inspecionado: frontend e API aparecem como `Running`, com deployments `Completed` e sem erros na última hora. Entretanto, o smoke test público reprovou com HTTP 503 no frontend e HTTP 404 na API. O roteamento CDN/domínio continua bloqueando o piloto. Consulte `docs/14-diagnostico-fase-a.md`.
 
 ## 7. Bloqueadores antes de produção
 

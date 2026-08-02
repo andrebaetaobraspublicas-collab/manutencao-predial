@@ -35,17 +35,18 @@ jobs:
           node-version: 24
           cache: npm
       - name: Install
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+        run: npm ci
       - name: Prisma validate and generate
         run: |
           npm exec -w @gestaopredios/api prisma validate
           npm run prisma:generate -w @gestaopredios/api
-      - name: Apply test schema
-        run: npm exec -w @gestaopredios/api prisma db push -- --skip-generate
+      - name: Apply versioned migrations
+        run: npm run prisma:deploy -w @gestaopredios/api
       - name: Lint
         run: npm run lint
-      - name: Test
+      - name: Unit tests
         run: npm test
+      - name: Multi-tenant integration tests
+        run: npm run test:e2e -w @gestaopredios/api
       - name: Build
         run: npm run build

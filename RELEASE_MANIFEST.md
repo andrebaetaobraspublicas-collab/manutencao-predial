@@ -29,10 +29,10 @@ Data de referência: **1º de agosto de 2026**.
 - diagramas Graphviz renderizados;
 - revisão estática de Docker, multi-tenancy, autorização da OS e anexos privados.
 
-## Limitação conhecida
+## Estado de validação atual
 
-O ambiente de geração não conseguiu baixar as dependências npm. Por isso não foram executados `npm install`, geração real do Prisma, migração inicial, build completo, Jest nem build Docker. O primeiro gate do Codex é a issue **GP-001**, descrita em `docs/13-plano-inicial-de-issues-codex.md`.
+A limitação do pacote original foi superada em 1º de agosto de 2026: dependências, Prisma, lint, Jest e builds de API/frontend foram executados com sucesso. A migração e o seed também foram aplicados no deployment da Hostinger. Permanecem sem execução local o build Docker e a suíte e2e dependente de MySQL. O diagnóstico atualizado está em `docs/14-diagnostico-fase-a.md`.
 
 ## Natureza da entrega
 
-Esta é uma **fundação técnica v0.1**, adequada para iniciar desenvolvimento incremental e transferência ao Codex. Não deve ser apresentada como produto comercial pronto antes dos gates descritos em `docs/12-status-da-implementacao.md`.
+Esta é uma **fundação técnica v0.1**, adequada para desenvolvimento incremental e piloto controlado depois de corrigir o roteamento público. Não deve ser apresentada como produto comercial pronto antes dos gates descritos em `docs/12-status-da-implementacao.md`.

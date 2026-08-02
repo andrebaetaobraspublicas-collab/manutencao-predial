@@ -22,6 +22,8 @@ Critérios:
 
 **Resultado:** suíte tenta acessar prédio, contrato, OS, pendência e anexo de outro tenant e sempre falha.
 
+**Estado em 1º de agosto de 2026:** iniciado. A suíte e2e foi adicionada e integrada à CI; falta registrar uma execução aprovada contra MySQL e ampliar a matriz conforme novos recursos forem implementados.
+
 Critérios:
 
 - dois tenants sintéticos;

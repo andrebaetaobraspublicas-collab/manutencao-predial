@@ -64,6 +64,14 @@ Senha: valor configurado em SEED_ADMIN_PASSWORD
 
 Nunca use a senha de desenvolvimento em produção; configure uma senha exclusiva no ambiente da hospedagem.
 
+Validação antes de liberar o ambiente publicado:
+
+```bash
+npm run smoke:production
+```
+
+O comando verifica domínio raiz, frontend, health da API e Swagger, retornando código diferente de zero quando qualquer endpoint falha.
+
 ## Estrutura
 
 ```text

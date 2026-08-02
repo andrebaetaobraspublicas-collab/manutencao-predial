@@ -18,6 +18,7 @@ Este diretório é a fonte de verdade funcional e técnica do produto. Atualize 
 12. [Catálogo inicial de KPIs e relatórios](11-kpis-relatorios.md)
 13. [Estado verificável da implementação](12-status-da-implementacao.md)
 14. [Plano inicial de issues para o Codex](13-plano-inicial-de-issues-codex.md)
+15. [Diagnóstico e estabilização da Fase A](14-diagnostico-fase-a.md)
 
 As decisões arquiteturais permanentes ficam em [`docs/adr`](adr/).
 

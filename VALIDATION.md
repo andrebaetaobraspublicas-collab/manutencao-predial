@@ -38,3 +38,15 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 
 Depois, executar health check, fluxo autenticado, isolamento entre tenants, upload/download e smoke tests de navegador. A v0.1 permanece restrita a piloto controlado até os bloqueadores de segurança do roadmap serem concluídos.
+
+## Piloto Hostinger em 1º de agosto de 2026
+
+- frontend Next.js implantado no Web App `gestaodepredios.com.br`, com build concluído e processo marcado como `Running`;
+- API NestJS implantada no Web App `api.gestaodepredios.com.br`, com build v0.2.8 concluído e processo marcado como `Running`;
+- banco MySQL da Hostinger criado, migração `20260801195500_initial_schema` aplicada e seed administrativo idempotente executado;
+- variáveis de produção configuradas no hPanel sem versionar segredos;
+- CNAME `api` criado para `api.gestaodepredios.com.br.cdn.hstgr.net`, com TTL de 300 segundos;
+- build standalone da API validado com `prisma generate`, `nest build`, materialização de `apps/api/dist`, migração, seed e verificação do entrypoint;
+- `npm audit --omit=dev` permaneceu sem vulnerabilidades conhecidas.
+
+As validações públicas de `/api/v1/health`, `/docs` e do frontend ficaram pendentes da publicação/propagação do DNS e do roteamento CDN. A regra temporária de MySQL remoto `Any Host` deve ser substituída por uma origem restrita assim que o IP de saída do runtime puder ser confirmado.

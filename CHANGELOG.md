@@ -10,6 +10,8 @@
 - Adicionados scripts de build separados para os Web Apps Next.js e NestJS da Hostinger.
 - Removida a senha demonstrativa do código e da tela; o seed agora exige `SEED_ADMIN_PASSWORD`.
 - A API agora respeita a porta dinâmica `PORT` e possui bootstrap Hostinger com migração e seed idempotente.
+- Adicionado pacote standalone da API para o Web App da Hostinger, com geração Prisma antes do build e materialização do runtime no diretório configurado pelo hPanel.
+- Alinhado o fallback HTTP da API à porta 3000 exigida pela hospedagem gerenciada.
 
 ## 0.1.0 — Fundação técnica
 

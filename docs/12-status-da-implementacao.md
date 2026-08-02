@@ -1,4 +1,4 @@
-# Estado verificável da implementação — v0.8.0
+# Estado verificável da implementação — v0.9.0
 
 Data de referência: **2 de agosto de 2026**.
 
@@ -38,15 +38,15 @@ Essa classificação deve ser preservada no frontend e na comunicação comercia
 | Notificações v0.7 | caixa interna, preferências, e-mail, outbox transacional, retry, métricas e scanner de SLA/contratos |
 | Fechamento v0.7 | solução, aceite, custo final, elegibilidade de medição e reabertura formal auditada |
 | Relatórios v0.8 | backlog PDF/CSV reconciliado, ficha de OS, contratos a vencer, espelho contratual, financeiro, filtros e hash SHA-256 |
+| Financeiro v0.9 | medições com glosa/workflow/versão otimista e empenhos com ledger de saldos |
+| Orçamento v0.9 | catálogo SINAPI por competência/UF, composição Decimal, BDI, revisões e aprovação |
+| Preventiva v0.9 | ativos, planos e reserva idempotente plano/data antes da geração de OS |
+| KPIs v0.9 | sete indicadores centrais, versão de fórmula, tendência, painel e PDF/CSV |
+| GP-031 v0.9 | health live/ready, workflow da candidata, backup/restore e roteiro de aceite |
 
 ## 3. Modelado, mas ainda sem fluxo completo
 
-- planos preventivos/preditivos e ativos;
-- orçamento por OS e itens SINAPI;
-- medições e itens vinculados às OS;
-- empenhos e movimentos;
 - aditivos, reajustes, repactuações, subcontratações e penalidades;
-- definições e medições de KPIs;
 - planos SaaS, subscriptions e eventos de cobrança mais amplos;
 - auditoria genérica para todas as entidades.
 
@@ -58,14 +58,16 @@ Essas tabelas não equivalem a módulos concluídos. Elas reduzem retrabalho de 
 - alteração de endereço de e-mail com reconfirmação;
 - MFA;
 - aplicação efetiva dos limites comerciais de cada plano;
-- importação SINAPI;
-- consolidação e workflow de medição;
 - gestão de mão de obra terceirizada;
 - relatórios assíncronos para volumes superiores a 5.000 linhas;
 - observabilidade e backup operados em produção;
 - antimalware para anexos;
 - CSRF token adicional, rate limiting e hardening final;
 - suíte completa de testes de integração/e2e.
+
+Os fluxos v0.9 são funcionais, mas ainda devem ganhar importação CSV/XLSX, orçamento em
+Excel/PDF detalhado, calendário visual preventivo, drill-down gerencial completo e jobs
+agendados externos. O gerador preventivo desta entrega é disparado por endpoint protegido.
 
 ## 5. Validações executadas neste ambiente
 
@@ -95,6 +97,12 @@ foram aprovados. A suíte passou a cobrir os novos filtros tenant-aware, a recon
 relatórios e a degradação segura do canal de e-mail. Esta versão não exige nova migration de banco.
 
 Na continuação da Fase A foram adicionados o smoke test público e uma suíte e2e de isolamento entre organizações. A suíte cobre edificações, fornecedores, contratos, OS, pendências e anexos; compilou localmente e foi integrada à CI, mas sua execução local depende de MySQL.
+
+Na v0.9.0, o schema Prisma e a API foram ampliados de forma aditiva para GP-040 a GP-043.
+`prisma validate`, lint de API/frontend, **68 testes unitários em 18 suítes** e os builds de
+produção NestJS/Next.js foram aprovados localmente. A migration em MySQL vazio e a matriz e2e
+ampliada permanecem gates da CI por não haver Docker/MySQL local; o smoke da revisão publicada
+deve ser registrado após o auto-deploy.
 
 ## 6. Validações de infraestrutura que permanecem obrigatórias
 
@@ -129,8 +137,8 @@ sessão administrativa e dados reais da organização. A configuração reproduz
 2. gerar, revisar e testar a migração inicial;
 3. implementar testes multi-tenant e de autorização por objeto;
 4. validar Stripe em modo teste e depois em produção;
-5. implantar staging;
-6. testar backup e restauração de banco e anexos;
+5. provisionar os dois slots isolados de staging no Hostinger;
+6. executar e registrar o primeiro backup e a restauração cronometrada de banco e anexos;
 7. configurar HTTPS, monitoramento, logs, rate limiting e alertas;
 8. realizar teste funcional completo com cliente piloto;
 9. revisar LGPD, termos, privacidade e retenção;

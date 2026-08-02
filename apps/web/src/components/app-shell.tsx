@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  Calculator,
   Bell,
   Building2,
   ClipboardCheck,
@@ -42,15 +43,16 @@ const NAVIGATION = [
     items: [
       { href: '/contratos', label: 'Contratos', icon: FileText },
       { href: '/fornecedores', label: 'Fornecedores', icon: UsersRound },
-      { href: '/medicoes', label: 'Medições', icon: ClipboardCheck, disabled: true },
-      { href: '/empenhos', label: 'Empenhos', icon: HandCoins, disabled: true },
+      { href: '/medicoes', label: 'Medições', icon: ClipboardCheck },
+      { href: '/empenhos', label: 'Empenhos', icon: HandCoins },
+      { href: '/orcamentos', label: 'Orçamentos e SINAPI', icon: Calculator },
     ],
   },
   {
     label: 'Gestão',
     items: [
-      { href: '/planos-manutencao', label: 'Planos de manutenção', icon: PackageSearch, disabled: true },
-      { href: '/indicadores', label: 'KPIs e SLAs', icon: BarChart3, disabled: true },
+      { href: '/planos-manutencao', label: 'Planos de manutenção', icon: PackageSearch },
+      { href: '/indicadores', label: 'KPIs e SLAs', icon: BarChart3 },
       { href: '/relatorios', label: 'Relatórios', icon: FileBarChart, reportsOnly: true },
       { href: '/notificacoes', label: 'Notificações', icon: Bell },
       { href: '/configuracoes-operacionais', label: 'Configuração operacional', icon: SlidersHorizontal, managerOnly: true },
@@ -156,17 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 ) {
                   return null;
                 }
-                return item.disabled ? (
-                  <span
-                    className="nav-link"
-                    key={item.href}
-                    title="Módulo previsto no roadmap"
-                    aria-disabled="true"
-                    style={{ opacity: 0.46, cursor: 'not-allowed' }}
-                  >
-                    <Icon size={18} /> {item.label}
-                  </span>
-                ) : (
+                return (
                   <Link
                     className={`nav-link ${active ? 'active' : ''}`}
                     href={item.href}

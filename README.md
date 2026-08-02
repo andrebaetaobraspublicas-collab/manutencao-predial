@@ -1,4 +1,4 @@
-# Gestão de Prédios — v0.8.0
+# Gestão de Prédios — v0.9.0
 
 Base inicial do SaaS hospedado no domínio `www.gestaodepredios.com.br`, com:
 
@@ -16,6 +16,11 @@ Base inicial do SaaS hospedado no domínio `www.gestaodepredios.com.br`, com:
 - comentários, menções e notificações transacionais;
 - aceite, fechamento, elegibilidade de medição e reabertura auditáveis;
 - dashboard e central de relatórios de OS/contratos em PDF e CSV;
+- medições, glosas, empenhos e movimentos financeiros conciliados;
+- orçamentos versionados e importação de catálogos SINAPI;
+- ativos, planos preventivos e geração idempotente de OS recorrentes;
+- KPIs gerenciais versionados, tendências e exportações PDF/CSV;
+- readiness, pipeline da candidata e scripts seguros de backup/restauração;
 - documentação preparada para continuidade no Codex.
 
 ## Arquitetura escolhida

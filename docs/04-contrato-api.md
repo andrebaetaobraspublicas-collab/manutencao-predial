@@ -294,6 +294,34 @@ PDF e CSV compartilham o mesmo dataset, ordenação e hash SHA-256. A exportaç�
 
 ## 8. Billing
 
+## 7.1 Núcleo gerencial v0.9
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| GET/POST | `/finance/commitments` | lista/emite empenhos |
+| POST | `/finance/commitments/:id/movements` | reforça ou anula saldo |
+| GET/POST | `/finance/measurements` | lista/cria medições de OS elegíveis |
+| GET | `/finance/measurements/:id` | rastreia boletim, itens e movimentos |
+| POST | `/finance/measurements/:id/transitions` | submete, revisa, aprova, liquida e paga |
+| GET/POST | `/budgets/sinapi/catalogs` | lista/importa base versionada |
+| GET | `/budgets/sinapi/catalogs/:id/items` | pesquisa itens da base |
+| GET/PUT | `/budgets/work-orders/:workOrderId` | consulta/salva orçamento da OS |
+| POST | `/budgets/:id/transitions` | submete, aprova, rejeita ou cancela |
+| GET/POST/PATCH | `/maintenance/assets` | inventário de ativos |
+| GET/POST/PATCH | `/maintenance/plans` | agenda preventiva |
+| POST | `/maintenance/generate` | gera OS idempotentes no horizonte |
+| GET | `/kpis/definitions` | catálogo de fórmulas versionadas |
+| POST | `/kpis/calculate` | calcula/recalcula um período e escopo |
+| GET | `/kpis/executive` | cards gerenciais e variação |
+| GET | `/kpis/:code/trend` | série histórica |
+| GET | `/kpis/exports/executive.pdf` | caderno gerencial PDF |
+| GET | `/kpis/exports/executive.csv` | base gerencial CSV |
+
+Todas as rotas usam o `tenantId` do token. Transições financeiras recebem a versão lida pelo
+cliente e retornam conflito em gravação concorrente. Totais monetários são recalculados no
+servidor com `Decimal`; rejeições e cancelamentos exigem justificativa.
+
+
 | Método | Rota | Finalidade |
 |---|---|---|
 | POST | `/billing/checkout` | cria sessão de contratação |

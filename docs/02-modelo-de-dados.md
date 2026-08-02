@@ -241,6 +241,20 @@ erDiagram
 
 ## 6. Dicionário das entidades centrais
 
+### 5.1 Extensões gerenciais da v0.9
+
+- `Measurement` usa versão otimista e workflow até pagamento; `MeasurementItem` congela a OS,
+  valor bruto, dedução e líquido no tenant autenticado.
+- `CommitmentMovement` é o razão append-only de emissão, reforço, anulação, liquidação e
+  pagamento. Liquidações/pagamentos podem apontar para a medição que os originou.
+- `SinapiCatalog` e `SinapiCatalogItem` preservam competência, UF, versão e hash. O item de
+  orçamento congela quantidade/custo e `BudgetRevision` guarda cada decisão.
+- `MaintenancePlanGeneration` reserva de forma única o par plano/data antes de criar a OS e
+  registra geração, skip ou falha.
+- `KpiMeasurement.calculationKey` identifica tenant, escopo, período e versão da fórmula,
+  tornando o recálculo idempotente.
+
+
 | Entidade | Responsabilidade | Invariantes principais |
 |---|---|---|
 | Tenant | organização cliente | slug único; status controla entitlement |

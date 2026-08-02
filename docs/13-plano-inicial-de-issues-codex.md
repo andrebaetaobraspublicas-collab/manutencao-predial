@@ -224,6 +224,10 @@ Critérios:
 
 ### GP-031 — Staging, backup e piloto
 
+**Estado em 2 de agosto de 2026:** automação e runbook implementados na v0.9.0. A criação dos
+dois Web Apps isolados e o ensaio cronometrado de restauração permanecem gates externos, pois o
+plano Hostinger atual não apresenta slot livre. Consulte `docs/15-gp031-staging-backup-piloto.md`.
+
 - staging isolado;
 - pipeline de release;
 - backup de MySQL e anexos fora do VPS;

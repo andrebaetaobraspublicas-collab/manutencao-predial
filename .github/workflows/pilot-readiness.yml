@@ -1,0 +1,59 @@
+name: Pilot readiness
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release-candidate:
+    runs-on: ubuntu-latest
+    environment: staging
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: gestaopredios_staging_test
+          MYSQL_USER: staging
+          MYSQL_PASSWORD: staging
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      DATABASE_URL: mysql://staging:staging@127.0.0.1:3306/gestaopredios_staging_test
+      JWT_ACCESS_SECRET: staging-ci-secret-with-at-least-thirty-two-characters
+      COOKIE_SECURE: 'false'
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+      HOSTINGER_STATIC_EXPORT: '1'
+      RELEASE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - name: Validate schema and clean-database migration
+        run: |
+          npm exec -w @gestaopredios/api prisma validate
+          npm run prisma:generate -w @gestaopredios/api
+          npm run prisma:deploy -w @gestaopredios/api
+          npm exec -w @gestaopredios/api prisma migrate status
+      - name: Quality gates
+        run: |
+          npm run lint
+          npm test
+          npm run test:e2e -w @gestaopredios/api
+          npm run build
+      - name: Archive release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: pilot-readiness-${{ github.sha }}
+          path: |
+            apps/api/prisma/migrations
+            docs/15-gp031-staging-backup-piloto.md
+            package-lock.json
+          retention-days: 90

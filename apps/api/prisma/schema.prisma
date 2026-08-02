@@ -110,7 +110,9 @@ enum MeasurementStatus {
   UNDER_REVIEW
   APPROVED
   REJECTED
+  LIQUIDATED
   PAID
+  CANCELED
 }
 
 enum WorkOrderStatus {
@@ -163,6 +165,20 @@ enum BudgetStatus {
   SUBMITTED
   APPROVED
   REJECTED
+  CANCELED
+}
+
+enum BudgetItemKind {
+  SERVICE
+  INPUT
+  COMPOSITION
+  OTHER
+}
+
+enum SinapiItemType {
+  INPUT
+  COMPOSITION
+  SERVICE
 }
 
 enum AssetStatus {
@@ -197,6 +213,13 @@ enum FrequencyUnit {
   METER_READING
 }
 
+enum MaintenanceGenerationStatus {
+  PENDING
+  GENERATED
+  SKIPPED
+  FAILED
+}
+
 enum KpiCategory {
   OPERATIONAL
   SLA
@@ -212,6 +235,19 @@ enum KpiDirection {
   HIGHER_IS_BETTER
   LOWER_IS_BETTER
   TARGET_RANGE
+}
+
+enum KpiPeriodicity {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum KpiMeasurementStatus {
+  FINAL
+  FAILED
 }
 
 enum BillingInterval {
@@ -281,18 +317,18 @@ enum NotificationOutboxStatus {
 }
 
 model Tenant {
-  id                   String                   @id @default(uuid()) @db.Char(36)
-  name                 String                   @db.VarChar(160)
-  slug                 String                   @unique @db.VarChar(100)
-  taxId                String?                  @db.VarChar(24)
-  status               TenantStatus             @default(TRIAL)
-  timezone             String                   @default("America/Sao_Paulo") @db.VarChar(60)
-  locale               String                   @default("pt-BR") @db.VarChar(10)
+  id                   String                      @id @default(uuid()) @db.Char(36)
+  name                 String                      @db.VarChar(160)
+  slug                 String                      @unique @db.VarChar(100)
+  taxId                String?                     @db.VarChar(24)
+  status               TenantStatus                @default(TRIAL)
+  timezone             String                      @default("America/Sao_Paulo") @db.VarChar(60)
+  locale               String                      @default("pt-BR") @db.VarChar(10)
   trialEndsAt          DateTime?
-  stripeCustomerId     String?                  @unique @db.VarChar(120)
+  stripeCustomerId     String?                     @unique @db.VarChar(120)
   settings             Json?
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
   deletedAt            DateTime?
   memberships          TenantMembership[]
   buildings            Building[]
@@ -302,11 +338,18 @@ model Tenant {
   workOrderPendencies  WorkOrderPendency[]
   workOrderAttachments WorkOrderAttachment[]
   workOrderBudgets     WorkOrderBudget[]
+  budgetItems          BudgetItem[]
+  budgetRevisions      BudgetRevision[]
+  sinapiCatalogs       SinapiCatalog[]
+  sinapiCatalogItems   SinapiCatalogItem[]
   measurements         Measurement[]
+  measurementItems     MeasurementItem[]
   commitments          Commitment[]
+  commitmentMovements  CommitmentMovement[]
   penalties            ContractPenalty[]
   assets               Asset[]
   maintenancePlans     MaintenancePlan[]
+  maintenanceRuns      MaintenancePlanGeneration[]
   kpiDefinitions       KpiDefinition[]
   kpiMeasurements      KpiMeasurement[]
   subscriptions        TenantSubscription[]
@@ -355,6 +398,15 @@ model User {
   statusChanges            WorkOrderStatusHistory[]     @relation("StatusChangedBy")
   satisfactionResponses    SatisfactionResponse[]       @relation("SatisfactionResponder")
   approvedMeasurements     Measurement[]                @relation("MeasurementApprover")
+  createdMeasurements      Measurement[]                @relation("MeasurementCreator")
+  reviewedMeasurements     Measurement[]                @relation("MeasurementReviewer")
+  createdCommitments       Commitment[]                 @relation("CommitmentCreator")
+  commitmentMovements      CommitmentMovement[]         @relation("CommitmentMovementCreator")
+  submittedBudgets         WorkOrderBudget[]            @relation("BudgetSubmitter")
+  approvedBudgets          WorkOrderBudget[]            @relation("BudgetApprover")
+  budgetRevisions          BudgetRevision[]             @relation("BudgetRevisionCreator")
+  importedSinapiCatalogs   SinapiCatalog[]              @relation("SinapiImporter")
+  assignedMaintenancePlans MaintenancePlan[]            @relation("MaintenancePlanAssignee")
   registeredPenalties      ContractPenalty[]            @relation("PenaltyRegistrar")
   auditLogs                AuditLog[]                   @relation("AuditActor")
   accountTokens            AccountToken[]
@@ -522,6 +574,7 @@ model Supplier {
   directWorkOrders WorkOrder[]
   penalties        ContractPenalty[]
   kpiMeasurements  KpiMeasurement[]
+  maintenancePlans MaintenancePlan[]
 
   @@unique([tenantId, taxId])
   @@index([tenantId, status, deletedAt])
@@ -660,61 +713,73 @@ model ContractPenalty {
 }
 
 model Commitment {
-  id            String               @id @default(uuid()) @db.Char(36)
-  tenantId      String               @db.Char(36)
-  contractId    String               @db.Char(36)
-  number        String               @db.VarChar(80)
-  fiscalYear    Int
-  issueDate     DateTime
-  originalValue Decimal              @db.Decimal(16, 2)
-  notes         String?              @db.Text
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  contract      Contract             @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  movements     CommitmentMovement[]
+  id              String               @id @default(uuid()) @db.Char(36)
+  tenantId        String               @db.Char(36)
+  contractId      String               @db.Char(36)
+  createdByUserId String?              @db.Char(36)
+  number          String               @db.VarChar(80)
+  fiscalYear      Int
+  issueDate       DateTime
+  originalValue   Decimal              @db.Decimal(16, 2)
+  notes           String?              @db.Text
+  canceledAt      DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract        Contract             @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  createdBy       User?                @relation("CommitmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  movements       CommitmentMovement[]
+  measurements    Measurement[]
 
   @@unique([tenantId, number, fiscalYear])
   @@index([tenantId, contractId, fiscalYear])
 }
 
 model CommitmentMovement {
-  id           String                 @id @default(uuid()) @db.Char(36)
-  commitmentId String                 @db.Char(36)
-  type         CommitmentMovementType
-  amount       Decimal                @db.Decimal(16, 2)
-  occurredAt   DateTime
-  documentRef  String?                @db.VarChar(120)
-  notes        String?                @db.Text
-  createdAt    DateTime               @default(now())
-  commitment   Commitment             @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+  id              String                 @id @default(uuid()) @db.Char(36)
+  tenantId        String                 @db.Char(36)
+  commitmentId    String                 @db.Char(36)
+  measurementId   String?                @db.Char(36)
+  createdByUserId String?                @db.Char(36)
+  type            CommitmentMovementType
+  amount          Decimal                @db.Decimal(16, 2)
+  occurredAt      DateTime
+  documentRef     String?                @db.VarChar(120)
+  notes           String?                @db.Text
+  createdAt       DateTime               @default(now())
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  commitment      Commitment             @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+  measurement     Measurement?           @relation(fields: [measurementId], references: [id], onDelete: SetNull)
+  createdBy       User?                  @relation("CommitmentMovementCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([commitmentId, occurredAt])
+  @@index([tenantId, occurredAt])
+  @@index([measurementId, type])
 }
 
 model WorkOrder {
-  id                          String                   @id @default(uuid()) @db.Char(36)
-  tenantId                    String                   @db.Char(36)
-  number                      String                   @db.VarChar(40)
-  buildingId                  String                   @db.Char(36)
-  requesterUserId             String                   @db.Char(36)
-  assignedToUserId            String?                  @db.Char(36)
-  createdByUserId             String                   @db.Char(36)
-  supplierId                  String?                  @db.Char(36)
-  categoryId                  String?                  @db.Char(36)
-  specialtyId                 String?                  @db.Char(36)
-  environmentId               String?                  @db.Char(36)
-  causeId                     String?                  @db.Char(36)
-  slaPolicyId                 String?                  @db.Char(36)
-  acceptedByUserId            String?                  @db.Char(36)
-  title                       String                   @db.VarChar(220)
-  description                 String                   @db.Text
-  locationDetail              String?                  @db.VarChar(220)
-  origin                      WorkOrderOrigin          @default(USER_REQUEST)
-  priority                    WorkOrderPriority        @default(NORMAL)
-  status                      WorkOrderStatus          @default(OPEN)
-  hasOpenPendency             Boolean                  @default(false)
-  openedAt                    DateTime                 @default(now())
+  id                          String                     @id @default(uuid()) @db.Char(36)
+  tenantId                    String                     @db.Char(36)
+  number                      String                     @db.VarChar(40)
+  buildingId                  String                     @db.Char(36)
+  requesterUserId             String                     @db.Char(36)
+  assignedToUserId            String?                    @db.Char(36)
+  createdByUserId             String                     @db.Char(36)
+  supplierId                  String?                    @db.Char(36)
+  categoryId                  String?                    @db.Char(36)
+  specialtyId                 String?                    @db.Char(36)
+  environmentId               String?                    @db.Char(36)
+  causeId                     String?                    @db.Char(36)
+  slaPolicyId                 String?                    @db.Char(36)
+  acceptedByUserId            String?                    @db.Char(36)
+  title                       String                     @db.VarChar(220)
+  description                 String                     @db.Text
+  locationDetail              String?                    @db.VarChar(220)
+  origin                      WorkOrderOrigin            @default(USER_REQUEST)
+  priority                    WorkOrderPriority          @default(NORMAL)
+  status                      WorkOrderStatus            @default(OPEN)
+  hasOpenPendency             Boolean                    @default(false)
+  openedAt                    DateTime                   @default(now())
   triagedAt                   DateTime?
   assignedAt                  DateTime?
   startedAt                   DateTime?
@@ -727,40 +792,44 @@ model WorkOrder {
   slaResponseDeadline         DateTime?
   slaResolutionDeadline       DateTime?
   slaResolutionWarningAt      DateTime?
-  estimatedCost               Decimal?                 @db.Decimal(16, 2)
-  approvedCost                Decimal?                 @db.Decimal(16, 2)
-  finalCost                   Decimal?                 @db.Decimal(16, 2)
-  solution                    String?                  @db.Text
-  acceptanceNote              String?                  @db.Text
-  measurementEligible         Boolean                  @default(false)
-  reopenCount                 Int                      @default(0)
-  energySavedKwh              Decimal?                 @db.Decimal(16, 3)
-  waterSavedLiters            Decimal?                 @db.Decimal(16, 2)
-  avoidedCorrectiveFail       Boolean?                 @default(false)
+  estimatedCost               Decimal?                   @db.Decimal(16, 2)
+  approvedCost                Decimal?                   @db.Decimal(16, 2)
+  finalCost                   Decimal?                   @db.Decimal(16, 2)
+  solution                    String?                    @db.Text
+  acceptanceNote              String?                    @db.Text
+  measurementEligible         Boolean                    @default(false)
+  reopenCount                 Int                        @default(0)
+  energySavedKwh              Decimal?                   @db.Decimal(16, 3)
+  waterSavedLiters            Decimal?                   @db.Decimal(16, 2)
+  avoidedCorrectiveFail       Boolean?                   @default(false)
   metadata                    Json?
   slaSnapshot                 Json?
   operationalCriteriaSnapshot Json?
-  createdAt                   DateTime                 @default(now())
-  updatedAt                   DateTime                 @updatedAt
+  createdAt                   DateTime                   @default(now())
+  updatedAt                   DateTime                   @updatedAt
   deletedAt                   DateTime?
-  tenant                      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  building                    Building                 @relation(fields: [buildingId], references: [id], onDelete: Restrict)
-  requester                   User                     @relation("WorkOrderRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
-  assignedTo                  User?                    @relation("WorkOrderAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
-  createdBy                   User                     @relation("WorkOrderCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  supplier                    Supplier?                @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  category                    OperationalCatalogItem?  @relation("WorkOrderCategory", fields: [categoryId], references: [id], onDelete: SetNull)
-  specialty                   OperationalCatalogItem?  @relation("WorkOrderSpecialty", fields: [specialtyId], references: [id], onDelete: SetNull)
-  environment                 OperationalCatalogItem?  @relation("WorkOrderEnvironment", fields: [environmentId], references: [id], onDelete: SetNull)
-  cause                       OperationalCatalogItem?  @relation("WorkOrderCause", fields: [causeId], references: [id], onDelete: SetNull)
-  slaPolicy                   SlaPolicy?               @relation(fields: [slaPolicyId], references: [id], onDelete: SetNull)
-  acceptedBy                  User?                    @relation("WorkOrderAccepter", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  tenant                      Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  building                    Building                   @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  requester                   User                       @relation("WorkOrderRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  assignedTo                  User?                      @relation("WorkOrderAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  createdBy                   User                       @relation("WorkOrderCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  supplier                    Supplier?                  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  category                    OperationalCatalogItem?    @relation("WorkOrderCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  specialty                   OperationalCatalogItem?    @relation("WorkOrderSpecialty", fields: [specialtyId], references: [id], onDelete: SetNull)
+  environment                 OperationalCatalogItem?    @relation("WorkOrderEnvironment", fields: [environmentId], references: [id], onDelete: SetNull)
+  cause                       OperationalCatalogItem?    @relation("WorkOrderCause", fields: [causeId], references: [id], onDelete: SetNull)
+  slaPolicy                   SlaPolicy?                 @relation(fields: [slaPolicyId], references: [id], onDelete: SetNull)
+  acceptedBy                  User?                      @relation("WorkOrderAccepter", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
   contracts                   WorkOrderContract[]
   pendencies                  WorkOrderPendency[]
   attachments                 WorkOrderAttachment[]
   statusHistory               WorkOrderStatusHistory[]
   budget                      WorkOrderBudget?
   measurementItems            MeasurementItem[]
+  maintenancePlanId           String?                    @db.Char(36)
+  preventiveScheduledFor      DateTime?
+  maintenancePlan             MaintenancePlan?           @relation(fields: [maintenancePlanId], references: [id], onDelete: SetNull)
+  maintenanceGeneration       MaintenancePlanGeneration?
   satisfaction                SatisfactionResponse?
   comments                    WorkOrderComment[]
   checklistItems              WorkOrderChecklistItem[]
@@ -780,6 +849,7 @@ model WorkOrder {
   @@index([tenantId, specialtyId, status, openedAt])
   @@index([tenantId, environmentId, status, openedAt])
   @@index([tenantId, causeId, status, openedAt])
+  @@index([tenantId, maintenancePlanId, preventiveScheduledFor])
 }
 
 model WorkOrderContract {
@@ -854,83 +924,183 @@ model WorkOrderStatusHistory {
 }
 
 model WorkOrderBudget {
-  id             String       @id @default(uuid()) @db.Char(36)
-  tenantId       String       @db.Char(36)
-  workOrderId    String       @unique @db.Char(36)
-  status         BudgetStatus @default(DRAFT)
-  referenceMonth String?      @db.VarChar(7)
-  state          String?      @db.Char(2)
-  subtotal       Decimal      @default(0) @db.Decimal(16, 2)
-  bdiPercentage  Decimal      @default(0) @db.Decimal(9, 6)
-  total          Decimal      @default(0) @db.Decimal(16, 2)
-  notes          String?      @db.Text
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  workOrder      WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  items          BudgetItem[]
+  id                String           @id @default(uuid()) @db.Char(36)
+  tenantId          String           @db.Char(36)
+  workOrderId       String           @unique @db.Char(36)
+  status            BudgetStatus     @default(DRAFT)
+  version           Int              @default(1)
+  catalogId         String?          @db.Char(36)
+  submittedByUserId String?          @db.Char(36)
+  approvedByUserId  String?          @db.Char(36)
+  referenceMonth    String?          @db.VarChar(7)
+  state             String?          @db.Char(2)
+  subtotal          Decimal          @default(0) @db.Decimal(16, 2)
+  bdiPercentage     Decimal          @default(0) @db.Decimal(9, 6)
+  total             Decimal          @default(0) @db.Decimal(16, 2)
+  notes             String?          @db.Text
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+  canceledAt        DateTime?
+  decisionNote      String?          @db.Text
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  workOrder         WorkOrder        @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalog           SinapiCatalog?   @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+  submittedBy       User?            @relation("BudgetSubmitter", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  approvedBy        User?            @relation("BudgetApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  items             BudgetItem[]
+  revisions         BudgetRevision[]
 
   @@index([tenantId, status])
+  @@index([tenantId, catalogId])
 }
 
 model BudgetItem {
-  id          String          @id @default(uuid()) @db.Char(36)
-  budgetId    String          @db.Char(36)
-  source      String          @default("SINAPI") @db.VarChar(30)
-  code        String          @db.VarChar(40)
-  description String          @db.Text
-  unit        String          @db.VarChar(20)
-  quantity    Decimal         @db.Decimal(18, 6)
-  unitCost    Decimal         @db.Decimal(16, 6)
-  totalCost   Decimal         @db.Decimal(16, 2)
-  sourceData  Json?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  budget      WorkOrderBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  id            String             @id @default(uuid()) @db.Char(36)
+  tenantId      String             @db.Char(36)
+  budgetId      String             @db.Char(36)
+  catalogItemId String?            @db.Char(36)
+  kind          BudgetItemKind     @default(SERVICE)
+  source        String             @default("SINAPI") @db.VarChar(30)
+  code          String             @db.VarChar(40)
+  description   String             @db.Text
+  unit          String             @db.VarChar(20)
+  quantity      Decimal            @db.Decimal(18, 6)
+  unitCost      Decimal            @db.Decimal(16, 6)
+  totalCost     Decimal            @db.Decimal(16, 2)
+  sourceData    Json?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  budget        WorkOrderBudget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  catalogItem   SinapiCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
 
   @@index([budgetId])
   @@index([source, code])
+  @@index([tenantId, catalogItemId])
+}
+
+model BudgetRevision {
+  id              String          @id @default(uuid()) @db.Char(36)
+  tenantId        String          @db.Char(36)
+  budgetId        String          @db.Char(36)
+  createdByUserId String?         @db.Char(36)
+  version         Int
+  status          BudgetStatus
+  subtotal        Decimal         @db.Decimal(16, 2)
+  bdiPercentage   Decimal         @db.Decimal(9, 6)
+  total           Decimal         @db.Decimal(16, 2)
+  snapshot        Json
+  reason          String?         @db.Text
+  createdAt       DateTime        @default(now())
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  budget          WorkOrderBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  createdBy       User?           @relation("BudgetRevisionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([budgetId, version])
+  @@index([tenantId, createdAt])
+}
+
+model SinapiCatalog {
+  id               String              @id @default(uuid()) @db.Char(36)
+  tenantId         String              @db.Char(36)
+  importedByUserId String?             @db.Char(36)
+  referenceMonth   String              @db.VarChar(7)
+  state            String              @db.Char(2)
+  source           String              @default("SINAPI") @db.VarChar(40)
+  version          String              @db.VarChar(40)
+  checksum         String?             @db.Char(64)
+  itemCount        Int                 @default(0)
+  active           Boolean             @default(true)
+  importedAt       DateTime            @default(now())
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  importedBy       User?               @relation("SinapiImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  items            SinapiCatalogItem[]
+  budgets          WorkOrderBudget[]
+
+  @@unique([tenantId, state, referenceMonth, source, version])
+  @@index([tenantId, active, referenceMonth])
+}
+
+model SinapiCatalogItem {
+  id              String         @id @default(uuid()) @db.Char(36)
+  tenantId        String         @db.Char(36)
+  catalogId       String         @db.Char(36)
+  type            SinapiItemType
+  code            String         @db.VarChar(40)
+  description     String         @db.Text
+  unit            String         @db.VarChar(20)
+  unitCost        Decimal        @db.Decimal(16, 6)
+  compositionData Json?
+  createdAt       DateTime       @default(now())
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  catalog         SinapiCatalog  @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  budgetItems     BudgetItem[]
+
+  @@unique([catalogId, type, code])
+  @@index([tenantId, type, code])
 }
 
 model Measurement {
-  id               String            @id @default(uuid()) @db.Char(36)
-  tenantId         String            @db.Char(36)
-  contractId       String            @db.Char(36)
-  approvedByUserId String?           @db.Char(36)
-  number           String            @db.VarChar(60)
-  referenceMonth   String            @db.VarChar(7)
-  status           MeasurementStatus @default(DRAFT)
-  grossAmount      Decimal           @default(0) @db.Decimal(16, 2)
-  deductions       Decimal           @default(0) @db.Decimal(16, 2)
-  netAmount        Decimal           @default(0) @db.Decimal(16, 2)
-  submittedAt      DateTime?
-  approvedAt       DateTime?
-  paidAt           DateTime?
-  notes            String?           @db.Text
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  contract         Contract          @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  approvedBy       User?             @relation("MeasurementApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
-  items            MeasurementItem[]
+  id                  String               @id @default(uuid()) @db.Char(36)
+  tenantId            String               @db.Char(36)
+  contractId          String               @db.Char(36)
+  commitmentId        String?              @db.Char(36)
+  createdByUserId     String?              @db.Char(36)
+  reviewedByUserId    String?              @db.Char(36)
+  approvedByUserId    String?              @db.Char(36)
+  number              String               @db.VarChar(60)
+  referenceMonth      String               @db.VarChar(7)
+  status              MeasurementStatus    @default(DRAFT)
+  grossAmount         Decimal              @default(0) @db.Decimal(16, 2)
+  deductions          Decimal              @default(0) @db.Decimal(16, 2)
+  netAmount           Decimal              @default(0) @db.Decimal(16, 2)
+  submittedAt         DateTime?
+  reviewedAt          DateTime?
+  approvedAt          DateTime?
+  liquidatedAt        DateTime?
+  paidAt              DateTime?
+  canceledAt          DateTime?
+  decisionNote        String?              @db.Text
+  version             Int                  @default(0)
+  notes               String?              @db.Text
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract            Contract             @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  commitment          Commitment?          @relation(fields: [commitmentId], references: [id], onDelete: SetNull)
+  createdBy           User?                @relation("MeasurementCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  reviewedBy          User?                @relation("MeasurementReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  approvedBy          User?                @relation("MeasurementApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  items               MeasurementItem[]
+  commitmentMovements CommitmentMovement[]
 
   @@unique([contractId, number])
   @@index([tenantId, referenceMonth, status])
   @@index([tenantId, contractId, referenceMonth])
+  @@index([tenantId, commitmentId, status])
 }
 
 model MeasurementItem {
-  id            String      @id @default(uuid()) @db.Char(36)
-  measurementId String      @db.Char(36)
-  workOrderId   String      @db.Char(36)
-  description   String?     @db.Text
-  amount        Decimal     @db.Decimal(16, 2)
-  createdAt     DateTime    @default(now())
-  measurement   Measurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
-  workOrder     WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  id              String      @id @default(uuid()) @db.Char(36)
+  tenantId        String      @db.Char(36)
+  measurementId   String      @db.Char(36)
+  workOrderId     String      @db.Char(36)
+  description     String?     @db.Text
+  amount          Decimal     @db.Decimal(16, 2)
+  deductionAmount Decimal     @default(0) @db.Decimal(16, 2)
+  netAmount       Decimal     @db.Decimal(16, 2)
+  snapshot        Json?
+  createdAt       DateTime    @default(now())
+  measurement     Measurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+  workOrder       WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@unique([measurementId, workOrderId])
   @@index([workOrderId])
+  @@index([tenantId, measurementId])
 }
 
 model SatisfactionResponse {
@@ -948,34 +1118,36 @@ model SatisfactionResponse {
 }
 
 model OperationalCatalogItem {
-  id                    String                   @id @default(uuid()) @db.Char(36)
-  tenantId              String                   @db.Char(36)
-  parentId              String?                  @db.Char(36)
-  kind                  OperationalCatalogKind
-  code                  String                   @db.VarChar(60)
-  name                  String                   @db.VarChar(160)
-  description           String?                  @db.Text
-  active                Boolean                  @default(true)
-  sortOrder             Int                      @default(0)
-  defaultPriority       WorkOrderPriority?
-  requirePhotoBefore    Boolean                  @default(false)
-  requirePhotoDuring    Boolean                  @default(false)
-  requirePhotoAfter     Boolean                  @default(false)
-  requireChecklist      Boolean                  @default(false)
-  requireFinalCost      Boolean                  @default(false)
-  requireAcceptance     Boolean                  @default(true)
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
-  deletedAt             DateTime?
-  tenant                Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  parent                OperationalCatalogItem?  @relation("OperationalCatalogTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children              OperationalCatalogItem[] @relation("OperationalCatalogTree")
-  checklistTemplate     ChecklistTemplateItem[]
-  slaPolicies           SlaPolicy[]
-  categorizedWorkOrders WorkOrder[]              @relation("WorkOrderCategory")
-  specializedWorkOrders WorkOrder[]              @relation("WorkOrderSpecialty")
-  environmentWorkOrders WorkOrder[]              @relation("WorkOrderEnvironment")
-  causeWorkOrders       WorkOrder[]              @relation("WorkOrderCause")
+  id                         String                   @id @default(uuid()) @db.Char(36)
+  tenantId                   String                   @db.Char(36)
+  parentId                   String?                  @db.Char(36)
+  kind                       OperationalCatalogKind
+  code                       String                   @db.VarChar(60)
+  name                       String                   @db.VarChar(160)
+  description                String?                  @db.Text
+  active                     Boolean                  @default(true)
+  sortOrder                  Int                      @default(0)
+  defaultPriority            WorkOrderPriority?
+  requirePhotoBefore         Boolean                  @default(false)
+  requirePhotoDuring         Boolean                  @default(false)
+  requirePhotoAfter          Boolean                  @default(false)
+  requireChecklist           Boolean                  @default(false)
+  requireFinalCost           Boolean                  @default(false)
+  requireAcceptance          Boolean                  @default(true)
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  deletedAt                  DateTime?
+  tenant                     Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  parent                     OperationalCatalogItem?  @relation("OperationalCatalogTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children                   OperationalCatalogItem[] @relation("OperationalCatalogTree")
+  checklistTemplate          ChecklistTemplateItem[]
+  slaPolicies                SlaPolicy[]
+  categorizedWorkOrders      WorkOrder[]              @relation("WorkOrderCategory")
+  specializedWorkOrders      WorkOrder[]              @relation("WorkOrderSpecialty")
+  environmentWorkOrders      WorkOrder[]              @relation("WorkOrderEnvironment")
+  maintenancePlanCategories  MaintenancePlan[]        @relation("MaintenancePlanCategory")
+  maintenancePlanSpecialties MaintenancePlan[]        @relation("MaintenancePlanSpecialty")
+  causeWorkOrders            WorkOrder[]              @relation("WorkOrderCause")
 
   @@unique([tenantId, kind, code])
   @@index([tenantId, kind, active, sortOrder])
@@ -1253,30 +1425,67 @@ model Asset {
 }
 
 model MaintenancePlan {
-  id                String              @id @default(uuid()) @db.Char(36)
-  tenantId          String              @db.Char(36)
-  buildingId        String              @db.Char(36)
-  assetId           String?             @db.Char(36)
-  contractId        String?             @db.Char(36)
-  name              String              @db.VarChar(180)
-  description       String?             @db.Text
-  type              MaintenancePlanType
-  frequencyUnit     FrequencyUnit
-  frequencyValue    Int                 @default(1)
-  nextDueAt         DateTime
-  lastGeneratedAt   DateTime?
-  defaultPriority   WorkOrderPriority   @default(NORMAL)
-  checklistTemplate Json?
-  active            Boolean             @default(true)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  building          Building            @relation(fields: [buildingId], references: [id], onDelete: Restrict)
-  asset             Asset?              @relation(fields: [assetId], references: [id], onDelete: SetNull)
-  contract          Contract?           @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  id                    String                      @id @default(uuid()) @db.Char(36)
+  tenantId              String                      @db.Char(36)
+  buildingId            String                      @db.Char(36)
+  assetId               String?                     @db.Char(36)
+  contractId            String?                     @db.Char(36)
+  categoryId            String?                     @db.Char(36)
+  specialtyId           String?                     @db.Char(36)
+  supplierId            String?                     @db.Char(36)
+  assignedToUserId      String?                     @db.Char(36)
+  name                  String                      @db.VarChar(180)
+  titleTemplate         String                      @db.VarChar(220)
+  description           String?                     @db.Text
+  type                  MaintenancePlanType
+  frequencyUnit         FrequencyUnit
+  frequencyValue        Int                         @default(1)
+  nextDueAt             DateTime
+  lastGeneratedAt       DateTime?
+  defaultPriority       WorkOrderPriority           @default(NORMAL)
+  advanceDays           Int                         @default(0)
+  generationHorizonDays Int                         @default(30)
+  checklistTemplate     Json?
+  active                Boolean                     @default(true)
+  suspendedAt           DateTime?
+  lastErrorAt           DateTime?
+  lastError             String?                     @db.Text
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  tenant                Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  building              Building                    @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  asset                 Asset?                      @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  contract              Contract?                   @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  category              OperationalCatalogItem?     @relation("MaintenancePlanCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  specialty             OperationalCatalogItem?     @relation("MaintenancePlanSpecialty", fields: [specialtyId], references: [id], onDelete: SetNull)
+  supplier              Supplier?                   @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  assignedTo            User?                       @relation("MaintenancePlanAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  generatedWorkOrders   WorkOrder[]
+  generations           MaintenancePlanGeneration[]
 
   @@index([tenantId, active, nextDueAt])
   @@index([buildingId, type])
+}
+
+model MaintenancePlanGeneration {
+  id           String                      @id @default(uuid()) @db.Char(36)
+  tenantId     String                      @db.Char(36)
+  planId       String                      @db.Char(36)
+  workOrderId  String?                     @unique @db.Char(36)
+  scheduledFor DateTime
+  status       MaintenanceGenerationStatus @default(PENDING)
+  generatedAt  DateTime?
+  skippedAt    DateTime?
+  skipReason   String?                     @db.Text
+  error        String?                     @db.Text
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+  tenant       Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  plan         MaintenancePlan             @relation(fields: [planId], references: [id], onDelete: Cascade)
+  workOrder    WorkOrder?                  @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+
+  @@unique([planId, scheduledFor])
+  @@index([tenantId, status, scheduledFor])
 }
 
 model KpiDefinition {
@@ -1288,6 +1497,10 @@ model KpiDefinition {
   category      KpiCategory
   unit          String           @db.VarChar(40)
   direction     KpiDirection
+  periodicity   KpiPeriodicity   @default(MONTHLY)
+  version       Int              @default(1)
+  source        String?          @db.VarChar(80)
+  decimalPlaces Int              @default(2)
   formula       String?          @db.Text
   targetValue   Decimal?         @db.Decimal(18, 6)
   warningValue  Decimal?         @db.Decimal(18, 6)
@@ -1303,24 +1516,28 @@ model KpiDefinition {
 }
 
 model KpiMeasurement {
-  id           String        @id @default(uuid()) @db.Char(36)
-  tenantId     String        @db.Char(36)
-  definitionId String        @db.Char(36)
-  buildingId   String?       @db.Char(36)
-  contractId   String?       @db.Char(36)
-  supplierId   String?       @db.Char(36)
-  periodStart  DateTime
-  periodEnd    DateTime
-  value        Decimal       @db.Decimal(18, 6)
-  targetValue  Decimal?      @db.Decimal(18, 6)
-  source       String?       @db.VarChar(80)
-  details      Json?
-  createdAt    DateTime      @default(now())
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  definition   KpiDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
-  building     Building?     @relation(fields: [buildingId], references: [id], onDelete: SetNull)
-  contract     Contract?     @relation(fields: [contractId], references: [id], onDelete: SetNull)
-  supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  id             String               @id @default(uuid()) @db.Char(36)
+  tenantId       String               @db.Char(36)
+  definitionId   String               @db.Char(36)
+  buildingId     String?              @db.Char(36)
+  contractId     String?              @db.Char(36)
+  supplierId     String?              @db.Char(36)
+  periodStart    DateTime
+  periodEnd      DateTime
+  value          Decimal              @db.Decimal(18, 6)
+  status         KpiMeasurementStatus @default(FINAL)
+  calculationKey String               @unique @db.Char(64)
+  formulaVersion Int                  @default(1)
+  targetValue    Decimal?             @db.Decimal(18, 6)
+  source         String?              @db.VarChar(80)
+  details        Json?
+  computedAt     DateTime             @default(now())
+  createdAt      DateTime             @default(now())
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  definition     KpiDefinition        @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+  building       Building?            @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  contract       Contract?            @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  supplier       Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, definitionId, periodEnd])
   @@index([tenantId, buildingId, periodEnd])

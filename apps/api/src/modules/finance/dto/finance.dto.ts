@@ -55,6 +55,14 @@ export class CreateMeasurementDto {
   items!: MeasurementItemDto[];
 }
 
+export class ConsolidateMeasurementDto {
+  @IsUUID() contractId!: string;
+  @IsOptional() @IsUUID() commitmentId?: string;
+  @IsString() @Length(1, 60) number!: string;
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/) referenceMonth!: string;
+  @IsOptional() @IsString() notes?: string;
+}
+
 export class TransitionMeasurementDto {
   @ApiProperty({ enum: MeasurementStatus })
   @IsEnum(MeasurementStatus)

@@ -49,6 +49,17 @@ export class CreateContractDto {
   @IsPositive()
   originalValue!: number;
 
+  @ApiPropertyOptional({ example: '2026-01-01', description: 'Data-base para reajustes contratuais.' })
+  @IsOptional()
+  @IsDateString()
+  adjustmentBaseDate?: string;
+
+  @ApiPropertyOptional({ example: 'IPCA' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  adjustmentIndex?: string;
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()

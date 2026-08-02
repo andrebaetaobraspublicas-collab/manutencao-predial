@@ -1,4 +1,4 @@
-# Estado verificável da implementação — v0.11.0
+# Estado verificável da implementação — v0.12.0
 
 Data de referência: **2 de agosto de 2026**.
 

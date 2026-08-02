@@ -244,6 +244,14 @@ Uma OS somente deve integrar medição quando:
 
 A consolidação deve preservar o vínculo da medição com cada OS e permitir auditoria reversa.
 
+Na v0.12, cada OS pode possuir três orçamentos independentes: previsto, aprovado e final
+executado. A consolidação automática mensal seleciona somente OS concluídas/fechadas na
+competência, elegíveis, vinculadas ao contrato, sem outra medição ativa e com orçamento
+`FINAL_EXECUTED` aprovado. O item da medição grava o identificador e a versão desse orçamento.
+
+Fotos selecionadas na abertura são enviadas após a emissão da OS, armazenadas no repositório
+privado e classificadas como `PHOTO_BEFORE`. Novos envios continuam disponíveis no detalhe.
+
 ## 15. Critérios de aceite do núcleo OS
 
 - numeração sem colisão em concorrência;

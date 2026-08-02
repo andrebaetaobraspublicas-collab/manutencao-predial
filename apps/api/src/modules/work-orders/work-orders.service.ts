@@ -524,7 +524,7 @@ export class WorkOrdersService {
           include: { changedBy: { select: { id: true, name: true } } },
           orderBy: { changedAt: 'desc' },
         },
-        budget: { include: { items: true } },
+        budgets: { include: { items: true }, orderBy: { stage: 'asc' } },
         measurementItems: {
           select: { measurement: { select: { status: true } } },
         },

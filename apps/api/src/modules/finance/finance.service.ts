@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditAction,
+  BudgetStage,
+  BudgetStatus,
   CommitmentMovementType,
   MeasurementStatus,
   Prisma,
@@ -10,6 +12,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateCommitmentDto,
   CreateCommitmentMovementDto,
+  ConsolidateMeasurementDto,
   CreateMeasurementDto,
   TransitionMeasurementDto,
 } from './dto/finance.dto';
@@ -100,7 +103,9 @@ export class FinanceService {
       this.prisma.workOrder.findMany({ where: { id: { in: ids }, tenantId, deletedAt: null,
         status: { in: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED] }, measurementEligible: true,
         contracts: { some: { contractId: dto.contractId } } },
-        select: { id: true, number: true, title: true, finalCost: true, approvedCost: true, updatedAt: true } }),
+        select: { id: true, number: true, title: true, finalCost: true, approvedCost: true, updatedAt: true,
+          budgets: { where: { stage: BudgetStage.FINAL_EXECUTED, status: BudgetStatus.APPROVED },
+            select: { id: true, total: true, version: true }, take: 1 } } }),
       this.prisma.measurementItem.findMany({ where: { tenantId, workOrderId: { in: ids },
         measurement: { status: { notIn: [MeasurementStatus.REJECTED, MeasurementStatus.CANCELED] } } }, select: { workOrderId: true } }),
     ]);
@@ -114,11 +119,12 @@ export class FinanceService {
       const deduction = new Prisma.Decimal(item.deductionAmount ?? 0);
       if (deduction.greaterThan(amount)) throw new BadRequestException('A dedução não pode superar o valor do item.');
       const workOrder = byId.get(item.workOrderId)!;
-      const executionBasis = workOrder.finalCost ?? workOrder.approvedCost;
+      const finalBudget = workOrder.budgets[0];
+      const executionBasis = finalBudget?.total ?? workOrder.finalCost ?? workOrder.approvedCost;
       if (!executionBasis || amount.greaterThan(executionBasis)) {
         throw new BadRequestException(`O valor medido da OS ${workOrder.number} excede o custo executado/aprovado.`);
       }
-      return { ...item, amount, deduction, net: amount.minus(deduction), workOrder };
+      return { ...item, amount, deduction, net: amount.minus(deduction), workOrder, finalBudget };
     });
     const gross = values.reduce((total, item) => total.plus(item.amount), new Prisma.Decimal(0));
     const deductions = values.reduce((total, item) => total.plus(item.deduction), new Prisma.Decimal(0));
@@ -134,12 +140,13 @@ export class FinanceService {
         createdByUserId: actorUserId, number: dto.number.trim().toUpperCase(),
         referenceMonth: dto.referenceMonth, grossAmount: gross, deductions,
         netAmount: gross.minus(deductions), notes: dto.notes,
-        items: { create: values.map((item) => ({ tenantId, workOrderId: item.workOrderId,
+        items: { create: values.map((item) => ({ tenantId, workOrderId: item.workOrderId, budgetId: item.finalBudget?.id,
           description: item.description, amount: item.amount, deductionAmount: item.deduction,
           netAmount: item.net, snapshot: { number: item.workOrder.number, title: item.workOrder.title,
             finalCost: item.workOrder.finalCost?.toString() ?? null,
             approvedCost: item.workOrder.approvedCost?.toString() ?? null,
-            updatedAt: item.workOrder.updatedAt.toISOString() } })) },
+            updatedAt: item.workOrder.updatedAt.toISOString(), finalBudgetId: item.finalBudget?.id ?? null,
+            finalBudgetVersion: item.finalBudget?.version ?? null } })) },
       }, include: { contract: true, items: { include: { workOrder: true } } } });
       await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE, 'Measurement', measurement.id,
         { number: measurement.number, netAmount: measurement.netAmount.toString() });
@@ -150,6 +157,25 @@ export class FinanceService {
       }
       throw error;
     });
+  }
+
+  async consolidateFinalBudgets(tenantId: string, actorUserId: string, dto: ConsolidateMeasurementDto) {
+    const start = new Date(`${dto.referenceMonth}-01T00:00:00.000Z`);
+    const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+    const workOrders = await this.prisma.workOrder.findMany({ where: {
+      tenantId, deletedAt: null, status: { in: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED] },
+      measurementEligible: true, contracts: { some: { contractId: dto.contractId } },
+      OR: [{ completedAt: { gte: start, lt: end } }, { closedAt: { gte: start, lt: end } }],
+      budgets: { some: { stage: BudgetStage.FINAL_EXECUTED, status: BudgetStatus.APPROVED } },
+      measurementItems: { none: { measurement: { status: { notIn: [MeasurementStatus.REJECTED, MeasurementStatus.CANCELED] } } } },
+    }, include: { budgets: { where: { stage: BudgetStage.FINAL_EXECUTED, status: BudgetStatus.APPROVED }, take: 1 } },
+      orderBy: [{ completedAt: 'asc' }, { number: 'asc' }] });
+    if (!workOrders.length) throw new BadRequestException('Nenhuma OS concluída na competência possui orçamento final aprovado e está livre para medição.');
+    return this.createMeasurement(tenantId, actorUserId, { contractId: dto.contractId,
+      commitmentId: dto.commitmentId, number: dto.number, referenceMonth: dto.referenceMonth,
+      notes: dto.notes ?? 'Consolidação automática dos orçamentos finais executados da competência.',
+      items: workOrders.map((workOrder) => ({ workOrderId: workOrder.id,
+        amount: workOrder.budgets[0].total.toNumber(), description: `Orçamento final executado — ${workOrder.number}` })) });
   }
 
   async transitionMeasurement(tenantId: string, actorUserId: string, id: string, dto: TransitionMeasurementDto) {

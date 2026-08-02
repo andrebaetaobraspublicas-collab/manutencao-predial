@@ -2,6 +2,9 @@ import { PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
@@ -64,5 +67,20 @@ export class UpdateMaintenancePlanDto extends PartialType(CreateMaintenancePlanD
 export class GenerateMaintenanceQuery {
   @IsOptional() @Transform(({ value }) => Number(value)) @IsInt() @Min(1) @Max(365)
   horizonDays = 30;
+}
+
+export class IntelligentMaintenanceDto {
+  @IsUUID() buildingId!: string;
+  @IsArray() @ArrayMinSize(1) @ArrayUnique() @IsString({ each: true }) systems!: string[];
+  @IsOptional() @IsEnum({ LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH' })
+  environmentalExposure: 'LOW' | 'MEDIUM' | 'HIGH' = 'MEDIUM';
+  @IsOptional() @IsEnum({ LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH' })
+  occupationIntensity: 'LOW' | 'MEDIUM' | 'HIGH' = 'MEDIUM';
+  @IsOptional() @IsDateString() startDate?: string;
+  @IsOptional() @IsUUID() contractId?: string;
+  @IsOptional() @IsUUID() supplierId?: string;
+  @IsOptional() @IsArray() @ArrayUnique() @IsString({ each: true }) selectedCodes?: string[];
+  @IsOptional() @IsBoolean() generateWorkOrders = true;
+  @IsOptional() @IsInt() @Min(1) @Max(365) horizonDays = 90;
 }
 

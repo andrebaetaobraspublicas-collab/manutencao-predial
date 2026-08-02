@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Clock3, LoaderCircle, Save, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Camera, Clock3, LoaderCircle, Save, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -49,6 +49,7 @@ export default function NewWorkOrderPage() {
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [problemPhotos, setProblemPhotos] = useState<File[]>([]);
   const [form, setForm] = useState({
     buildingId: '',
     title: '',
@@ -188,6 +189,12 @@ export default function NewWorkOrderPage() {
           estimatedCost: privileged && form.estimatedCost ? Number(form.estimatedCost) : undefined,
         }),
       });
+      for (const photo of problemPhotos) {
+        const upload = new FormData();
+        upload.set('kind', 'PHOTO_BEFORE');
+        upload.set('file', photo);
+        await apiFetch(`/work-orders/${created.id}/attachments`, { method: 'POST', body: upload });
+      }
       router.push(`/ordens-servico/detalhe?id=${created.id}`);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Não foi possível emitir a ordem de serviço.');
@@ -226,6 +233,11 @@ export default function NewWorkOrderPage() {
         </section>
 
         {privileged ? <section className="form-section"><div className="form-section-header"><h2>Demandante, execução e contratação</h2><p>O demandante acompanha a solicitação; o contrato principal determina fornecedor e pode selecionar uma regra de SLA mais específica.</p></div><div className="form-grid"><div className="field col-6"><label htmlFor="requesterUserId">Demandante</label><select className="select" id="requesterUserId" value={form.requesterUserId} onChange={(event) => setForm({ ...form, requesterUserId: event.target.value })}>{requesterOptions.map((user) => <option key={user.id} value={user.id}>{user.name} — {user.email}</option>)}</select></div><div className="field col-6"><label htmlFor="contractId">Contrato principal</label><select className="select" id="contractId" value={form.contractId} onChange={(event) => selectContract(event.target.value)}><option value="">Sem contrato definido</option>{contracts.filter((contract) => ['ACTIVE', 'EXPIRING'].includes(contract.status) && contract.buildings?.some((item) => item.building.id === form.buildingId)).map((contract) => <option key={contract.id} value={contract.id}>{contract.code} — {contract.object}</option>)}</select></div><div className="field col-6"><label htmlFor="supplierId">Fornecedor</label><select className="select" id="supplierId" value={form.supplierId} onChange={(event) => setForm({ ...form, supplierId: event.target.value })}><option value="">A definir na triagem</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.tradeName || supplier.legalName}</option>)}</select></div><div className="field col-4"><label htmlFor="dueAt">Prazo operacional adicional</label><input className="input" id="dueAt" type="datetime-local" value={form.dueAt} onChange={(event) => setForm({ ...form, dueAt: event.target.value })} /><small>Não substitui nem altera o SLA calculado.</small></div><div className="field col-4"><label htmlFor="estimatedCost">Custo estimado (R$)</label><input className="input" id="estimatedCost" type="number" min="0" step="0.01" value={form.estimatedCost} onChange={(event) => setForm({ ...form, estimatedCost: event.target.value })} /></div></div></section> : null}
+
+        <section className="form-section">
+          <div className="form-section-header"><h2>Fotos do problema</h2><p>As imagens serão armazenadas de forma privada como evidência “antes” e acessíveis somente a usuários autorizados da organização.</p></div>
+          <div className="field col-12"><label className="btn btn-secondary" htmlFor="problemPhotos"><Camera size={16} /> Selecionar fotos</label><input id="problemPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }} onChange={(event) => setProblemPhotos(Array.from(event.target.files ?? []).slice(0, 10))} /><small>{problemPhotos.length ? `${problemPhotos.length} foto(s): ${problemPhotos.map((file) => file.name).join(', ')}` : 'Até 10 imagens JPG, PNG ou WebP. Novas fotos também podem ser incluídas no detalhe da OS.'}</small></div>
+        </section>
 
         <section className="form-section sla-preview-section">
           <div className="form-section-header"><h2>Previsão de atendimento</h2><p>Estimativa calculada com prioridade, categoria, contrato, jornada e feriados. A OS salva um snapshot da regra efetivamente aplicada.</p></div>

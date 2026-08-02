@@ -169,6 +169,12 @@ relacional de áreas de fornecedores, consórcios e sanções, dossiê contratua
 recalculam o valor atual e importação XLSX das quatro bases SINAPI por UF, além de tabelas
 próprias de manutenção.
 
+**Integração operacional v0.12.0:** data-base de reajuste exposta no contrato, fotos já na
+abertura da OS, três estágios de orçamento, consolidação mensal baseada no final executado e
+primeira versão explicável do Plano Inteligente. O motor cobre um catálogo inicial de sistemas e
+não substitui o responsável técnico; biblioteca ampla, Gantt, LCC e relatórios completos continuam
+como evolução.
+
 O detalhamento e os critérios de aceite estão em `docs/13-plano-inicial-de-issues-codex.md`.
 
 ---

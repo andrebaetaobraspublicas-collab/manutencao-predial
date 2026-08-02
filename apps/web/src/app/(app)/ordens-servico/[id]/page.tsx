@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CalendarDays,
+  Calculator,
   Check,
   CheckCircle2,
   ClipboardCheck,
@@ -66,7 +67,7 @@ type DetailedWorkOrder = Omit<WorkOrder, 'pendencies'> & {
   checklistItems: WorkOrderChecklistItem[];
   reopenings: Reopening[];
   closeReadiness: ClosureReadiness;
-  budget?: { id: string; status: string; total: string | number; items: unknown[] } | null;
+  budgets?: Array<{ id: string; stage: string; status: string; total: string | number; items: unknown[] }>;
   satisfaction?: { score: number; npsScore?: number | null; comment?: string | null } | null;
 };
 
@@ -234,7 +235,7 @@ export default function WorkOrderDetailPage() {
   );
 
   return <div className="page-container work-order-detail-page">
-    <header className="page-header"><div className="page-title"><div className="actions work-order-badges"><StatusBadge value={workOrder.status} /><PriorityBadge value={workOrder.priority} />{workOrder.hasOpenPendency ? <span className="badge warning"><AlertTriangle size={13} /> pendência aberta</span> : null}{overdue ? <span className="badge danger"><Clock3 size={13} /> SLA vencido</span> : null}{workOrder.reopenCount ? <span className="badge warning"><RotateCcw size={13} /> {workOrder.reopenCount} reabertura(s)</span> : null}</div><h1>{workOrder.number} — {workOrder.title}</h1><p>{workOrder.description}</p></div><div className="actions"><a className="btn btn-secondary" href={apiFileUrl(`/reports/work-orders/${id}.pdf`)} target="_blank" rel="noreferrer"><Download size={16} /> Ficha PDF</a><button className="btn btn-secondary" type="button" onClick={() => void load()}><RefreshCw size={16} /> Atualizar</button><Link className="btn btn-secondary" href="/ordens-servico"><ArrowLeft size={16} /> Voltar</Link></div></header>
+    <header className="page-header"><div className="page-title"><div className="actions work-order-badges"><StatusBadge value={workOrder.status} /><PriorityBadge value={workOrder.priority} />{workOrder.hasOpenPendency ? <span className="badge warning"><AlertTriangle size={13} /> pendência aberta</span> : null}{overdue ? <span className="badge danger"><Clock3 size={13} /> SLA vencido</span> : null}{workOrder.reopenCount ? <span className="badge warning"><RotateCcw size={13} /> {workOrder.reopenCount} reabertura(s)</span> : null}</div><h1>{workOrder.number} — {workOrder.title}</h1><p>{workOrder.description}</p></div><div className="actions"><Link className="btn btn-primary" href={`/orcamentos?workOrderId=${id}`}><Calculator size={16} /> Incluir orçamento</Link><a className="btn btn-secondary" href={apiFileUrl(`/reports/work-orders/${id}.pdf`)} target="_blank" rel="noreferrer"><Download size={16} /> Ficha PDF</a><button className="btn btn-secondary" type="button" onClick={() => void load()}><RefreshCw size={16} /> Atualizar</button><Link className="btn btn-secondary" href="/ordens-servico"><ArrowLeft size={16} /> Voltar</Link></div></header>
     {error ? <div className="notice error page-notice">{error}</div> : null}
     {success ? <div className="notice success page-notice">{success}</div> : null}
 

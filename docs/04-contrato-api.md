@@ -321,6 +321,20 @@ Todas as rotas usam o `tenantId` do token. Transições financeiras recebem a ve
 cliente e retornam conflito em gravação concorrente. Totais monetários são recalculados no
 servidor com `Decimal`; rejeições e cancelamentos exigem justificativa.
 
+### 7.2 Extensões operacionais v0.12
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| GET | `/budgets/work-orders/:workOrderId/stages` | consulta os três estágios e revisões |
+| GET/PUT | `/budgets/work-orders/:workOrderId?stage=...` | consulta/salva um estágio |
+| POST | `/finance/measurements/consolidate-final-budgets` | consolida finais aprovados da competência |
+| GET | `/maintenance/intelligent/systems` | lista sistemas e versão do motor |
+| POST | `/maintenance/intelligent/preview` | calcula recomendações sem persistir |
+| POST | `/maintenance/intelligent/create` | confirma planos e gera OS opcionalmente |
+
+`Contract` aceita `adjustmentBaseDate` e `adjustmentIndex`. A prévia inteligente sempre declara
+validação humana obrigatória e não reproduz texto normativo.
+
 
 | Método | Rota | Finalidade |
 |---|---|---|

@@ -390,11 +390,12 @@ export async function provisionContractTestData(prisma: PrismaClient, input: {
       create: { workOrderId: workOrder.id, contractId: contract.id, isPrimary: true,
         allocatedAmount: scenario.finalValue },
     });
+    const closedHistoryNote = `${DEMO_MARKER} OS concluída para homologação de orçamento e medição.`;
     if (!await prisma.workOrderStatusHistory.findFirst({ where: {
-      workOrderId: workOrder.id, note: { contains: DEMO_MARKER },
+      workOrderId: workOrder.id, note: closedHistoryNote,
     } })) await prisma.workOrderStatusHistory.create({ data: {
       workOrderId: workOrder.id, changedByUserId: userId, toStatus: WorkOrderStatus.CLOSED,
-      note: `${DEMO_MARKER} OS concluída para homologação de orçamento e medição.`, changedAt: completedAt,
+      note: closedHistoryNote, changedAt: completedAt,
     } });
 
     const finalTotal = new Prisma.Decimal(scenario.finalValue);

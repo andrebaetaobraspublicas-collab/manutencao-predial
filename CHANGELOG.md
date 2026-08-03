@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.2 — correção da consulta e histórico SINAPI
+
+- Corrigida a consulta das quatro abas SINAPI no MySQL da Hostinger sem usar comparação `LIKE`
+  entre collations incompatíveis.
+- Adicionada seção com as bases já importadas, competência, UF, regime, conteúdo, itens, data e
+  acesso direto à consulta do catálogo.
+
 ## 0.15.1 — experiência de orçamento e consulta SINAPI
 
 - Tornada a competência da importação editável e opcional para o SINAPI oficial, que continua

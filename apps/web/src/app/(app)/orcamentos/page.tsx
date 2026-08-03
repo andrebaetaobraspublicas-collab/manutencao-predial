@@ -33,6 +33,16 @@ type Catalog = {
   source: string;
   priceRegime: string;
   catalogKind: string;
+  importedAt: string;
+  active: boolean;
+};
+type CatalogFamily = {
+  key: string;
+  catalog: Catalog;
+  version: string;
+  itemCount: number;
+  kinds: string[];
+  importedAt: string;
 };
 type CatalogItem = {
   id: string;
@@ -211,6 +221,7 @@ export default function BudgetsPage() {
   );
   const total = subtotal * (1 + Number(form.bdiPercentage || 0) / 100);
   const catalogOptions = useMemo(() => dedupeCatalogs(catalogs), [catalogs]);
+  const importedCatalogs = useMemo(() => groupCatalogs(catalogs), [catalogs]);
   const selectedCount = Object.keys(selectedItems).length;
   const pageItems = results?.items ?? [];
   const allPageSelected = pageItems.length > 0 && pageItems.every((item) => selectedItems[item.id]);
@@ -690,6 +701,62 @@ export default function BudgetsPage() {
         </div>
       </form>
 
+      <section className="card table-card" style={{ marginBottom: 18 }}>
+        <div className="card-header">
+          <div>
+            <h2>Bases SINAPI importadas</h2>
+            <p>Histórico das competências disponíveis para consulta e elaboração dos orçamentos.</p>
+          </div>
+          <Database size={19} />
+        </div>
+        {importedCatalogs.length ? (
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Base</th>
+                  <th>Competência / UF</th>
+                  <th>Regime</th>
+                  <th>Conteúdo disponível</th>
+                  <th>Itens</th>
+                  <th>Importada em</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importedCatalogs.map((family) => (
+                  <tr key={family.key}>
+                    <td>
+                      <span className="table-primary">{family.catalog.source}</span>
+                      <span className="table-secondary">Versão {family.version}</span>
+                    </td>
+                    <td>
+                      <span className="table-primary">{formatMonth(family.catalog.referenceMonth)}</span>
+                      <span className="table-secondary">{family.catalog.state}</span>
+                    </td>
+                    <td><span className="badge neutral">{regimeLabel(family.catalog.priceRegime)}</span></td>
+                    <td>{family.kinds.map((kind) => kindLabel(kind)).join(' e ')}</td>
+                    <td>{family.itemCount.toLocaleString('pt-BR')}</td>
+                    <td>{formatDateTime(family.importedAt)}</td>
+                    <td>
+                      <button className="btn btn-secondary" type="button" onClick={() => {
+                        selectCatalog(family.catalog.id);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}>
+                        <Search size={14} />Consultar itens
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState icon={Database} title="Nenhuma base importada"
+            description="Importe um relatório SINAPI XLSX para disponibilizar composições e insumos." />
+        )}
+      </section>
+
       {loading ? <LoadingPanel /> : (
         <section className="card table-card">
           {budgets.length ? (
@@ -792,10 +859,48 @@ function dedupeCatalogs(catalogs: Catalog[]) {
   return [...families.values()];
 }
 
+function groupCatalogs(catalogs: Catalog[]): CatalogFamily[] {
+  const families = new Map<string, CatalogFamily & { kindSet: Set<string> }>();
+  for (const catalog of catalogs) {
+    const version = catalog.version.replace(/-(ISD|ICD|CSD|CCD)$/i, '');
+    const key = catalog.source === 'SINAPI'
+      ? [catalog.source, catalog.state, catalog.referenceMonth, catalog.priceRegime, version].join('|')
+      : catalog.id;
+    const current = families.get(key);
+    if (!current) {
+      families.set(key, {
+        key,
+        catalog,
+        version,
+        itemCount: catalog.itemCount,
+        kinds: [],
+        kindSet: new Set([catalog.catalogKind]),
+        importedAt: catalog.importedAt,
+      });
+      continue;
+    }
+    current.itemCount += catalog.itemCount;
+    current.kindSet.add(catalog.catalogKind);
+    if (catalog.catalogKind === 'COMPOSITIONS' && current.catalog.catalogKind !== 'COMPOSITIONS') {
+      current.catalog = catalog;
+    }
+    if (new Date(catalog.importedAt) > new Date(current.importedAt)) current.importedAt = catalog.importedAt;
+  }
+  return [...families.values()].map(({ kindSet, ...family }) => ({
+    ...family,
+    kinds: [...kindSet].sort((left) => left === 'COMPOSITIONS' ? -1 : 1),
+  }));
+}
+
 function formatMonth(value?: string) {
   if (!value) return 'não identificada';
   const [year, month] = value.split('-');
   return month && year ? `${month}/${year}` : value;
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
 }
 
 function itemTypeLabel(value: string) {

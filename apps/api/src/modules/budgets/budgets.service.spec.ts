@@ -62,6 +62,11 @@ describe('BudgetsService catalog search', () => {
       skip: 25,
       take: 25,
     }));
+    expect(prisma.sinapiCatalog.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        version: { in: ['2026.04-ISD', '2026.04-ICD', '2026.04-CSD', '2026.04-CCD'] },
+      }),
+    }));
     expect(result.pagination).toEqual({ page: 2, pageSize: 25, total: 1, totalPages: 1 });
     expect(result.facets.units).toEqual(['M2']);
     expect(result.scope.includesInputsAndCompositions).toBe(true);

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -10,6 +10,8 @@ import {
   CreateMeasurementDto,
   ConsolidateMeasurementDto,
   TransitionMeasurementDto,
+  UpdateCommitmentDto,
+  UpdateMeasurementDto,
 } from './dto/finance.dto';
 import { FinanceService } from './finance.service';
 
@@ -31,6 +33,17 @@ export class FinanceController {
     return this.service.createCommitment(user.tenantId, user.userId, dto);
   }
 
+  @Roles(...WRITE) @Patch('commitments/:id')
+  updateCommitment(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string,
+    @Body() dto: UpdateCommitmentDto) {
+    return this.service.updateCommitment(user.tenantId, user.userId, id, dto);
+  }
+
+  @Roles(...WRITE) @Delete('commitments/:id')
+  archiveCommitment(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.archiveCommitment(user.tenantId, user.userId, id);
+  }
+
   @Roles(...WRITE) @Post('commitments/:id/movements')
   movement(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string,
     @Body() dto: CreateCommitmentMovementDto) {
@@ -48,6 +61,17 @@ export class FinanceController {
   @Roles(...WRITE) @Post('measurements')
   createMeasurement(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateMeasurementDto) {
     return this.service.createMeasurement(user.tenantId, user.userId, dto);
+  }
+
+  @Roles(...WRITE) @Patch('measurements/:id')
+  updateMeasurement(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string,
+    @Body() dto: UpdateMeasurementDto) {
+    return this.service.updateMeasurement(user.tenantId, user.userId, id, dto);
+  }
+
+  @Roles(...WRITE) @Delete('measurements/:id')
+  archiveMeasurement(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.archiveMeasurement(user.tenantId, user.userId, id);
   }
 
   @Roles(...WRITE) @Post('measurements/consolidate-final-budgets')

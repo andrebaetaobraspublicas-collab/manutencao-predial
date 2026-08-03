@@ -210,6 +210,7 @@ export type Supplier = {
   city?: string | null;
   state?: string | null;
   postalCode?: string | null;
+  notes?: string | null;
   rating?: string | number | null;
   serviceAreaLinks?: Array<{ category: { id: string; code: string; name: string } }>;
   consortiumMembers?: Array<{ participationPercentage?: string | number | null; isLeader: boolean;
@@ -221,6 +222,7 @@ export type Supplier = {
 
 export type Contract = {
   id: string;
+  supplierId: string;
   code: string;
   object: string;
   type: string;
@@ -234,6 +236,7 @@ export type Contract = {
   adjustmentBaseDate?: string | null;
   adjustmentIndex?: string | null;
   administrativeProcess?: string | null;
+  notes?: string | null;
   supplier: { id: string; legalName: string; tradeName?: string | null };
   manager?: { id: string; name: string } | null;
   inspector?: { id: string; name: string } | null;

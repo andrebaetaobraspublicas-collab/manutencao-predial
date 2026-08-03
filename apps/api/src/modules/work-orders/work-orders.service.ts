@@ -756,6 +756,40 @@ export class WorkOrdersService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
+  async archive(tenantId: string, actorUserId: string, id: string) {
+    const current = await this.getBase(tenantId, id);
+    const now = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM WorkOrder WHERE id = ${id} AND tenantId = ${tenantId} FOR UPDATE`;
+      const archived = await tx.workOrder.update({
+        where: { id },
+        data: {
+          status: WorkOrderStatus.CANCELED,
+          canceledAt: current.canceledAt ?? now,
+          deletedAt: now,
+          hasOpenPendency: false,
+          measurementEligible: false,
+        },
+      });
+      await tx.workOrderPendency.updateMany({
+        where: { tenantId, workOrderId: id, status: 'OPEN' },
+        data: { status: 'CANCELED', resolvedAt: now },
+      });
+      await tx.workOrderStatusHistory.create({ data: {
+        workOrderId: id, changedByUserId: actorUserId,
+        fromStatus: current.status, toStatus: WorkOrderStatus.CANCELED,
+        note: 'Registro excluído pelo usuário; histórico preservado.',
+      } });
+      await tx.auditLog.create({ data: {
+        tenantId, actorUserId, action: AuditAction.DELETE,
+        entityType: 'WorkOrder', entityId: id,
+        beforeData: { number: current.number, status: current.status },
+        afterData: { archived: true, status: WorkOrderStatus.CANCELED },
+      } });
+      return archived;
+    });
+  }
+
   async transition(
     tenantId: string,
     actorUserId: string,

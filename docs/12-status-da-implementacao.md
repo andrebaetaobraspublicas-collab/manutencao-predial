@@ -1,4 +1,4 @@
-# Estado verificável da implementação — v0.13.0
+# Estado verificável da implementação — v0.14.0
 
 Data de referência: **3 de agosto de 2026**.
 
@@ -46,6 +46,7 @@ Essa classificação deve ser preservada no frontend e na comunicação comercia
 | GP-031 v0.9 | health live/ready, workflow da candidata, backup/restore e roteiro de aceite |
 | GP-044 v0.10 | painel de piloto, nove cenários, critérios automáticos, decisões auditáveis, aceite bloqueante e PDF/CSV |
 | Aperfeiçoamento operacional v0.11 | mapa com estilo rotulado e fallback; fornecedores com categorias, endereço, consórcios e sanções; dossiê contratual; importador XLSX SINAPI e tabelas próprias |
+| Governança operacional v0.14 | especialidades de fornecedores corrigidas; edição e arquivamento auditado; administração direta de usuários; PDFs enriquecidos; portfólio demonstrativo cumulativo |
 
 ## 3. Modelado, mas ainda sem fluxo completo
 

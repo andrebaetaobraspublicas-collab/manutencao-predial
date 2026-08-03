@@ -174,6 +174,31 @@ export class SuppliersService {
     });
   }
 
+  async archive(tenantId: string, actorUserId: string, id: string) {
+    const current = await this.get(tenantId, id);
+    return this.prisma.$transaction(async (tx) => {
+      const archived = await tx.supplier.update({
+        where: { id },
+        data: { status: 'INACTIVE', deletedAt: new Date() },
+      });
+      await tx.supplierServiceArea.updateMany({
+        where: { tenantId, supplierId: id, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      await tx.supplierConsortiumMember.updateMany({
+        where: { tenantId, OR: [{ consortiumId: id }, { memberSupplierId: id }], deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      await this.audit(tx, tenantId, actorUserId, AuditAction.DELETE, 'Supplier', id, {
+        legalName: current.legalName,
+        archived: true,
+        preservedContracts: current._count.contracts,
+        preservedWorkOrders: current._count.directWorkOrders,
+      });
+      return archived;
+    });
+  }
+
   async addPenalty(
     tenantId: string,
     actorUserId: string,
@@ -219,14 +244,14 @@ export class SuppliersService {
       where: {
         tenantId,
         id: { in: ids },
-        kind: OperationalCatalogKind.CATEGORY,
+        kind: OperationalCatalogKind.SPECIALTY,
         active: true,
         deletedAt: null,
       },
       select: { id: true, name: true },
     });
     if (categories.length !== ids.length) {
-      throw new BadRequestException('Uma ou mais áreas de atuação não são categorias ativas da organização.');
+      throw new BadRequestException('Uma ou mais áreas de atuação não são especialidades ativas da organização.');
     }
     return categories;
   }

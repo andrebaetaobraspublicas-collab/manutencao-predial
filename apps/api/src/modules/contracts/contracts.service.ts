@@ -191,6 +191,32 @@ export class ContractsService {
     });
   }
 
+  async archive(tenantId: string, actorUserId: string, id: string) {
+    const current = await this.get(tenantId, id);
+    return this.prisma.$transaction(async (tx) => {
+      const archived = await tx.contract.update({
+        where: { id },
+        data: { status: 'TERMINATED', deletedAt: new Date() },
+      });
+      await tx.slaPolicy.updateMany({
+        where: { tenantId, contractId: id, active: true },
+        data: { active: false },
+      });
+      await tx.maintenancePlan.updateMany({
+        where: { tenantId, contractId: id, active: true },
+        data: { active: false, suspendedAt: new Date() },
+      });
+      await this.audit(tx, tenantId, actorUserId, AuditAction.DELETE, 'Contract', id, {
+        code: current.code,
+        archived: true,
+        preservedWorkOrders: current.workOrders.length,
+        preservedMeasurements: current.measurements.length,
+        preservedCommitments: current.commitments.length,
+      });
+      return archived;
+    });
+  }
+
   async addAmendment(tenantId: string, actorUserId: string, contractId: string, dto: CreateContractAmendmentDto) {
     const contract = await this.get(tenantId, contractId);
     if (dto.type === AmendmentType.TERM_EXTENSION && !dto.endDateAfter) {

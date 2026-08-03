@@ -349,6 +349,14 @@ p {
   background: var(--surface-muted);
 }
 
+.danger-text {
+  color: var(--danger) !important;
+}
+
+.danger-text:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 9%, transparent) !important;
+}
+
 .icon-button {
   display: inline-grid;
   width: 38px;

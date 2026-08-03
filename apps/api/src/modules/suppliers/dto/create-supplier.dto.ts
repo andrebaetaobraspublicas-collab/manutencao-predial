@@ -70,7 +70,7 @@ export class CreateSupplierDto {
   @IsString()
   contactName?: string;
 
-  @ApiPropertyOptional({ type: [String], description: 'Categorias da configuração operacional.' })
+  @ApiPropertyOptional({ type: [String], description: 'Especialidades ativas da configuração operacional.' })
   @IsOptional()
   @IsArray()
   @ArrayUnique()

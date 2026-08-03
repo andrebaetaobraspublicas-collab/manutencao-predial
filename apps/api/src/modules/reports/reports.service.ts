@@ -52,18 +52,19 @@ export class ReportsService {
     const report = await this.backlogData(tenantId, query);
     return this.renderPdf(report.tenant.name, 'Backlog de ordens de serviço', (document) => {
       this.reportMetadata(document, report.generatedAt, report.hash, report.filters);
-      document
-        .fontSize(10)
-        .text(
-          `Total: ${report.total} | Exportado: ${report.items.length} | SLA vencido: ${report.overdue}`,
-        );
+      this.metricCards(document, [
+        ['Backlog localizado', report.total],
+        ['Registros exportados', report.items.length],
+        ['SLA vencido', report.overdue],
+        ['Com pendência', report.items.filter((item) => item.hasOpenPendency).length],
+      ]);
       if (report.truncated) {
         document
           .fillColor('#9a5d09')
           .text('Exportação limitada aos 5.000 registros mais antigos.')
           .fillColor('#000000');
       }
-      document.moveDown();
+      this.sectionTitle(document, 'Relação analítica das ordens');
       for (const item of report.items) this.workOrderRow(document, item, report.tenant.timezone);
     });
   }
@@ -129,6 +130,13 @@ export class ReportsService {
     const hash = this.hash({ tenantId, id, updatedAt: item.updatedAt });
     return this.renderPdf(tenant.name, `Ordem de serviço ${item.number}`, (document) => {
       this.reportMetadata(document, new Date(), hash, 'Ficha individual');
+      this.metricCards(document, [
+        ['Status', item.status],
+        ['Prioridade', item.priority],
+        ['Custo final', this.money(item.finalCost)],
+        ['SLA', this.isOverdue(item) ? 'Vencido' : 'Regular'],
+      ]);
+      this.sectionTitle(document, 'Identificação e responsabilidade');
       this.label(document, 'Título', item.title);
       this.label(document, 'Status / prioridade', `${item.status} / ${item.priority}`);
       this.label(document, 'Edificação', `${item.building.code} - ${item.building.name}`);
@@ -149,9 +157,9 @@ export class ReportsService {
           ? this.dateTime(item.slaResolutionDeadline, tenant.timezone)
           : 'Não calculado',
       );
-      document.moveDown().fontSize(11).text('Descrição', { underline: true });
+      this.sectionTitle(document, 'Descrição da demanda');
       document.fontSize(9).text(item.description);
-      document.moveDown().fontSize(11).text('Solução e fechamento', { underline: true });
+      this.sectionTitle(document, 'Solução e fechamento');
       this.label(document, 'Solução', item.solution || 'Ainda não registrada');
       this.label(document, 'Custo final', this.money(item.finalCost));
       this.label(
@@ -161,7 +169,12 @@ export class ReportsService {
           ? 'Requisitos atendidos'
           : item.closeReadiness.blockers.join('; ') || 'Pendente',
       );
-      document.moveDown().fontSize(11).text('Histórico de status', { underline: true });
+      this.label(document, 'Contratos', item.contracts.map((link) => link.contract.code).join(', ') || 'Nenhum');
+      this.label(document, 'Anexos', item.attachments.length);
+      this.label(document, 'Pendências', item.pendencies.length);
+      this.label(document, 'Comentários', item.comments.length);
+      this.label(document, 'Orçamentos', item.budgets.length);
+      this.sectionTitle(document, 'Histórico cronológico de status');
       for (const history of item.statusHistory) {
         document
           .fontSize(8)
@@ -184,7 +197,10 @@ export class ReportsService {
         report.hash,
         `Próximos ${query.days} dias${query.supplierId ? '; fornecedor filtrado' : ''}`,
       );
-      document.fontSize(10).text(`Total: ${report.items.length}`).moveDown();
+      const value = report.items.reduce((sum, item) => sum + Number(item.currentValue), 0);
+      const urgent = report.items.filter((item) => item.endDate.getTime() - report.generatedAt.getTime() <= 30 * 86400000).length;
+      this.metricCards(document, [['Contratos', report.items.length], ['Vencem em 30 dias', urgent], ['Valor vigente', this.money(value)]]);
+      this.sectionTitle(document, 'Agenda de vencimentos');
       for (const item of report.items) {
         this.ensureSpace(document, 58);
         document.fontSize(9).text(`${item.code} | ${item.status} | ${this.date(item.endDate, report.tenant.timezone)}`);
@@ -231,6 +247,15 @@ export class ReportsService {
     const hash = this.hash(contract);
     return this.renderPdf(tenant.name, `Espelho do contrato ${contract.code}`, (document) => {
       this.reportMetadata(document, new Date(), hash, 'Cadastro e execução financeira');
+      const balance = Number(contract.currentValue) - Number(contract.measuredValue);
+      const payable = Number(contract.measuredValue) - Number(contract.paidValue);
+      this.metricCards(document, [
+        ['Valor vigente', this.money(contract.currentValue)],
+        ['Medido', this.money(contract.measuredValue)],
+        ['Pago', this.money(contract.paidValue)],
+        ['Saldo a medir', this.money(balance)],
+      ]);
+      this.sectionTitle(document, 'Identificação contratual');
       this.label(document, 'Objeto', contract.object);
       this.label(document, 'Processo', contract.administrativeProcess || 'Não informado');
       this.label(document, 'Status / tipo', `${contract.status} / ${contract.type}`);
@@ -251,7 +276,7 @@ export class ReportsService {
         'Edificações',
         contract.buildings.map((link) => `${link.building.code} - ${link.building.name}`).join('; ') || 'Nenhuma',
       );
-      document.moveDown().fontSize(11).text('Execução financeira', { underline: true });
+      this.sectionTitle(document, 'Execução financeira');
       this.label(document, 'Valor original', this.money(contract.originalValue));
       this.label(document, 'Valor atual', this.money(contract.currentValue));
       this.label(document, 'Valor medido', this.money(contract.measuredValue));
@@ -259,15 +284,17 @@ export class ReportsService {
       this.label(
         document,
         'Saldo a medir',
-        this.money(Number(contract.currentValue) - Number(contract.measuredValue)),
+        this.money(balance),
       );
       this.label(
         document,
         'Saldo medido a pagar',
-        this.money(Number(contract.measuredValue) - Number(contract.paidValue)),
+        this.money(payable),
       );
       this.label(document, 'Ordens de serviço vinculadas', contract._count.workOrders);
-      document.moveDown().fontSize(11).text('Aditivos e reajustes', { underline: true });
+      this.label(document, 'Empenhos emitidos', contract.commitments.length);
+      this.label(document, 'Boletins de medição', contract.measurements.length);
+      this.sectionTitle(document, 'Aditivos e reajustes');
       if (!contract.amendments.length && !contract.adjustments.length) {
         document.fontSize(9).text('Nenhum aditivo ou reajuste registrado.');
       }
@@ -276,6 +303,16 @@ export class ReportsService {
       }
       for (const adjustment of contract.adjustments) {
         document.fontSize(8).text(`Reajuste ${adjustment.referencePeriod} | ${adjustment.type} | ${this.money(adjustment.amount)}`);
+      }
+      this.sectionTitle(document, 'Medições');
+      if (!contract.measurements.length) document.fontSize(9).text('Nenhuma medição registrada.');
+      for (const measurement of contract.measurements) {
+        document.fontSize(8).text(`${measurement.number} | ${measurement.referenceMonth} | ${measurement.status} | líquido ${this.money(measurement.netAmount)}`);
+      }
+      this.sectionTitle(document, 'Empenhos');
+      if (!contract.commitments.length) document.fontSize(9).text('Nenhum empenho registrado.');
+      for (const commitment of contract.commitments) {
+        document.fontSize(8).text(`${commitment.number}/${commitment.fiscalYear} | ${this.date(commitment.issueDate, tenant.timezone)} | ${this.money(commitment.originalValue)} | ${commitment.movements.length} movimento(s)`);
       }
     });
   }
@@ -398,24 +435,27 @@ export class ReportsService {
     title: string,
     render: (document: PdfWriter) => void,
   ): Promise<Buffer> {
-    const document = new PDFDocument({ size: 'A4', margin: 42, bufferPages: true });
+    const document = new PDFDocument({ size: 'A4', margin: 42, bufferPages: true, info: { Title: title, Author: 'Gestão de Prédios' } });
     const chunks: Buffer[] = [];
     const output = new Promise<Buffer>((resolve, reject) => {
       document.on('data', (chunk: Buffer) => chunks.push(chunk));
       document.on('end', () => resolve(Buffer.concat(chunks)));
       document.on('error', reject);
     });
-    document.fontSize(17).text('Gestão de Prédios', { align: 'center' });
-    document.fontSize(9).text(tenantName, { align: 'center' });
-    document.moveDown(0.4).fontSize(13).text(title, { align: 'center' }).moveDown();
+    document.rect(0, 0, 595, 92).fill('#0e425d');
+    document.fillColor('#ffffff').fontSize(10).text('GESTÃO DE PRÉDIOS', 42, 25, { characterSpacing: 1.2 });
+    document.fontSize(18).text(title, 42, 43, { width: 510 });
+    document.fontSize(8).text(tenantName, 42, 70, { width: 510, align: 'right' });
+    document.y = 110;
+    document.fillColor('#10233a');
     render(document);
     const pages = document.bufferedPageRange();
     for (let index = 0; index < pages.count; index += 1) {
       document.switchToPage(index);
-      document
-        .fontSize(7)
-        .fillColor('#526174')
-        .text(`Página ${index + 1} de ${pages.count}`, 42, 802, { align: 'right', width: 510 });
+      document.rect(0, 792, 595, 50).fill('#f1f5f8');
+      document.fontSize(7).fillColor('#526174')
+        .text('Documento gerado eletronicamente · Gestão de Prédios', 42, 806, { width: 360 })
+        .text(`Página ${index + 1} de ${pages.count}`, 402, 806, { align: 'right', width: 150 });
     }
     document.end();
     return output;
@@ -432,23 +472,50 @@ export class ReportsService {
       .fillColor('#526174')
       .text(`Emitido em: ${generatedAt.toLocaleString('pt-BR')}`)
       .text(`Filtros: ${filters}`)
-      .text(`Hash SHA-256: ${hash}`)
+      .text(`Integridade SHA-256: ${hash}`)
       .fillColor('#000000')
       .moveDown();
   }
 
+  private metricCards(document: PdfWriter, metrics: Array<[string, unknown]>): void {
+    this.ensureSpace(document, 70);
+    const gap = 8;
+    const width = (511 - gap * (metrics.length - 1)) / metrics.length;
+    const top = document.y;
+    metrics.forEach(([label, value], index) => {
+      const left = 42 + index * (width + gap);
+      document.roundedRect(left, top, width, 52, 5).fillAndStroke('#f3f7fa', '#d9e3ea');
+      document.fillColor('#587084').fontSize(7).text(label.toUpperCase(), left + 9, top + 9, { width: width - 18 });
+      document.fillColor('#10233a').fontSize(11).text(String(value), left + 9, top + 27, { width: width - 18, ellipsis: true });
+    });
+    document.y = top + 66;
+  }
+
+  private sectionTitle(document: PdfWriter, title: string): void {
+    this.ensureSpace(document, 38);
+    document.moveDown(0.4);
+    const top = document.y;
+    document.rect(42, top, 4, 17).fill('#e5a33b');
+    document.fillColor('#10233a').fontSize(11).text(title, 53, top + 2, { width: 499 });
+    document.y = top + 25;
+  }
+
   private workOrderRow(document: PdfWriter, item: WorkOrderReport, timezone: string): void {
-    this.ensureSpace(document, 60);
+    this.ensureSpace(document, 72);
     const supplier = item.supplier?.tradeName || item.supplier?.legalName || 'Sem fornecedor';
-    document.fontSize(9).text(`${item.number} | ${item.status} | ${item.priority}`);
+    const top = document.y;
+    document.roundedRect(42, top, 511, 58, 4).fillAndStroke('#ffffff', '#dce5eb');
+    document.fillColor(this.isOverdue(item) ? '#a33a3a' : '#0e5a76').fontSize(9).text(`${item.number} · ${item.status} · ${item.priority}`, 51, top + 8, { width: 493 });
     document
+      .fillColor('#10233a')
       .fontSize(8)
-      .text(`${item.title} — ${item.building.code}/${item.building.name}`)
-      .text(`Demandante: ${item.requester.name} | Fornecedor: ${supplier}`)
+      .text(`${item.title} — ${item.building.code}/${item.building.name}`, 51, top + 22, { width: 493 })
+      .text(`Demandante: ${item.requester.name} · Fornecedor: ${supplier}`, 51, top + 34, { width: 493 })
       .text(
         `Abertura: ${this.date(item.openedAt, timezone)} | SLA: ${item.slaResolutionDeadline ? this.dateTime(item.slaResolutionDeadline, timezone) : 'não calculado'}`,
-      )
-      .moveDown(0.5);
+        51, top + 46, { width: 493 },
+      );
+    document.y = top + 66;
   }
 
   private ensureSpace(document: PdfWriter, height: number): void {

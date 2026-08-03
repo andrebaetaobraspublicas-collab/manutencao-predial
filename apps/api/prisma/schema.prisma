@@ -1632,6 +1632,7 @@ model MaintenancePlan {
   lastError             String?                     @db.Text
   createdAt             DateTime                    @default(now())
   updatedAt             DateTime                    @updatedAt
+  deletedAt             DateTime?
   tenant                Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   building              Building                    @relation(fields: [buildingId], references: [id], onDelete: Restrict)
   asset                 Asset?                      @relation(fields: [assetId], references: [id], onDelete: SetNull)
@@ -1644,7 +1645,7 @@ model MaintenancePlan {
   generations           MaintenancePlanGeneration[]
   kpiMeasurements       KpiMeasurement[]
 
-  @@index([tenantId, active, nextDueAt])
+  @@index([tenantId, active, nextDueAt, deletedAt])
   @@index([buildingId, type])
 }
 

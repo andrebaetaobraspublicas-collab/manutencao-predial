@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Plus, Save, X } from 'lucide-react';
+import { FileText, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import { LoadingPanel } from '@/components/loading';
@@ -15,6 +15,7 @@ export default function ContractsPage() {
   const [items, setItems] = useState<Contract[]>([]); const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]); const [detail, setDetail] = useState<Contract | null>(null);
   const [form, setForm] = useState(EMPTY); const [showForm, setShowForm] = useState(false); const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false); const [error, setError] = useState(''); const [referenceTime] = useState(Date.now);
   const load = useCallback(async () => { try { const [contracts, supplierItems, buildingItems] = await Promise.all([
     apiFetch<Contract[]>('/contracts'), apiFetch<Supplier[]>('/suppliers'), apiFetch<Building[]>('/buildings')]);
@@ -25,14 +26,30 @@ export default function ContractsPage() {
   async function openContract(id: string) { try { setDetail(await apiFetch<Contract>(`/contracts/${id}`)); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Falha ao abrir contrato.'); } }
   function toggleBuilding(id: string) { setForm((current) => ({ ...current, buildingIds: current.buildingIds.includes(id) ? current.buildingIds.filter((item) => item !== id) : [...current.buildingIds, id] })); }
   async function submit(event: FormEvent) { event.preventDefault(); setSubmitting(true); setError(''); try {
-    await apiFetch('/contracts', { method: 'POST', body: JSON.stringify({ ...form, originalValue: Number(form.originalValue),
+    await apiFetch(editingId ? `/contracts/${editingId}` : '/contracts', { method: editingId ? 'PATCH' : 'POST', body: JSON.stringify({ ...form, originalValue: Number(form.originalValue),
       administrativeProcess: form.administrativeProcess || undefined, buildingIds: form.buildingIds.length ? form.buildingIds : undefined,
       adjustmentBaseDate: form.adjustmentBaseDate || undefined, adjustmentIndex: form.adjustmentIndex || undefined,
-      notes: form.notes || undefined }) }); setForm({ ...EMPTY, supplierId: suppliers[0]?.id || '' }); setShowForm(false); setLoading(true); await load();
+      notes: form.notes || undefined }) }); setForm({ ...EMPTY, supplierId: suppliers[0]?.id || '' }); setEditingId(null); setShowForm(false); setLoading(true); await load();
   } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Não foi possível cadastrar o contrato.'); } finally { setSubmitting(false); } }
-  return <div className="page-container"><header className="page-header"><div className="page-title"><h1>Contratos</h1><p>Dossiê central de vigência, valores, fornecedores, OS, empenhos e eventos contratuais.</p></div><button className="btn btn-primary" type="button" onClick={() => setShowForm((value) => !value)}>{showForm ? <X size={16} /> : <Plus size={16} />}{showForm ? 'Fechar cadastro' : 'Novo contrato'}</button></header>
+
+  function editContract(item: Contract) {
+    setEditingId(item.id); setDetail(item); setShowForm(true);
+    setForm({ code: item.code, supplierId: item.supplierId, object: item.object, type: item.type,
+      status: item.status, startDate: item.startDate.slice(0, 10), endDate: item.endDate.slice(0, 10),
+      originalValue: String(item.originalValue), adjustmentBaseDate: item.adjustmentBaseDate?.slice(0, 10) ?? '',
+      adjustmentIndex: item.adjustmentIndex ?? '', administrativeProcess: item.administrativeProcess ?? '',
+      buildingIds: item.buildings?.map((entry) => entry.building.id) ?? [], notes: item.notes ?? '' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  async function archiveContract(item: Contract) {
+    if (!window.confirm(`Excluir o contrato ${item.code}? Ele será arquivado, mantendo OS, empenhos, medições e auditoria.`)) return;
+    setError('');
+    try { await apiFetch(`/contracts/${item.id}`, { method: 'DELETE' }); if (detail?.id === item.id) setDetail(null); await load(); }
+    catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Não foi possível excluir o contrato.'); }
+  }
+  return <div className="page-container"><header className="page-header"><div className="page-title"><h1>Contratos</h1><p>Dossiê central de vigência, valores, fornecedores, OS, empenhos e eventos contratuais.</p></div><button className="btn btn-primary" type="button" onClick={() => { if (showForm) { setEditingId(null); setForm({ ...EMPTY, supplierId: suppliers[0]?.id || '' }); } setShowForm((value) => !value); }}>{showForm ? <X size={16} /> : <Plus size={16} />}{showForm ? 'Fechar cadastro' : 'Novo contrato'}</button></header>
   {error ? <div className="notice error" style={{ marginBottom: 18 }}>{error}</div> : null}
-  {showForm ? <form className="card form-card" onSubmit={submit} style={{ marginBottom: 18 }}><section className="form-section"><div className="form-section-header"><h2>Dados gerais do contrato</h2><p>O valor atual é calculado pelo sistema a partir do valor original, aditivos e reajustes/repactuações.</p></div><div className="form-grid">
+  {showForm ? <form className="card form-card" onSubmit={submit} style={{ marginBottom: 18 }}><section className="form-section"><div className="form-section-header"><h2>{editingId ? 'Editar contrato' : 'Dados gerais do contrato'}</h2><p>O valor atual é calculado pelo sistema a partir do valor original, aditivos e reajustes/repactuações.</p></div><div className="form-grid">
     <F c="col-3" l="Número/código *"><input className="input" required value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} /></F>
     <F c="col-5" l="Fornecedor *"><select className="select" required value={form.supplierId} onChange={(event) => setForm({ ...form, supplierId: event.target.value })}><option value="">Selecione</option>{suppliers.map((item) => <option value={item.id} key={item.id}>{item.tradeName || item.legalName}</option>)}</select></F>
     <F c="col-4" l="Processo licitatório/contratação de origem"><input className="input" value={form.administrativeProcess} onChange={(event) => setForm({ ...form, administrativeProcess: event.target.value })} /></F>
@@ -47,8 +64,8 @@ export default function ContractsPage() {
     <F c="col-2" l="Valor atual (calculado)"><input className="input" disabled value={form.originalValue ? BRL.format(Number(form.originalValue)) : 'Automático'} /></F>
     <F c="col-12" l="Edificações abrangidas"><div className="actions">{buildings.map((item) => <label className={`btn ${form.buildingIds.includes(item.id) ? 'btn-primary' : 'btn-secondary'}`} key={item.id}><input type="checkbox" checked={form.buildingIds.includes(item.id)} onChange={() => toggleBuilding(item.id)} style={{ display: 'none' }} />{item.code} — {item.name}</label>)}</div></F>
     <F c="col-12" l="Observações"><textarea className="textarea" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></F>
-  </div></section><div className="form-footer"><button className="btn btn-secondary" type="button" onClick={() => setShowForm(false)}>Cancelar</button><button className="btn btn-primary" disabled={submitting || !form.supplierId}><Save size={16} /> {submitting ? 'Salvando…' : 'Salvar contrato'}</button></div></form> : null}
-  {loading ? <LoadingPanel /> : <section className="card table-card">{items.length ? <div className="table-wrapper"><table className="data-table"><thead><tr><th>Contrato / objeto</th><th>Fornecedor</th><th>Vigência</th><th>Status</th><th>Valor atual calculado</th><th>Medido</th><th>Saldo</th></tr></thead><tbody>{items.map((item) => { const balance = Number(item.currentValue) - Number(item.measuredValue); const days = Math.ceil((new Date(item.endDate).getTime() - referenceTime) / 86_400_000); return <tr key={item.id} onClick={() => void openContract(item.id)} style={{ cursor: 'pointer' }}><td><span className="table-primary">{item.code}</span><span className="table-secondary">{item.object}</span></td><td>{item.supplier.tradeName || item.supplier.legalName}</td><td><span className="table-primary">{formatDate(item.startDate)} a {formatDate(item.endDate)}</span><span className="table-secondary">{days >= 0 ? `${days} dia(s) restantes` : `vencido há ${Math.abs(days)} dia(s)`}</span></td><td><StatusBadge value={item.status} /></td><td>{BRL.format(Number(item.currentValue))}</td><td>{BRL.format(Number(item.measuredValue))}</td><td><span className={`badge ${balance < 0 ? 'danger' : 'success'}`}>{BRL.format(balance)}</span></td></tr>; })}</tbody></table></div> : <EmptyState icon={FileText} title="Nenhum contrato cadastrado" description="Cadastre o primeiro contrato para vincular fornecedores, edificações e ordens de serviço." />}</section>}
+  </div></section><div className="form-footer"><button className="btn btn-secondary" type="button" onClick={() => { setShowForm(false); setEditingId(null); setForm({ ...EMPTY, supplierId: suppliers[0]?.id || '' }); }}>Cancelar</button><button className="btn btn-primary" disabled={submitting || !form.supplierId}><Save size={16} /> {submitting ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Salvar contrato'}</button></div></form> : null}
+  {loading ? <LoadingPanel /> : <section className="card table-card">{items.length ? <div className="table-wrapper"><table className="data-table"><thead><tr><th>Contrato / objeto</th><th>Fornecedor</th><th>Vigência</th><th>Status</th><th>Valor atual calculado</th><th>Medido</th><th>Saldo</th><th>Ações</th></tr></thead><tbody>{items.map((item) => { const balance = Number(item.currentValue) - Number(item.measuredValue); const days = Math.ceil((new Date(item.endDate).getTime() - referenceTime) / 86_400_000); return <tr key={item.id} onClick={() => void openContract(item.id)} style={{ cursor: 'pointer' }}><td><span className="table-primary">{item.code}</span><span className="table-secondary">{item.object}</span></td><td>{item.supplier.tradeName || item.supplier.legalName}</td><td><span className="table-primary">{formatDate(item.startDate)} a {formatDate(item.endDate)}</span><span className="table-secondary">{days >= 0 ? `${days} dia(s) restantes` : `vencido há ${Math.abs(days)} dia(s)`}</span></td><td><StatusBadge value={item.status} /></td><td>{BRL.format(Number(item.currentValue))}</td><td>{BRL.format(Number(item.measuredValue))}</td><td><span className={`badge ${balance < 0 ? 'danger' : 'success'}`}>{BRL.format(balance)}</span></td><td><div className="table-actions"><button className="btn btn-ghost" type="button" onClick={(event) => { event.stopPropagation(); editContract(item); }}><Pencil size={15} /> Editar</button><button className="btn btn-ghost danger-text" type="button" onClick={(event) => { event.stopPropagation(); void archiveContract(item); }}><Trash2 size={15} /> Excluir</button></div></td></tr>; })}</tbody></table></div> : <EmptyState icon={FileText} title="Nenhum contrato cadastrado" description="Cadastre o primeiro contrato para vincular fornecedores, edificações e ordens de serviço." />}</section>}
   {detail ? <ContractWorkspace contract={detail} suppliers={suppliers} onRefresh={async () => { await load(); await openContract(detail.id); }} onError={setError} /> : null}
   </div>;
 }

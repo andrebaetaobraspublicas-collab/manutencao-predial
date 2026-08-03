@@ -34,6 +34,7 @@ export default function ContractsPage() {
 
   function editContract(item: Contract) {
     setEditingId(item.id); setDetail(item); setShowForm(true);
+    void openContract(item.id);
     setForm({ code: item.code, supplierId: item.supplierId, object: item.object, type: item.type,
       status: item.status, startDate: item.startDate.slice(0, 10), endDate: item.endDate.slice(0, 10),
       originalValue: String(item.originalValue), adjustmentBaseDate: item.adjustmentBaseDate?.slice(0, 10) ?? '',

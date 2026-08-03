@@ -62,7 +62,9 @@ jobs:
           for attempt in $(seq 1 90); do
             target="$(ssh "${ssh_args[@]}" "$remote" "readlink -f '$APP_ROOT' 2>/dev/null || true" 2>/dev/null || true)"
             if [[ -n "$target" ]]; then
-              build_epoch="$(ssh "${ssh_args[@]}" "$remote" "stat -c %Y '$target' 2>/dev/null || echo 0" 2>/dev/null || true)"
+              # O diretório current/nodejs é estável e pode conservar o mtime entre releases.
+              # dist/main.js é recriado por cada build e identifica a troca do artefato real.
+              build_epoch="$(ssh "${ssh_args[@]}" "$remote" "stat -c %Y '$target/apps/api/dist/main.js' 2>/dev/null || echo 0" 2>/dev/null || true)"
               if [[ "$build_epoch" =~ ^[0-9]+$ ]] && (( build_epoch >= commit_epoch )); then
                 ready=true
                 break

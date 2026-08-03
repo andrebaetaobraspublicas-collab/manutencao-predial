@@ -760,6 +760,23 @@ async function main() {
       floors: 12,
     },
   });
+  // Repara somente o marcador legado do registro demonstrativo quando ele
+  // ainda aponta para Null Island. Coordenadas válidas ajustadas pelo usuário
+  // permanecem intocadas nas execuções seguintes do seed.
+  if (Number(building.latitude) === 0 && Number(building.longitude) === 0) {
+    await prisma.building.update({
+      where: { id: building.id },
+      data: {
+        latitude: -15.7991,
+        longitude: -47.8645,
+        geocodedAt: new Date(),
+        geocodingProvider: 'SEED',
+        geocodingAccuracy: 'repaired-demo-coordinate',
+        geocodingConfirmedAt: new Date(),
+        geocodingConfirmedByUserId: user.id,
+      },
+    });
+  }
 
   const supplier = await prisma.supplier.upsert({
     where: { tenantId_taxId: { tenantId: tenant.id, taxId: '12.345.678/0001-90' } },

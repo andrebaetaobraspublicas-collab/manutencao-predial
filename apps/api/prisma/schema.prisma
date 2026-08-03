@@ -683,7 +683,7 @@ model BuildingInspection {
   createdBy             User                   @relation("BuildingInspectionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   attachments           BuildingAttachment[]
 
-  @@index([tenantId, buildingId, inspectionDate, deletedAt])
+  @@index([tenantId, buildingId, inspectionDate, deletedAt], map: "BuildingInspection_tenant_building_date_idx")
 }
 
 model BuildingAttachment {
@@ -707,8 +707,8 @@ model BuildingAttachment {
   inspection       BuildingInspection?    @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
   uploadedBy       User                   @relation("BuildingAttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
 
-  @@index([tenantId, buildingId, kind, deletedAt])
-  @@index([inspectionId])
+  @@index([tenantId, buildingId, kind, deletedAt], map: "BuildingAttachment_tenant_building_kind_idx")
+  @@index([inspectionId], map: "BuildingAttachment_inspection_idx")
 }
 
 model Supplier {

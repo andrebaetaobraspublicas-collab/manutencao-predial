@@ -16,6 +16,8 @@ import {
   ConsolidateMeasurementDto,
   CreateMeasurementDto,
   TransitionMeasurementDto,
+  UpdateCommitmentDto,
+  UpdateMeasurementDto,
 } from './dto/finance.dto';
 import { assertCommitmentMovementBalance, canTransitionMeasurement } from './finance-rules';
 
@@ -25,7 +27,7 @@ export class FinanceService {
 
   listCommitments(tenantId: string) {
     return this.prisma.commitment.findMany({
-      where: { tenantId },
+      where: { tenantId, canceledAt: null },
       orderBy: [{ fiscalYear: 'desc' }, { issueDate: 'desc' }],
       include: { contract: { select: { id: true, code: true, object: true } }, movements: true },
     });
@@ -54,6 +56,53 @@ export class FinanceService {
     });
   }
 
+  async updateCommitment(tenantId: string, actorUserId: string, id: string, dto: UpdateCommitmentDto) {
+    const current = await this.prisma.commitment.findFirst({ where: { id, tenantId, canceledAt: null }, include: { movements: true } });
+    if (!current) throw new NotFoundException('Empenho não encontrado.');
+    if (current.movements.some((movement) => movement.type !== CommitmentMovementType.ISSUE)) {
+      throw new BadRequestException('Empenho movimentado não pode ter os dados financeiros editados; registre reforço ou anulação.');
+    }
+    if (dto.contractId) {
+      const contract = await this.prisma.contract.findFirst({ where: { id: dto.contractId, tenantId, deletedAt: null }, select: { id: true } });
+      if (!contract) throw new BadRequestException('Contrato inválido para a organização.');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.commitment.update({ where: { id }, data: {
+        contractId: dto.contractId, number: dto.number?.trim().toUpperCase(), fiscalYear: dto.fiscalYear,
+        issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined, originalValue: dto.originalValue, notes: dto.notes,
+      }, include: { contract: true, movements: true } });
+      if (dto.originalValue !== undefined || dto.issueDate) {
+        await tx.commitmentMovement.update({ where: { id: current.movements[0].id }, data: {
+          amount: dto.originalValue, occurredAt: dto.issueDate ? new Date(dto.issueDate) : undefined,
+        } });
+      }
+      await this.audit(tx, tenantId, actorUserId, AuditAction.UPDATE, 'Commitment', id,
+        { number: updated.number, originalValue: updated.originalValue.toString() });
+      return updated;
+    });
+  }
+
+  async archiveCommitment(tenantId: string, actorUserId: string, id: string) {
+    const current = await this.prisma.commitment.findFirst({ where: { id, tenantId, canceledAt: null }, include: { movements: true } });
+    if (!current) throw new NotFoundException('Empenho não encontrado.');
+    if (current.movements.some((movement) =>
+      movement.type === CommitmentMovementType.LIQUIDATION || movement.type === CommitmentMovementType.PAYMENT)) {
+      throw new BadRequestException('Empenho liquidado ou pago deve ser estornado pelo fluxo financeiro antes da exclusão.');
+    }
+    const available = current.movements.reduce((total, movement) =>
+      movement.type === CommitmentMovementType.CANCELLATION ? total.minus(movement.amount) : total.plus(movement.amount), new Prisma.Decimal(0));
+    return this.prisma.$transaction(async (tx) => {
+      if (available.greaterThan(0)) await tx.commitmentMovement.create({ data: {
+        tenantId, commitmentId: id, createdByUserId: actorUserId, type: CommitmentMovementType.CANCELLATION,
+        amount: available, occurredAt: new Date(), notes: 'Anulação automática por exclusão lógica do empenho.',
+      } });
+      const archived = await tx.commitment.update({ where: { id }, data: { canceledAt: new Date() } });
+      await this.audit(tx, tenantId, actorUserId, AuditAction.DELETE, 'Commitment', id,
+        { number: current.number, archived: true, cancellationAmount: available.toString() });
+      return archived;
+    });
+  }
+
   async addCommitmentMovement(tenantId: string, actorUserId: string, id: string,
     dto: CreateCommitmentMovementDto) {
     if (dto.type === CommitmentMovementType.ISSUE) {
@@ -78,7 +127,7 @@ export class FinanceService {
 
   listMeasurements(tenantId: string) {
     return this.prisma.measurement.findMany({
-      where: { tenantId }, orderBy: { createdAt: 'desc' },
+      where: { tenantId, status: { not: MeasurementStatus.CANCELED } }, orderBy: { createdAt: 'desc' },
       include: { contract: { select: { id: true, code: true, object: true } }, commitment: { select: { id: true, number: true } }, _count: { select: { items: true } } },
     });
   }
@@ -93,6 +142,47 @@ export class FinanceService {
     });
     if (!item) throw new NotFoundException('Medição não encontrada.');
     return item;
+  }
+
+  async updateMeasurement(tenantId: string, actorUserId: string, id: string, dto: UpdateMeasurementDto) {
+    const current = await this.prisma.measurement.findFirst({ where: { id, tenantId }, include: { contract: true } });
+    if (!current) throw new NotFoundException('Medição não encontrada.');
+    if (current.status !== MeasurementStatus.DRAFT && current.status !== MeasurementStatus.REJECTED) {
+      throw new BadRequestException('Somente medições em rascunho ou rejeitadas podem ser editadas.');
+    }
+    if (dto.commitmentId) {
+      const commitment = await this.prisma.commitment.findFirst({ where: { id: dto.commitmentId, tenantId, contractId: current.contractId, canceledAt: null }, select: { id: true } });
+      if (!commitment) throw new BadRequestException('Empenho inválido para este contrato.');
+    }
+    const updated = await this.prisma.measurement.update({ where: { id }, data: {
+      commitmentId: dto.commitmentId, number: dto.number?.trim().toUpperCase(),
+      referenceMonth: dto.referenceMonth, notes: dto.notes, version: { increment: 1 },
+    }, include: { contract: true, commitment: true, _count: { select: { items: true } } } });
+    await this.prisma.auditLog.create({ data: { tenantId, actorUserId, action: AuditAction.UPDATE,
+      entityType: 'Measurement', entityId: id, afterData: { number: updated.number, referenceMonth: updated.referenceMonth } } });
+    return updated;
+  }
+
+  async archiveMeasurement(tenantId: string, actorUserId: string, id: string) {
+    const current = await this.prisma.measurement.findFirst({ where: { id, tenantId } });
+    if (!current) throw new NotFoundException('Medição não encontrada.');
+    const removableStatuses = new Set<MeasurementStatus>([
+      MeasurementStatus.DRAFT,
+      MeasurementStatus.SUBMITTED,
+      MeasurementStatus.UNDER_REVIEW,
+      MeasurementStatus.REJECTED,
+    ]);
+    if (!removableStatuses.has(current.status)) {
+      throw new BadRequestException('Medição aprovada, liquidada ou paga deve ser estornada pelo fluxo financeiro antes da exclusão.');
+    }
+    const archived = await this.prisma.measurement.update({ where: { id }, data: {
+      status: MeasurementStatus.CANCELED, canceledAt: new Date(), version: { increment: 1 },
+      decisionNote: 'Exclusão lógica solicitada pelo usuário.',
+    } });
+    await this.prisma.auditLog.create({ data: { tenantId, actorUserId, action: AuditAction.DELETE,
+      entityType: 'Measurement', entityId: id, beforeData: { status: current.status, number: current.number },
+      afterData: { status: MeasurementStatus.CANCELED, archived: true } } });
+    return archived;
   }
 
   async createMeasurement(tenantId: string, actorUserId: string, dto: CreateMeasurementDto) {

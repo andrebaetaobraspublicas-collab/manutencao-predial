@@ -19,6 +19,8 @@ import {
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { CreateMemberDto } from './dto/create-member.dto';
+import { SetMemberPasswordDto } from './dto/set-member-password.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 
 @Injectable()
@@ -94,6 +96,35 @@ export class MembersService {
         membership: { select: { id: true, role: true, status: true } },
         invitedBy: { select: { id: true, name: true } },
       },
+    });
+  }
+
+  async create(actor: AuthenticatedUser, dto: CreateMemberDto, request: Request) {
+    this.assertAssignableRole(actor, dto.role);
+    const email = dto.email.trim().toLowerCase();
+    const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
+    if (expiresAt && expiresAt <= new Date()) {
+      throw new BadRequestException('A validade do acesso deve estar no futuro.');
+    }
+    if (await this.prisma.user.findUnique({ where: { email }, select: { id: true } })) {
+      throw new ConflictException('Já existe uma conta com este e-mail. Use o convite para vinculá-la à organização.');
+    }
+    const passwordHash = await hash(dto.password, 12);
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({ data: {
+        name: dto.name.trim(), email, passwordHash, status: UserStatus.ACTIVE, emailVerifiedAt: new Date(),
+      } });
+      const membership = await tx.tenantMembership.create({ data: {
+        tenantId: actor.tenantId, userId: user.id, role: dto.role,
+        status: MembershipStatus.ACTIVE, acceptedAt: new Date(), expiresAt,
+      }, include: { user: { select: { id: true, name: true, email: true, status: true } } } });
+      await tx.auditLog.create({ data: {
+        tenantId: actor.tenantId, actorUserId: actor.userId, action: AuditAction.CREATE,
+        entityType: 'TenantMembership', entityId: membership.id,
+        afterData: { email, role: dto.role, creationMode: 'ADMIN_DIRECT', expiresAt: expiresAt?.toISOString() ?? null },
+        ...this.requestMetadata(request),
+      } });
+      return membership;
     });
   }
 
@@ -313,6 +344,36 @@ export class MembersService {
       return revoked;
     });
     return { revokedSessions: result.count };
+  }
+
+  async setPassword(
+    actor: AuthenticatedUser,
+    membershipId: string,
+    dto: SetMemberPasswordDto,
+    request: Request,
+  ) {
+    const membership = await this.findMember(actor.tenantId, membershipId);
+    this.assertCanManage(actor, membership.userId, membership.role);
+    const foreignMembership = await this.prisma.tenantMembership.findFirst({
+      where: { userId: membership.userId, NOT: { tenantId: actor.tenantId }, status: MembershipStatus.ACTIVE },
+      select: { id: true },
+    });
+    if (foreignMembership) {
+      throw new BadRequestException('Este usuário participa de outra organização. Envie a recuperação de senha para não afetar o outro acesso.');
+    }
+    const passwordHash = await hash(dto.newPassword, 12);
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: membership.userId }, data: { passwordHash } });
+      await tx.refreshSession.updateMany({ where: { userId: membership.userId, revokedAt: null }, data: { revokedAt: now } });
+      await tx.tenantMembership.update({ where: { id: membership.id }, data: { sessionVersion: { increment: 1 } } });
+      await tx.auditLog.create({ data: {
+        tenantId: actor.tenantId, actorUserId: actor.userId, action: AuditAction.PASSWORD_CHANGE,
+        entityType: 'User', entityId: membership.userId,
+        afterData: { method: 'admin_direct', sessionsRevoked: true }, ...this.requestMetadata(request),
+      } });
+    });
+    return { passwordUpdated: true, sessionsRevoked: true };
   }
 
   private async findMember(tenantId: string, membershipId: string) {

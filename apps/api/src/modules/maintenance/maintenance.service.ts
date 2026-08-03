@@ -45,7 +45,18 @@ export class MaintenanceService {
     });
   }
 
-  listPlans(tenantId: string) { return this.prisma.maintenancePlan.findMany({ where: { tenantId }, orderBy: [{ active: 'desc' }, { nextDueAt: 'asc' }],
+  async archiveAsset(tenantId: string, actorUserId: string, id: string) {
+    const current = await this.prisma.asset.findFirst({ where: { id, tenantId, deletedAt: null } });
+    if (!current) throw new NotFoundException('Ativo não encontrado.');
+    return this.prisma.$transaction(async (tx) => {
+      const archived = await tx.asset.update({ where: { id }, data: { status: 'DISPOSED', deletedAt: new Date() } });
+      await tx.maintenancePlan.updateMany({ where: { tenantId, assetId: id, active: true, deletedAt: null }, data: { active: false, suspendedAt: new Date() } });
+      await this.audit(tx, tenantId, actorUserId, AuditAction.DELETE, 'Asset', id, { tag: current.tag, archived: true });
+      return archived;
+    });
+  }
+
+  listPlans(tenantId: string) { return this.prisma.maintenancePlan.findMany({ where: { tenantId, deletedAt: null }, orderBy: [{ active: 'desc' }, { nextDueAt: 'asc' }],
     include: { building: { select: { id: true, code: true, name: true } }, asset: { select: { id: true, tag: true, name: true } },
       contract: { select: { id: true, code: true } }, supplier: { select: { id: true, legalName: true, tradeName: true } },
       _count: { select: { generatedWorkOrders: true, generations: true } } } }); }
@@ -135,7 +146,7 @@ export class MaintenanceService {
   }
 
   async updatePlan(tenantId: string, actorUserId: string, id: string, dto: UpdateMaintenancePlanDto) {
-    const current = await this.prisma.maintenancePlan.findFirst({ where: { id, tenantId } });
+    const current = await this.prisma.maintenancePlan.findFirst({ where: { id, tenantId, deletedAt: null } });
     if (!current) throw new NotFoundException('Plano de manutenção não encontrado.');
     await this.validatePlanReferences(tenantId, { ...dto, buildingId: dto.buildingId ?? current.buildingId });
     return this.prisma.$transaction(async (tx) => {
@@ -145,11 +156,24 @@ export class MaintenanceService {
     });
   }
 
+  async archivePlan(tenantId: string, actorUserId: string, id: string) {
+    const current = await this.prisma.maintenancePlan.findFirst({ where: { id, tenantId, deletedAt: null } });
+    if (!current) throw new NotFoundException('Plano de manutenção não encontrado.');
+    return this.prisma.$transaction(async (tx) => {
+      const archived = await tx.maintenancePlan.update({ where: { id }, data: {
+        active: false, suspendedAt: new Date(), deletedAt: new Date(),
+      } });
+      await this.audit(tx, tenantId, actorUserId, AuditAction.DELETE, 'MaintenancePlan', id,
+        { name: current.name, generatedWorkOrdersPreserved: true, archived: true });
+      return archived;
+    });
+  }
+
   async generate(tenantId: string, actorUserId: string, actorRole: MembershipRole, horizonDays: number) {
     const now = Date.now();
     const horizon = new Date(now + horizonDays * 86400000);
     const maximumDueDate = new Date(horizon.getTime() + 365 * 86400000);
-    const plans = await this.prisma.maintenancePlan.findMany({ where: { tenantId, active: true, suspendedAt: null,
+    const plans = await this.prisma.maintenancePlan.findMany({ where: { tenantId, active: true, suspendedAt: null, deletedAt: null,
       frequencyUnit: { not: FrequencyUnit.METER_READING }, nextDueAt: { lte: maximumDueDate } },
       orderBy: { nextDueAt: 'asc' }, include: { asset: true } });
     const result = { generated: 0, skipped: 0, failed: 0, workOrderIds: [] as string[] };

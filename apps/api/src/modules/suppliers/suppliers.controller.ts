@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -56,6 +56,15 @@ export class SuppliersController {
     @Body() dto: UpdateSupplierDto,
   ) {
     return this.service.update(user.tenantId, user.userId, id, dto);
+  }
+
+  @Roles(MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER)
+  @Delete(':id')
+  archive(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.archive(user.tenantId, user.userId, id);
   }
 
   @Roles(MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER)

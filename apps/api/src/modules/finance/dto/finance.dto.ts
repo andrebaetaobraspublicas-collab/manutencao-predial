@@ -27,6 +27,15 @@ export class CreateCommitmentDto {
   @IsOptional() @IsString() notes?: string;
 }
 
+export class UpdateCommitmentDto {
+  @IsOptional() @IsUUID() contractId?: string;
+  @IsOptional() @IsString() @Length(1, 80) number?: string;
+  @IsOptional() @IsInt() @Min(2000) fiscalYear?: number;
+  @IsOptional() @IsDateString() issueDate?: string;
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @IsPositive() originalValue?: number;
+  @IsOptional() @IsString() notes?: string;
+}
+
 export class CreateCommitmentMovementDto {
   @ApiProperty({ enum: CommitmentMovementType })
   @IsEnum(CommitmentMovementType)
@@ -53,6 +62,13 @@ export class CreateMeasurementDto {
   @IsOptional() @IsString() notes?: string;
   @IsArray() @ArrayMinSize(1) @ValidateNested({ each: true }) @Type(() => MeasurementItemDto)
   items!: MeasurementItemDto[];
+}
+
+export class UpdateMeasurementDto {
+  @IsOptional() @IsUUID() commitmentId?: string;
+  @IsOptional() @IsString() @Length(1, 60) number?: string;
+  @IsOptional() @Matches(/^\d{4}-(0[1-9]|1[0-2])$/) referenceMonth?: string;
+  @IsOptional() @IsString() notes?: string;
 }
 
 export class ConsolidateMeasurementDto {

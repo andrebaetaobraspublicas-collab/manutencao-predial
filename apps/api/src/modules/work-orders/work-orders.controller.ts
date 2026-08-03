@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -96,6 +97,15 @@ export class WorkOrdersController {
     @Body() dto: UpdateWorkOrderDto,
   ) {
     return this.service.update(user.tenantId, user.userId, id, dto);
+  }
+
+  @Roles(...OPERATIONAL_ROLES)
+  @Delete(':id')
+  archive(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.archive(user.tenantId, user.userId, id);
   }
 
   @Roles(...OPERATIONAL_ROLES)

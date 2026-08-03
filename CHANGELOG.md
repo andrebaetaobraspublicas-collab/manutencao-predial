@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.14.0 — governança operacional e dados demonstrativos
+
+- Corrigidas as áreas de atuação de fornecedores para usar múltiplas especialidades ativas da
+  configuração operacional.
+- Adicionadas edição e exclusão lógica auditada a fornecedores, contratos, OS, empenhos, medições,
+  ativos e planos de manutenção, com bloqueios financeiros que exigem estorno formal.
+- Adicionada administração direta de usuários: criação, redefinição segura de senha, suspensão,
+  reativação e revogação de sessões.
+- Reestruturados os PDFs operacionais e contratuais com síntese, indicadores, seções visuais e
+  conteúdo reconciliado mais completo.
+- Ampliado o seed cumulativo para um portfólio de homologação com edificações, fornecedores,
+  contratos, OS, orçamentos, ativos, planos, empenhos, medição, KPIs e alertas.
+- Adicionadas migration compatível, documentação de rollback e validações multi-tenant.
+
 ## 0.13.0 — gestão contratual por desempenho
 
 - Ampliada a biblioteca para mais de 90 KPIs agrupados em SLA, manutenção, disponibilidade,

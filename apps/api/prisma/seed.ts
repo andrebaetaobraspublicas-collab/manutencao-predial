@@ -108,6 +108,11 @@ async function provisionOperationalSeed(tenantId: string, timezone: string) {
     { kind: OperationalCatalogKind.SPECIALTY, code: 'HIDRAULICA', name: 'Hidráulica' },
     { kind: OperationalCatalogKind.SPECIALTY, code: 'ELETRICA', name: 'Elétrica' },
     { kind: OperationalCatalogKind.SPECIALTY, code: 'HVAC', name: 'Climatização e HVAC' },
+    { kind: OperationalCatalogKind.SPECIALTY, code: 'CIVIL', name: 'Manutenção civil' },
+    { kind: OperationalCatalogKind.SPECIALTY, code: 'ELEVADORES', name: 'Elevadores e transporte vertical' },
+    { kind: OperationalCatalogKind.SPECIALTY, code: 'INCENDIO', name: 'Prevenção e combate a incêndio' },
+    { kind: OperationalCatalogKind.SPECIALTY, code: 'AUTOMACAO', name: 'Automação predial' },
+    { kind: OperationalCatalogKind.SPECIALTY, code: 'JARDINAGEM', name: 'Paisagismo e jardinagem' },
     { kind: OperationalCatalogKind.ENVIRONMENT, code: 'BANHEIRO', name: 'Banheiro' },
     { kind: OperationalCatalogKind.ENVIRONMENT, code: 'AREA_TECNICA', name: 'Área técnica' },
     { kind: OperationalCatalogKind.ENVIRONMENT, code: 'ESCRITORIO', name: 'Escritório' },
@@ -194,11 +199,19 @@ async function provisionFunctionalDemoData(input: {
     where: { tenantId, kind: OperationalCatalogKind.CATEGORY, deletedAt: null },
   });
   const categoryByCode = new Map(categories.map((item) => [item.code, item]));
+  const specialties = await prisma.operationalCatalogItem.findMany({
+    where: { tenantId, kind: OperationalCatalogKind.SPECIALTY, deletedAt: null },
+  });
+  const specialtyByCode = new Map(specialties.map((item) => [item.code, item]));
+  await prisma.supplierServiceArea.updateMany({
+    where: { tenantId, supplierId, deletedAt: null, category: { kind: { not: OperationalCatalogKind.SPECIALTY } } },
+    data: { deletedAt: new Date() },
+  });
   for (const code of ['HIDRAULICA', 'ELETRICA', 'CLIMATIZACAO']) {
-    const category = categoryByCode.get(code);
-    if (category) await prisma.supplierServiceArea.upsert({
-      where: { supplierId_categoryId: { supplierId, categoryId: category.id } },
-      create: { tenantId, supplierId, categoryId: category.id }, update: { deletedAt: null },
+    const specialty = specialtyByCode.get(code === 'CLIMATIZACAO' ? 'HVAC' : code);
+    if (specialty) await prisma.supplierServiceArea.upsert({
+      where: { supplierId_categoryId: { supplierId, categoryId: specialty.id } },
+      create: { tenantId, supplierId, categoryId: specialty.id }, update: { deletedAt: null },
     });
   }
 
@@ -316,6 +329,165 @@ async function provisionFunctionalDemoData(input: {
     create: { tenantId, key: 'WORK_ORDER:2026', currentValue: 4 }, update: {} });
   await prisma.tenantSequence.updateMany({ where: { tenantId, key: 'WORK_ORDER:2026', currentValue: { lt: 4 } },
     data: { currentValue: 4 } });
+}
+
+async function provisionPortfolioDemoData(input: {
+  tenantId: string; userId: string; primaryBuildingId: string; primarySupplierId: string;
+}) {
+  const { tenantId, userId, primaryBuildingId, primarySupplierId } = input;
+  const buildingDefinitions = [
+    { code: 'EDF-002', name: 'Centro Operacional Norte', type: 'Operacional', addressLine1: 'Setor de Áreas Isoladas Norte, Quadra 3', city: 'Brasília', state: 'DF', postalCode: '70610-300', latitude: -15.7355, longitude: -47.8936, grossAreaM2: 9200, floors: 5 },
+    { code: 'EDF-003', name: 'Arquivo e Almoxarifado Sul', type: 'Logístico', addressLine1: 'Setor de Armazenagem e Abastecimento Sul, Quadra 7', city: 'Brasília', state: 'DF', postalCode: '71215-000', latitude: -15.8284, longitude: -47.9512, grossAreaM2: 6400, floors: 2 },
+  ];
+  const buildings = [];
+  for (const definition of buildingDefinitions) buildings.push(await prisma.building.upsert({
+    where: { tenantId_code: { tenantId, code: definition.code } }, update: { deletedAt: null },
+    create: { tenantId, ...definition, geocodedAt: new Date(), geocodingProvider: 'SEED',
+      geocodingAccuracy: 'verified-demo-coordinate', geocodingConfirmedAt: new Date(),
+      geocodingConfirmedByUserId: userId },
+  }));
+
+  const supplierDefinitions = [
+    { taxId: '22.333.444/0001-55', legalName: 'Elevadores Planalto Serviços Ltda.', tradeName: 'Elevaplan', email: 'atendimento@elevaplan.exemplo', city: 'Brasília', state: 'DF', specialtyCodes: ['ELEVADORES', 'AUTOMACAO'] },
+    { taxId: '33.444.555/0001-66', legalName: 'Construtora e Reformas Cerrado Ltda.', tradeName: 'Cerrado Obras', email: 'obras@cerrado.exemplo', city: 'Brasília', state: 'DF', specialtyCodes: ['CIVIL', 'HIDRAULICA'] },
+    { taxId: '44.555.666/0001-77', legalName: 'Proteção Contra Incêndio Capital Ltda.', tradeName: 'PCI Capital', email: 'pci@capital.exemplo', city: 'Brasília', state: 'DF', specialtyCodes: ['INCENDIO', 'ELETRICA'] },
+  ];
+  const specialties = await prisma.operationalCatalogItem.findMany({ where: {
+    tenantId, kind: OperationalCatalogKind.SPECIALTY, deletedAt: null,
+  } });
+  const specialtyByCode = new Map(specialties.map((item) => [item.code, item]));
+  const suppliers = [];
+  for (const definition of supplierDefinitions) {
+    const { specialtyCodes, ...data } = definition;
+    const supplier = await prisma.supplier.upsert({ where: { tenantId_taxId: { tenantId, taxId: data.taxId } },
+      update: { deletedAt: null, status: 'ACTIVE' }, create: { tenantId, ...data, phone: '(61) 3333-0000' } });
+    suppliers.push(supplier);
+    for (const code of specialtyCodes) {
+      const specialty = specialtyByCode.get(code);
+      if (specialty) await prisma.supplierServiceArea.upsert({
+        where: { supplierId_categoryId: { supplierId: supplier.id, categoryId: specialty.id } },
+        create: { tenantId, supplierId: supplier.id, categoryId: specialty.id }, update: { deletedAt: null },
+      });
+    }
+  }
+
+  const contractDefinitions = [
+    { code: 'CT-2026/002', supplierId: suppliers[0].id, buildingId: buildings[0].id,
+      object: 'Manutenção preventiva e corretiva de elevadores e plataformas.', type: ContractType.PREVENTIVE_MAINTENANCE,
+      originalValue: 360000, process: 'PE-2025/014-DEMO' },
+    { code: 'CT-2026/003', supplierId: suppliers[1].id, buildingId: buildings[1].id,
+      object: 'Serviços continuados de manutenção civil e pequenos reparos.', type: ContractType.CORRECTIVE_MAINTENANCE,
+      originalValue: 780000, process: 'PE-2025/022-DEMO' },
+  ];
+  const contracts = [];
+  for (const definition of contractDefinitions) contracts.push(await prisma.contract.upsert({
+    where: { tenantId_code: { tenantId, code: definition.code } }, update: { deletedAt: null },
+    create: { tenantId, supplierId: definition.supplierId, code: definition.code,
+      administrativeProcess: definition.process, object: definition.object, type: definition.type,
+      status: ContractStatus.ACTIVE, startDate: new Date('2026-01-01T00:00:00.000Z'),
+      endDate: new Date('2027-01-01T00:00:00.000Z'), originalValue: definition.originalValue,
+      currentValue: definition.originalValue, adjustmentBaseDate: new Date('2026-01-01T00:00:00.000Z'),
+      adjustmentIndex: 'IPCA', buildings: { create: { buildingId: definition.buildingId } } },
+  }));
+
+  const categories = await prisma.operationalCatalogItem.findMany({ where: {
+    tenantId, kind: OperationalCatalogKind.CATEGORY, deletedAt: null,
+  } });
+  const categoryByCode = new Map(categories.map((item) => [item.code, item]));
+  const policies = await prisma.slaPolicy.findMany({ where: { tenantId, active: true } });
+  const policyByPriority = new Map(policies.filter((item) => item.contractId === null && item.categoryId === null).map((item) => [item.priority, item]));
+  const workOrderDefinitions = [
+    ['OS-2026-000005', 'Ruído anormal no elevador social', WorkOrderPriority.HIGH, WorkOrderStatus.IN_PROGRESS, 3, 0, 'ELETRICA'],
+    ['OS-2026-000006', 'Inspeção mensal dos elevadores', WorkOrderPriority.NORMAL, WorkOrderStatus.CLOSED, 18, 2450, 'GERAL'],
+    ['OS-2026-000007', 'Trinca em parede do almoxarifado', WorkOrderPriority.NORMAL, WorkOrderStatus.TRIAGED, 7, 0, 'GERAL'],
+    ['OS-2026-000008', 'Infiltração na cobertura', WorkOrderPriority.URGENT, WorkOrderStatus.PENDING, 12, 0, 'HIDRAULICA'],
+    ['OS-2026-000009', 'Pintura corretiva da área de carga', WorkOrderPriority.LOW, WorkOrderStatus.CLOSED, 25, 7800, 'GERAL'],
+    ['OS-2026-000010', 'Teste de iluminação de emergência', WorkOrderPriority.HIGH, WorkOrderStatus.COMPLETED, 5, 3100, 'ELETRICA'],
+    ['OS-2026-000011', 'Limpeza de drenos de ar-condicionado', WorkOrderPriority.NORMAL, WorkOrderStatus.ASSIGNED, 2, 0, 'CLIMATIZACAO'],
+    ['OS-2026-000012', 'Revisão preventiva de bombas', WorkOrderPriority.HIGH, WorkOrderStatus.OPEN, 1, 0, 'HIDRAULICA'],
+  ] as const;
+  const workOrders = [];
+  for (const [index, definition] of workOrderDefinitions.entries()) {
+    const [number, title, priority, status, ageDays, finalCost, categoryCode] = definition;
+    const contract = index < 2 ? contracts[0] : index < 6 ? contracts[1] : null;
+    const buildingId = index < 2 ? buildings[0].id : index < 6 ? buildings[1].id : primaryBuildingId;
+    const supplierId = contract?.supplierId ?? primarySupplierId;
+    const category = categoryByCode.get(categoryCode) ?? categories[0];
+    const policy = policyByPriority.get(priority);
+    const openedAt = new Date(Date.now() - ageDays * 86400000);
+    const closed = status === WorkOrderStatus.CLOSED || status === WorkOrderStatus.COMPLETED;
+    const workOrder = await prisma.workOrder.upsert({ where: { tenantId_number: { tenantId, number } }, update: {},
+      create: { tenantId, number, buildingId, requesterUserId: userId, createdByUserId: userId,
+        supplierId, categoryId: category?.id, slaPolicyId: policy?.id, title,
+        description: `${title}. Registro demonstrativo para validação funcional do sistema.`, priority, status,
+        openedAt, completedAt: closed ? new Date(openedAt.getTime() + 2 * 86400000) : undefined,
+        closedAt: status === WorkOrderStatus.CLOSED ? new Date(openedAt.getTime() + 3 * 86400000) : undefined,
+        finalCost: finalCost || undefined, solution: closed ? 'Serviço executado e conferido no cenário demonstrativo.' : undefined,
+        measurementEligible: closed, hasOpenPendency: status === WorkOrderStatus.PENDING,
+        slaResponseDeadline: policy ? new Date(openedAt.getTime() + policy.responseMinutes * 60000) : undefined,
+        slaResolutionDeadline: policy ? new Date(openedAt.getTime() + policy.resolutionMinutes * 60000) : undefined,
+        contracts: contract ? { create: { contractId: contract.id, isPrimary: true } } : undefined,
+        statusHistory: { create: { changedByUserId: userId, toStatus: status, note: 'Cenário demonstrativo ampliado.' } } },
+    });
+    workOrders.push(workOrder);
+    if (status === WorkOrderStatus.PENDING && !await prisma.workOrderPendency.findFirst({ where: { tenantId, workOrderId: workOrder.id, status: 'OPEN' } })) {
+      await prisma.workOrderPendency.create({ data: { tenantId, workOrderId: workOrder.id,
+        previousStatus: WorkOrderStatus.IN_PROGRESS, reason: 'Aguardando material e liberação de acesso.',
+        dueAt: new Date(Date.now() + 4 * 86400000) } });
+    }
+    if (!await prisma.workOrderComment.findFirst({ where: { tenantId, workOrderId: workOrder.id } })) {
+      await prisma.workOrderComment.create({ data: { tenantId, workOrderId: workOrder.id, authorUserId: userId,
+        body: `Comentário de acompanhamento da ${number}.` } });
+    }
+    if (finalCost) {
+      const budget = await prisma.workOrderBudget.upsert({ where: { workOrderId_stage: { workOrderId: workOrder.id, stage: BudgetStage.FINAL_EXECUTED } },
+        update: {}, create: { tenantId, workOrderId: workOrder.id, stage: BudgetStage.FINAL_EXECUTED,
+          status: BudgetStatus.APPROVED, version: 1, approvedByUserId: userId, approvedAt: new Date(),
+          subtotal: finalCost, total: finalCost, notes: 'Orçamento final demonstrativo.' } });
+      if (!await prisma.budgetItem.findFirst({ where: { budgetId: budget.id } })) await prisma.budgetItem.create({ data: {
+        tenantId, budgetId: budget.id, kind: BudgetItemKind.SERVICE, source: 'PROPRIO', code: `SERV-${number.slice(-3)}`,
+        description: title, unit: 'SV', quantity: 1, unitCost: finalCost, totalCost: finalCost,
+      } });
+    }
+  }
+
+  const assetDefinitions = [
+    { tag: 'ELV-001', buildingId: buildings[0].id, name: 'Elevador social 1', category: 'Elevadores', criticality: AssetCriticality.CRITICAL },
+    { tag: 'ELV-002', buildingId: buildings[0].id, name: 'Elevador de serviço', category: 'Elevadores', criticality: AssetCriticality.HIGH },
+    { tag: 'QGBT-002', buildingId: buildings[1].id, name: 'Quadro geral de baixa tensão', category: 'Elétrica', criticality: AssetCriticality.CRITICAL },
+    { tag: 'RES-003', buildingId: buildings[1].id, name: 'Reservatório superior', category: 'Hidráulica', criticality: AssetCriticality.HIGH },
+  ];
+  for (const definition of assetDefinitions) {
+    const asset = await prisma.asset.upsert({ where: { tenantId_tag: { tenantId, tag: definition.tag } },
+      update: { deletedAt: null }, create: { tenantId, ...definition, status: 'ACTIVE' } });
+    const planName = `Plano preventivo — ${definition.name}`;
+    if (!await prisma.maintenancePlan.findFirst({ where: { tenantId, assetId: asset.id, name: planName, deletedAt: null } })) {
+      await prisma.maintenancePlan.create({ data: { tenantId, buildingId: definition.buildingId, assetId: asset.id,
+        name: planName, titleTemplate: `Inspeção preventiva — ${definition.name} — {data}`,
+        description: 'Plano demonstrativo com checklist e geração recorrente de OS.', type: MaintenancePlanType.PREVENTIVE,
+        frequencyUnit: FrequencyUnit.MONTH, frequencyValue: 1, nextDueAt: new Date(Date.now() + 14 * 86400000),
+        defaultPriority: definition.criticality === AssetCriticality.CRITICAL ? WorkOrderPriority.HIGH : WorkOrderPriority.NORMAL,
+        checklistTemplate: { items: ['Inspeção visual', 'Teste funcional', 'Registro de evidências'] } } });
+    }
+  }
+
+  for (const [index, contract] of contracts.entries()) {
+    const number = `2026NE00000${index + 2}`;
+    const commitment = await prisma.commitment.upsert({ where: { tenantId_number_fiscalYear: { tenantId, number, fiscalYear: 2026 } },
+      update: {}, create: { tenantId, contractId: contract.id, createdByUserId: userId, number, fiscalYear: 2026,
+        issueDate: new Date(`2026-0${index + 2}-10T12:00:00.000Z`), originalValue: index ? 300000 : 180000,
+        notes: 'Empenho de demonstração do portfólio.' } });
+    if (!await prisma.commitmentMovement.findFirst({ where: { commitmentId: commitment.id, type: CommitmentMovementType.ISSUE } })) {
+      await prisma.commitmentMovement.create({ data: { tenantId, commitmentId: commitment.id, createdByUserId: userId,
+        type: CommitmentMovementType.ISSUE, amount: commitment.originalValue, occurredAt: commitment.issueDate,
+        notes: 'Emissão inicial demonstrativa.' } });
+    }
+  }
+  await prisma.tenantSequence.updateMany({ where: { tenantId, key: 'WORK_ORDER:2026', currentValue: { lt: 12 } }, data: { currentValue: 12 } });
+  if (!await prisma.notification.findFirst({ where: { tenantId, userId, title: 'Portfólio demonstrativo ampliado' } })) {
+    await prisma.notification.create({ data: { tenantId, userId, eventType: 'WORK_ORDER_CREATED', title: 'Portfólio demonstrativo ampliado',
+      message: 'Novos imóveis, fornecedores, contratos, ativos e ordens estão disponíveis para homologação.', actionUrl: '/dashboard' } });
+  }
 }
 
 async function provisionPerformanceSeed(input: { tenantId: string; userId: string; contractId: string;
@@ -755,6 +927,12 @@ async function main() {
 
   await provisionFunctionalDemoData({ tenantId: tenant.id, userId: user.id, buildingId: building.id,
     supplierId: supplier.id, contractId: contract.id });
+  await provisionPortfolioDemoData({
+    tenantId: tenant.id,
+    userId: user.id,
+    primaryBuildingId: building.id,
+    primarySupplierId: supplier.id,
+  });
   await provisionPerformanceSeed({ tenantId: tenant.id, userId: user.id, buildingId: building.id,
     supplierId: supplier.id, contractId: contract.id });
 

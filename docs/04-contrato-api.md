@@ -355,6 +355,23 @@ a API calcula automaticamente a competência e aplica glosas/bonificações enqu
 em rascunho. Indicadores sem fonte nativa ficam sem medição até receberem `KpiDataPoint`; ausência
 de dados não é interpretada como desempenho zero.
 
+### 7.4 Governança operacional v0.14
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| PATCH/DELETE | `/suppliers/:id` | edita ou arquiva fornecedor e vínculos de especialidades |
+| PATCH/DELETE | `/contracts/:id` | edita ou encerra/arquiva contrato preservando o dossiê |
+| DELETE | `/work-orders/:id` | cancela e arquiva a OS com histórico e auditoria |
+| PATCH/DELETE | `/finance/commitments/:id` | edita empenho ainda não movimentado ou o anula logicamente |
+| PATCH/DELETE | `/finance/measurements/:id` | edita ou cancela medição antes da aprovação/liquidação |
+| DELETE | `/maintenance/assets/:id` | baixa ativo e suspende planos relacionados |
+| DELETE | `/maintenance/plans/:id` | arquiva plano preventivo |
+| POST | `/members` | cria usuário ativo diretamente na organização |
+| POST | `/members/:membershipId/password` | redefine senha e revoga sessões ativas |
+
+As exclusões são lógicas e tenant-aware. Fatos financeiros já liquidados ou pagos dependem de
+estorno; auditoria, histórico e movimentos não são destruídos.
+
 
 | Método | Rota | Finalidade |
 |---|---|---|

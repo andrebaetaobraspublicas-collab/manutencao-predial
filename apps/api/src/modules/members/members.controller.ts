@@ -6,6 +6,8 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { MembershipRole } from '../../generated/prisma/client';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { CreateMemberDto } from './dto/create-member.dto';
+import { SetMemberPasswordDto } from './dto/set-member-password.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { MembersService } from './members.service';
 
@@ -37,6 +39,16 @@ export class MembersController {
     return this.members.listInvitations(user.tenantId);
   }
 
+  @Post()
+  @ApiOperation({ summary: 'Cria diretamente um usuário ativo na organização' })
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateMemberDto,
+    @Req() request: Request,
+  ) {
+    return this.members.create(user, dto, request);
+  }
+
   @Post('invitations')
   @ApiOperation({ summary: 'Convida um usuário para a organização' })
   invite(
@@ -66,5 +78,17 @@ export class MembersController {
     @Req() request: Request,
   ) {
     return this.members.revokeSessions(user, membershipId, request);
+  }
+
+
+  @Post(':membershipId/password')
+  @ApiOperation({ summary: 'Define nova senha para um usuário gerenciado' })
+  setPassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('membershipId') membershipId: string,
+    @Body() dto: SetMemberPasswordDto,
+    @Req() request: Request,
+  ) {
+    return this.members.setPassword(user, membershipId, dto, request);
   }
 }

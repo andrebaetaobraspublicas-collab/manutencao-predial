@@ -21,6 +21,11 @@ Este diretório é a fonte de verdade funcional e técnica do produto. Atualize 
 15. [Diagnóstico e estabilização da Fase A](14-diagnostico-fase-a.md)
 16. [Staging, backup e roteiro do piloto](15-gp031-staging-backup-piloto.md)
 17. [Piloto operacional e homologação](16-gp044-piloto-homologacao.md)
+18. [Interface, contratos e SINAPI](17-v011-interface-contratos-sinapi.md)
+19. [Orçamentos e planos inteligentes](18-v012-orcamentos-planos-inteligentes.md)
+20. [Gestão por desempenho](19-v013-gestao-por-desempenho.md)
+21. [Governança operacional](20-v014-governanca-operacional.md)
+22. [Dossiê patrimonial e vistorias](21-v015-dossie-patrimonial.md)
 
 As decisões arquiteturais permanentes ficam em [`docs/adr`](adr/).
 

@@ -262,6 +262,8 @@ erDiagram
 | TenantInvitation | convite de entrada na organização | token armazenado somente em hash; uso único; validade de 72 horas; pertence ao tenant e ao vínculo |
 | AccountToken | redefinição de senha e verificação de e-mail | token em hash, finalidade explícita, uso único e expiração; nunca armazenar o valor bruto |
 | Building | imóvel gerenciado | código único no tenant; coordenadas devem formar par válido |
+| BuildingInspection | vistoria técnica do imóvel | pertence ao tenant e à edificação; data, tipo e responsável obrigatórios; exclusão lógica |
+| BuildingAttachment | laudo, documento ou fotografia privada | MIME e assinatura validados; hash, tamanho e chave privada; download tenant-aware |
 | Supplier | fornecedor | documento fiscal único no tenant |
 | Contract | instrumento contratual | código único; data final posterior à inicial; fornecedor do mesmo tenant |
 | WorkOrder | unidade operacional | número único; imóvel e demandante obrigatórios; status segue máquina de estados |
@@ -336,3 +338,12 @@ exige migration nem seed adicional.
   percentual, teto, valor e memória. `KpiAlert` usa chave de deduplicação e registra plano de ação.
 - `Measurement` separa deduções manuais, glosas de desempenho, bônus e IGD; o líquido deriva de
   `bruto - deduções + bônus` usando `Decimal`.
+
+## 13. Dossiê patrimonial e vistorias v0.15
+
+- `BuildingInspection` registra o histórico de vistorias por edificação; a data da última
+  vistoria é derivada do registro mais recente, evitando duplicação inconsistente no cadastro.
+- `BuildingAttachment` armazena laudos em PDF, documentação do imóvel em PDF e fotografias
+  JPG/PNG/WebP fora da pasta pública, com hash SHA-256, autoria e download autorizado por tenant.
+- O arquivamento da edificação preserva contratos, OS, ativos, documentos e vistorias. Planos
+  de manutenção ativos são suspensos na mesma transação e a operação gera auditoria.

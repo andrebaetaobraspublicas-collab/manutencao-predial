@@ -1352,6 +1352,33 @@ p {
   border-radius: 9px;
 }
 
+/* Building dossier, inspections and linked maintenance plans */
+
+.building-dossier-section { background: linear-gradient(135deg, #f8fbfd, #fff); }
+.building-upload-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.building-upload-card { display: grid; align-content: start; gap: 11px; padding: 15px; background: #fff; border: 1px solid var(--border); border-radius: 11px; }
+.building-upload-title { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: start; gap: 10px; }
+.building-upload-title > span { display: grid; width: 38px; height: 38px; place-items: center; color: var(--primary); background: var(--primary-soft); border-radius: 10px; }
+.building-upload-title > div { display: grid; gap: 4px; }
+.building-upload-title strong { font-size: 0.78rem; }
+.building-upload-title small { color: var(--text-soft); font-size: 0.65rem; line-height: 1.45; }
+.building-upload-card > input[type='file'] { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.building-file-input { display: flex; min-width: 0; align-items: center; gap: 7px; padding: 9px 10px; color: var(--text-soft); background: var(--surface-muted); border: 1px dashed #aec5d2; border-radius: 8px; cursor: pointer; font-size: 0.68rem; }
+.building-file-input:hover { color: var(--primary); border-color: var(--primary); }
+.building-file-input span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.building-files-table { margin-top: 17px; }
+.building-inspection-heading,
+.maintenance-plan-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.building-inspection-heading > div:first-child,
+.maintenance-plan-heading > div:first-child { display: grid; gap: 4px; }
+.last-inspection-card { display: flex; min-width: 210px; align-items: center; gap: 10px; padding: 10px 12px; color: var(--primary); background: var(--primary-soft); border: 1px solid #cce0e9; border-radius: 9px; }
+.last-inspection-card span { display: grid; gap: 2px; color: var(--text-soft); font-size: 0.62rem; }
+.last-inspection-card strong { color: var(--text); font-size: 0.75rem; }
+.building-inspection-grid { display: grid; grid-template-columns: minmax(360px, 0.8fr) minmax(520px, 1.2fr); gap: 15px; }
+.subcard { min-width: 0; padding: 16px; background: #fff; border: 1px solid var(--border); border-radius: 11px; }
+.subcard h3 { margin: 0 0 14px; font-size: 0.9rem; }
+.subcard > .btn { margin-top: 14px; }
+
 /* Notification bell, center and preferences */
 
 .notification-menu { position: relative; }
@@ -1758,6 +1785,8 @@ p {
   .pilot-summary-main { grid-column: 1 / -1; }
   .pilot-layout, .pilot-acceptance { grid-template-columns: 1fr; }
   .pilot-review { position: static; }
+  .building-upload-grid { grid-template-columns: 1fr; }
+  .building-inspection-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {
@@ -1815,4 +1844,7 @@ p {
   .comment-meta { align-items: flex-start; flex-direction: column; }
   .attachment-form .btn { width: 100%; }
   .pilot-summary-grid, .pilot-scenarios { grid-template-columns: 1fr; }
+  .building-inspection-heading,
+  .maintenance-plan-heading { align-items: stretch; flex-direction: column; }
+  .last-inspection-card { min-width: 0; }
 }

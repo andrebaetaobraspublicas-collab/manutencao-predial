@@ -165,6 +165,20 @@ enum AttachmentKind {
   OTHER_DOCUMENT
 }
 
+enum BuildingAttachmentKind {
+  INSPECTION_REPORT
+  PROPERTY_DOCUMENT
+  BUILDING_PHOTO
+}
+
+enum BuildingInspectionType {
+  PREVENTIVE
+  PERIODIC
+  EXTRAORDINARY
+  RECEIPT
+  OTHER
+}
+
 enum BudgetStatus {
   DRAFT
   SUBMITTED
@@ -424,6 +438,8 @@ model Tenant {
   workOrders           WorkOrder[]
   workOrderPendencies  WorkOrderPendency[]
   workOrderAttachments WorkOrderAttachment[]
+  buildingAttachments  BuildingAttachment[]
+  buildingInspections  BuildingInspection[]
   workOrderBudgets     WorkOrderBudget[]
   budgetItems          BudgetItem[]
   budgetRevisions      BudgetRevision[]
@@ -466,52 +482,54 @@ model Tenant {
 }
 
 model User {
-  id                       String                       @id @default(uuid()) @db.Char(36)
-  name                     String                       @db.VarChar(160)
-  email                    String                       @unique @db.VarChar(190)
-  passwordHash             String                       @db.VarChar(255)
-  phone                    String?                      @db.VarChar(30)
-  status                   UserStatus                   @default(ACTIVE)
-  emailVerifiedAt          DateTime?
-  lastLoginAt              DateTime?
-  createdAt                DateTime                     @default(now())
-  updatedAt                DateTime                     @updatedAt
-  deletedAt                DateTime?
-  memberships              TenantMembership[]
-  refreshSessions          RefreshSession[]
-  requestedWorkOrders      WorkOrder[]                  @relation("WorkOrderRequester")
-  assignedWorkOrders       WorkOrder[]                  @relation("WorkOrderAssignee")
-  createdWorkOrders        WorkOrder[]                  @relation("WorkOrderCreator")
-  managedBuildings         Building[]                   @relation("BuildingManager")
-  managedContracts         Contract[]                   @relation("ContractManager")
-  inspectedContracts       Contract[]                   @relation("ContractInspector")
-  pendenciesResponsibleFor WorkOrderPendency[]          @relation("PendencyResponsible")
-  uploadedAttachments      WorkOrderAttachment[]        @relation("AttachmentUploader")
-  statusChanges            WorkOrderStatusHistory[]     @relation("StatusChangedBy")
-  satisfactionResponses    SatisfactionResponse[]       @relation("SatisfactionResponder")
-  approvedMeasurements     Measurement[]                @relation("MeasurementApprover")
-  createdMeasurements      Measurement[]                @relation("MeasurementCreator")
-  reviewedMeasurements     Measurement[]                @relation("MeasurementReviewer")
-  createdCommitments       Commitment[]                 @relation("CommitmentCreator")
-  commitmentMovements      CommitmentMovement[]         @relation("CommitmentMovementCreator")
-  submittedBudgets         WorkOrderBudget[]            @relation("BudgetSubmitter")
-  approvedBudgets          WorkOrderBudget[]            @relation("BudgetApprover")
-  budgetRevisions          BudgetRevision[]             @relation("BudgetRevisionCreator")
-  importedSinapiCatalogs   SinapiCatalog[]              @relation("SinapiImporter")
-  assignedMaintenancePlans MaintenancePlan[]            @relation("MaintenancePlanAssignee")
-  registeredPenalties      ContractPenalty[]            @relation("PenaltyRegistrar")
-  auditLogs                AuditLog[]                   @relation("AuditActor")
-  accountTokens            AccountToken[]
-  invitationsSent          TenantInvitation[]           @relation("InvitationSender")
-  geocodingConfirmations   Building[]                   @relation("BuildingGeocodingConfirmer")
-  acceptedWorkOrders       WorkOrder[]                  @relation("WorkOrderAccepter")
-  workOrderComments        WorkOrderComment[]
-  commentMentions          WorkOrderCommentMention[]
-  checklistResponses       WorkOrderChecklistResponse[]
-  notifications            Notification[]
-  notificationPreferences  NotificationPreference[]
-  notificationOutbox       NotificationOutbox[]
-  workOrderReopenings      WorkOrderReopening[]
+  id                         String                       @id @default(uuid()) @db.Char(36)
+  name                       String                       @db.VarChar(160)
+  email                      String                       @unique @db.VarChar(190)
+  passwordHash               String                       @db.VarChar(255)
+  phone                      String?                      @db.VarChar(30)
+  status                     UserStatus                   @default(ACTIVE)
+  emailVerifiedAt            DateTime?
+  lastLoginAt                DateTime?
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+  deletedAt                  DateTime?
+  memberships                TenantMembership[]
+  refreshSessions            RefreshSession[]
+  requestedWorkOrders        WorkOrder[]                  @relation("WorkOrderRequester")
+  assignedWorkOrders         WorkOrder[]                  @relation("WorkOrderAssignee")
+  createdWorkOrders          WorkOrder[]                  @relation("WorkOrderCreator")
+  managedBuildings           Building[]                   @relation("BuildingManager")
+  managedContracts           Contract[]                   @relation("ContractManager")
+  inspectedContracts         Contract[]                   @relation("ContractInspector")
+  pendenciesResponsibleFor   WorkOrderPendency[]          @relation("PendencyResponsible")
+  uploadedAttachments        WorkOrderAttachment[]        @relation("AttachmentUploader")
+  uploadedBuildingFiles      BuildingAttachment[]         @relation("BuildingAttachmentUploader")
+  createdBuildingInspections BuildingInspection[]         @relation("BuildingInspectionCreator")
+  statusChanges              WorkOrderStatusHistory[]     @relation("StatusChangedBy")
+  satisfactionResponses      SatisfactionResponse[]       @relation("SatisfactionResponder")
+  approvedMeasurements       Measurement[]                @relation("MeasurementApprover")
+  createdMeasurements        Measurement[]                @relation("MeasurementCreator")
+  reviewedMeasurements       Measurement[]                @relation("MeasurementReviewer")
+  createdCommitments         Commitment[]                 @relation("CommitmentCreator")
+  commitmentMovements        CommitmentMovement[]         @relation("CommitmentMovementCreator")
+  submittedBudgets           WorkOrderBudget[]            @relation("BudgetSubmitter")
+  approvedBudgets            WorkOrderBudget[]            @relation("BudgetApprover")
+  budgetRevisions            BudgetRevision[]             @relation("BudgetRevisionCreator")
+  importedSinapiCatalogs     SinapiCatalog[]              @relation("SinapiImporter")
+  assignedMaintenancePlans   MaintenancePlan[]            @relation("MaintenancePlanAssignee")
+  registeredPenalties        ContractPenalty[]            @relation("PenaltyRegistrar")
+  auditLogs                  AuditLog[]                   @relation("AuditActor")
+  accountTokens              AccountToken[]
+  invitationsSent            TenantInvitation[]           @relation("InvitationSender")
+  geocodingConfirmations     Building[]                   @relation("BuildingGeocodingConfirmer")
+  acceptedWorkOrders         WorkOrder[]                  @relation("WorkOrderAccepter")
+  workOrderComments          WorkOrderComment[]
+  commentMentions            WorkOrderCommentMention[]
+  checklistResponses         WorkOrderChecklistResponse[]
+  notifications              Notification[]
+  notificationPreferences    NotificationPreference[]
+  notificationOutbox         NotificationOutbox[]
+  workOrderReopenings        WorkOrderReopening[]
 
   @@index([status])
   @@index([deletedAt])
@@ -600,42 +618,44 @@ model TenantSequence {
 }
 
 model Building {
-  id                         String             @id @default(uuid()) @db.Char(36)
-  tenantId                   String             @db.Char(36)
-  code                       String             @db.VarChar(40)
-  name                       String             @db.VarChar(180)
-  type                       String?            @db.VarChar(100)
-  status                     BuildingStatus     @default(ACTIVE)
-  managerUserId              String?            @db.Char(36)
-  addressLine1               String             @db.VarChar(220)
-  addressLine2               String?            @db.VarChar(160)
-  district                   String?            @db.VarChar(120)
-  city                       String             @db.VarChar(120)
-  state                      String             @db.Char(2)
-  postalCode                 String             @db.VarChar(12)
-  country                    String             @default("BR") @db.Char(2)
-  latitude                   Decimal?           @db.Decimal(10, 7)
-  longitude                  Decimal?           @db.Decimal(10, 7)
+  id                         String               @id @default(uuid()) @db.Char(36)
+  tenantId                   String               @db.Char(36)
+  code                       String               @db.VarChar(40)
+  name                       String               @db.VarChar(180)
+  type                       String?              @db.VarChar(100)
+  status                     BuildingStatus       @default(ACTIVE)
+  managerUserId              String?              @db.Char(36)
+  addressLine1               String               @db.VarChar(220)
+  addressLine2               String?              @db.VarChar(160)
+  district                   String?              @db.VarChar(120)
+  city                       String               @db.VarChar(120)
+  state                      String               @db.Char(2)
+  postalCode                 String               @db.VarChar(12)
+  country                    String               @default("BR") @db.Char(2)
+  latitude                   Decimal?             @db.Decimal(10, 7)
+  longitude                  Decimal?             @db.Decimal(10, 7)
   geocodedAt                 DateTime?
-  geocodingProvider          String?            @db.VarChar(60)
-  geocodingAccuracy          String?            @db.VarChar(60)
-  geocodingPlaceId           String?            @db.VarChar(190)
+  geocodingProvider          String?              @db.VarChar(60)
+  geocodingAccuracy          String?              @db.VarChar(60)
+  geocodingPlaceId           String?              @db.VarChar(190)
   geocodingConfirmedAt       DateTime?
-  geocodingConfirmedByUserId String?            @db.Char(36)
-  grossAreaM2                Decimal?           @db.Decimal(14, 2)
+  geocodingConfirmedByUserId String?              @db.Char(36)
+  grossAreaM2                Decimal?             @db.Decimal(14, 2)
   constructionYear           Int?
   floors                     Int?
   metadata                   Json?
-  createdAt                  DateTime           @default(now())
-  updatedAt                  DateTime           @updatedAt
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime             @updatedAt
   deletedAt                  DateTime?
-  tenant                     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  manager                    User?              @relation("BuildingManager", fields: [managerUserId], references: [id], onDelete: SetNull)
-  geocodingConfirmedBy       User?              @relation("BuildingGeocodingConfirmer", fields: [geocodingConfirmedByUserId], references: [id], onDelete: SetNull)
+  tenant                     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  manager                    User?                @relation("BuildingManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  geocodingConfirmedBy       User?                @relation("BuildingGeocodingConfirmer", fields: [geocodingConfirmedByUserId], references: [id], onDelete: SetNull)
   contracts                  ContractBuilding[]
   workOrders                 WorkOrder[]
   assets                     Asset[]
   maintenancePlans           MaintenancePlan[]
+  attachments                BuildingAttachment[]
+  inspections                BuildingInspection[]
   kpiMeasurements            KpiMeasurement[]
   kpiDataPoints              KpiDataPoint[]
 
@@ -643,6 +663,52 @@ model Building {
   @@index([tenantId, status, deletedAt])
   @@index([tenantId, city, state])
   @@index([latitude, longitude])
+}
+
+model BuildingInspection {
+  id                    String                 @id @default(uuid()) @db.Char(36)
+  tenantId              String                 @db.Char(36)
+  buildingId            String                 @db.Char(36)
+  createdByUserId       String                 @db.Char(36)
+  inspectionDate        DateTime
+  type                  BuildingInspectionType
+  responsibleTechnician String                 @db.VarChar(180)
+  team                  String?                @db.VarChar(220)
+  notes                 String?                @db.Text
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  building              Building               @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  createdBy             User                   @relation("BuildingInspectionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  attachments           BuildingAttachment[]
+
+  @@index([tenantId, buildingId, inspectionDate, deletedAt])
+}
+
+model BuildingAttachment {
+  id               String                 @id @default(uuid()) @db.Char(36)
+  tenantId         String                 @db.Char(36)
+  buildingId       String                 @db.Char(36)
+  inspectionId     String?                @db.Char(36)
+  uploadedByUserId String                 @db.Char(36)
+  kind             BuildingAttachmentKind
+  storageKey       String                 @unique @db.VarChar(500)
+  fileName         String                 @db.VarChar(255)
+  originalName     String                 @db.VarChar(255)
+  mimeType         String                 @db.VarChar(120)
+  sizeBytes        BigInt
+  sha256           String                 @db.Char(64)
+  metadata         Json?
+  createdAt        DateTime               @default(now())
+  deletedAt        DateTime?
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  building         Building               @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  inspection       BuildingInspection?    @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
+  uploadedBy       User                   @relation("BuildingAttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, buildingId, kind, deletedAt])
+  @@index([inspectionId])
 }
 
 model Supplier {

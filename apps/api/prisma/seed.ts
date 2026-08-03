@@ -10,6 +10,7 @@ import {
   BudgetItemKind,
   BudgetStage,
   BudgetStatus,
+  BuildingInspectionType,
   CommitmentMovementType,
   ContractStatus,
   ContractType,
@@ -346,6 +347,27 @@ async function provisionPortfolioDemoData(input: {
       geocodingAccuracy: 'verified-demo-coordinate', geocodingConfirmedAt: new Date(),
       geocodingConfirmedByUserId: userId },
   }));
+
+  const inspectionSeeds = [
+    { buildingId: primaryBuildingId, inspectionDate: new Date('2026-06-18T12:00:00.000Z'),
+      type: BuildingInspectionType.PERIODIC, responsibleTechnician: 'Eng. Ana Ferreira - CREA-DF 000001/D',
+      team: 'Equipe de infraestrutura', notes: 'Vistoria geral demonstrativa do edifício administrativo.' },
+    { buildingId: buildings[0].id, inspectionDate: new Date('2026-07-10T12:00:00.000Z'),
+      type: BuildingInspectionType.PREVENTIVE, responsibleTechnician: 'Eng. Carlos Nogueira - CREA-DF 000002/D',
+      team: 'Fiscalização e elevadores', notes: 'Verificação preventiva das áreas comuns e casas de máquinas.' },
+    { buildingId: buildings[1].id, inspectionDate: new Date('2026-05-22T12:00:00.000Z'),
+      type: BuildingInspectionType.EXTRAORDINARY, responsibleTechnician: 'Arq. Beatriz Lima - CAU 000003-0',
+      team: 'Patrimônio e manutenção civil', notes: 'Inspeção demonstrativa após ocorrência de infiltração.' },
+  ];
+  for (const inspection of inspectionSeeds) {
+    const exists = await prisma.buildingInspection.findFirst({
+      where: { tenantId, buildingId: inspection.buildingId, inspectionDate: inspection.inspectionDate,
+        responsibleTechnician: inspection.responsibleTechnician },
+    });
+    if (!exists) await prisma.buildingInspection.create({
+      data: { tenantId, createdByUserId: userId, ...inspection },
+    });
+  }
 
   const supplierDefinitions = [
     { taxId: '22.333.444/0001-55', legalName: 'Elevadores Planalto Serviços Ltda.', tradeName: 'Elevaplan', email: 'atendimento@elevaplan.exemplo', city: 'Brasília', state: 'DF', specialtyCodes: ['ELEVADORES', 'AUTOMACAO'] },

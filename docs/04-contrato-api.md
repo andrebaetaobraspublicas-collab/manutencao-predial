@@ -77,6 +77,12 @@ Login:
 | POST | `/buildings` | gestor |
 | PATCH | `/buildings/:id` | gestor |
 | DELETE | `/buildings/:id` | administrador |
+| GET | `/buildings/:id/deletion-impact` | autenticado; contabiliza vínculos antes do arquivamento |
+| POST | `/buildings/:id/inspections` | gestor; cadastra vistoria |
+| DELETE | `/buildings/:id/inspections/:inspectionId` | gestor; arquiva vistoria |
+| POST | `/buildings/:id/attachments` | gestor; envia laudo, documento ou foto privada |
+| GET | `/buildings/:id/attachments/:attachmentId/download` | autenticado; download tenant-aware |
+| DELETE | `/buildings/:id/attachments/:attachmentId` | gestor; arquiva anexo |
 | POST | `/geocoding/search` | gestor |
 
 Criação:
@@ -99,6 +105,11 @@ Criação:
   "grossAreaM2": 12500
 }
 ```
+
+Os anexos usam `multipart/form-data`, com `file` e `kind`. `INSPECTION_REPORT` e
+`PROPERTY_DOCUMENT` aceitam somente PDF; `BUILDING_PHOTO` aceita JPG, PNG ou WebP. O GET da
+edificação retorna vistorias, anexos privados e os planos de manutenção associados. A
+exclusão é lógica, preserva o dossiê e suspende planos ativos.
 
 ## 4. Fornecedores
 

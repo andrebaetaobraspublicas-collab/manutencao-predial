@@ -191,7 +191,63 @@ export type Building = {
   grossAreaM2?: string | number | null;
   constructionYear?: number | null;
   floors?: number | null;
-  _count?: { workOrders: number; contracts: number };
+  lastInspectionAt?: string | null;
+  attachments?: BuildingAttachment[];
+  inspections?: BuildingInspection[];
+  maintenancePlans?: BuildingMaintenancePlan[];
+  _count?: {
+    workOrders: number;
+    contracts: number;
+    assets?: number;
+    maintenancePlans?: number;
+    attachments?: number;
+    inspections?: number;
+  };
+};
+
+export type BuildingAttachmentKind =
+  | 'INSPECTION_REPORT'
+  | 'PROPERTY_DOCUMENT'
+  | 'BUILDING_PHOTO';
+
+export type BuildingAttachment = {
+  id: string;
+  kind: BuildingAttachmentKind;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: string | number;
+  createdAt: string;
+  uploadedBy?: { id: string; name: string };
+  inspection?: { id: string; inspectionDate: string; type: string } | null;
+};
+
+export type BuildingInspection = {
+  id: string;
+  inspectionDate: string;
+  type: 'PREVENTIVE' | 'PERIODIC' | 'EXTRAORDINARY' | 'RECEIPT' | 'OTHER';
+  responsibleTechnician: string;
+  team?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  createdBy?: { id: string; name: string };
+  attachments?: Array<Pick<BuildingAttachment, 'id' | 'originalName' | 'mimeType' | 'sizeBytes'>>;
+};
+
+export type BuildingMaintenancePlan = {
+  id: string;
+  name: string;
+  type: string;
+  frequencyUnit: string;
+  frequencyValue: number;
+  nextDueAt: string;
+  active: boolean;
+  suspendedAt?: string | null;
+  generationSource?: string | null;
+  riskScore?: number | null;
+  asset?: { id: string; tag: string; name: string } | null;
+  contract?: { id: string; code: string } | null;
+  supplier?: { id: string; legalName: string; tradeName?: string | null } | null;
+  _count: { generatedWorkOrders: number; generations: number };
 };
 
 export type Supplier = {

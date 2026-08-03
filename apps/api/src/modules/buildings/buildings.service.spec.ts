@@ -1,4 +1,5 @@
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { ConfigService } from '@nestjs/config';
 import type { GeocodingService } from '../geocoding/geocoding.service';
 import { BuildingsService } from './buildings.service';
 
@@ -44,7 +45,11 @@ const buildingRecord = (overrides: Record<string, unknown> = {}) => ({
 
 function makeService(prisma: Partial<PrismaService>, verifyConfirmation = jest.fn()) {
   const geocoding = { verifyConfirmation } as unknown as GeocodingService;
-  return { service: new BuildingsService(prisma as PrismaService, geocoding), verifyConfirmation };
+  const config = { get: jest.fn() } as unknown as ConfigService;
+  return {
+    service: new BuildingsService(prisma as PrismaService, geocoding, config),
+    verifyConfirmation,
+  };
 }
 
 describe('BuildingsService geocoding hardening', () => {
@@ -210,5 +215,52 @@ describe('BuildingsService geocoding hardening', () => {
       }),
     );
     expect(auditCreate).toHaveBeenCalled();
+  });
+
+  it('calcula o impacto da exclusão somente dentro do tenant autenticado', async () => {
+    const buildingFindFirst = jest.fn().mockResolvedValue({
+      id: 'building-1',
+      code: 'EDF-001',
+      name: 'Edifício Sede',
+      _count: {
+        contracts: 2,
+        workOrders: 4,
+        maintenancePlans: 1,
+        assets: 3,
+        attachments: 2,
+        inspections: 1,
+      },
+    });
+    const workOrderCount = jest.fn().mockResolvedValue(2);
+    const maintenancePlanCount = jest.fn().mockResolvedValue(1);
+    const prisma = {
+      building: { findFirst: buildingFindFirst },
+      workOrder: { count: workOrderCount },
+      maintenancePlan: { count: maintenancePlanCount },
+    } as unknown as PrismaService;
+
+    const result = await makeService(prisma).service.deletionImpact('tenant-1', 'building-1');
+
+    expect(buildingFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'building-1', tenantId: 'tenant-1', deletedAt: null } }),
+    );
+    expect(workOrderCount).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ tenantId: 'tenant-1', buildingId: 'building-1' }) }),
+    );
+    expect(maintenancePlanCount).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ tenantId: 'tenant-1', buildingId: 'building-1' }) }),
+    );
+    expect(result.counts).toEqual(expect.objectContaining({ openWorkOrders: 2, activeMaintenancePlans: 1 }));
+    expect(result.recordsPreserved).toBe(true);
+  });
+
+  it('não revela impacto de edificação pertencente a outro tenant', async () => {
+    const prisma = {
+      building: { findFirst: jest.fn().mockResolvedValue(null) },
+    } as unknown as PrismaService;
+
+    await expect(
+      makeService(prisma).service.deletionImpact('tenant-b', 'building-tenant-a'),
+    ).rejects.toThrow('Edificação não encontrada.');
   });
 });

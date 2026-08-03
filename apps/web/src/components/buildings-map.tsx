@@ -2,6 +2,7 @@
 
 import { LngLatBounds, Map, Marker, NavigationControl, Popup } from 'maplibre-gl';
 import { useEffect, useRef, useState } from 'react';
+import { streetMapStyle } from '@/lib/street-map-style';
 
 export type MapBuilding = {
   id: string;
@@ -24,7 +25,7 @@ export function BuildingsMap({ buildings }: { buildings: MapBuilding[] }) {
     const center: [number, number] = [buildings[0].longitude, buildings[0].latitude];
     const map = new Map({
       container: containerRef.current,
-      style: process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? 'https://tiles.openfreemap.org/styles/bright',
+      style: streetMapStyle(),
       center,
       zoom: buildings.length === 1 ? 15 : 4,
     });
@@ -33,12 +34,7 @@ export function BuildingsMap({ buildings }: { buildings: MapBuilding[] }) {
       if (fallbackApplied) return;
       fallbackApplied = true;
       setMapMessage('Mapa alternativo ativado.');
-      map.setStyle({
-        version: 8,
-        sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256,
-          attribution: '© OpenStreetMap contributors' } },
-        layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-      });
+      map.setStyle(streetMapStyle());
     };
     const fallbackTimer = window.setTimeout(() => {
       if (!map.isStyleLoaded()) applyFallback();

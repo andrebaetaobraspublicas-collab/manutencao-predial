@@ -4,6 +4,7 @@ import { Check, Crosshair, LoaderCircle, MapPin, Search, SlidersHorizontal } fro
 import { Map, Marker } from 'maplibre-gl';
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
+import { streetMapStyle } from '@/lib/street-map-style';
 import type {
   BuildingLocationConfirmation,
   GeocodingCandidate,
@@ -245,7 +246,7 @@ function LocationMap({ point, disabled, onMove }: { point: Point; disabled: bool
     if (!containerRef.current) return;
     const map = new Map({
       container: containerRef.current,
-      style: process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? 'https://tiles.openfreemap.org/styles/liberty',
+      style: streetMapStyle(),
       center: [point.longitude, point.latitude],
       zoom: 16,
     });

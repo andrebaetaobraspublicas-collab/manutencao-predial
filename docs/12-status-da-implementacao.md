@@ -1,4 +1,4 @@
-# Estado verificável da implementação — v0.14.0
+# Estado verificável da implementação — v0.15.0
 
 Data de referência: **3 de agosto de 2026**.
 
@@ -47,6 +47,7 @@ Essa classificação deve ser preservada no frontend e na comunicação comercia
 | GP-044 v0.10 | painel de piloto, nove cenários, critérios automáticos, decisões auditáveis, aceite bloqueante e PDF/CSV |
 | Aperfeiçoamento operacional v0.11 | mapa com estilo rotulado e fallback; fornecedores com categorias, endereço, consórcios e sanções; dossiê contratual; importador XLSX SINAPI e tabelas próprias |
 | Governança operacional v0.14 | especialidades de fornecedores corrigidas; edição e arquivamento auditado; administração direta de usuários; PDFs enriquecidos; portfólio demonstrativo cumulativo |
+| Dossiê patrimonial v0.15 | mapa de ruas configurável; PDFs e fotos privados; histórico de vistorias; planos associados; arquivamento administrativo com análise de vínculos |
 
 ## 3. Modelado, mas ainda sem fluxo completo
 
@@ -120,6 +121,11 @@ Na v0.13.0, `prisma validate`, lint de API/frontend, **81 testes unitários em 2
 builds NestJS/Next.js foram aprovados localmente. A matriz e2e passou a tentar acesso cruzado à
 biblioteca, configuração, dashboard e pontos de dados. A aplicação da migration em MySQL limpo e
 a suíte e2e completa permanecem gates obrigatórios do CI antes do deploy Hostinger.
+
+Na v0.15.0, `prisma validate`, lint de API/frontend, **86 testes unitários em 24 suítes** e os
+builds NestJS/Next.js foram aprovados localmente. A suíte de edificações cobre o isolamento por
+organização na análise prévia de exclusão. A migration é aditiva e tem rollback operacional
+documentado; a aplicação em MySQL e o smoke público permanecem gates do deploy Hostinger.
 
 ## 6. Validações de infraestrutura que permanecem obrigatórias
 

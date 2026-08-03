@@ -181,6 +181,11 @@ nativas da OS, planos, contratos, orçamentos, evidências e satisfação são c
 disponibilidade, segurança, consumo e sensores usam pontos de dados auditáveis até existirem
 integrações específicas.
 
+**Dossiê patrimonial v0.15.0:** mapa de ruas resiliente no cadastro e no painel, laudos e
+documentos privados em PDF, fotografias do imóvel, histórico de vistorias, data da última
+vistoria derivada, consulta dos planos vinculados e arquivamento administrativo com prévia dos
+impactos e suspensão dos planos ativos.
+
 O detalhamento e os critérios de aceite estão em `docs/13-plano-inicial-de-issues-codex.md`.
 
 ---

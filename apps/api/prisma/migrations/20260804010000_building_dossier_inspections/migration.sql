@@ -1,0 +1,46 @@
+-- v0.15.0: dossiê privado, fotografias e histórico de vistorias das edificações.
+CREATE TABLE `BuildingInspection` (
+  `id` CHAR(36) NOT NULL,
+  `tenantId` CHAR(36) NOT NULL,
+  `buildingId` CHAR(36) NOT NULL,
+  `createdByUserId` CHAR(36) NOT NULL,
+  `inspectionDate` DATETIME(3) NOT NULL,
+  `type` ENUM('PREVENTIVE', 'PERIODIC', 'EXTRAORDINARY', 'RECEIPT', 'OTHER') NOT NULL,
+  `responsibleTechnician` VARCHAR(180) NOT NULL,
+  `team` VARCHAR(220) NULL,
+  `notes` TEXT NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3) NOT NULL,
+  `deletedAt` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  INDEX `BuildingInspection_tenant_building_date_idx` (`tenantId`, `buildingId`, `inspectionDate`, `deletedAt`),
+  CONSTRAINT `BuildingInspection_tenantId_fkey` FOREIGN KEY (`tenantId`) REFERENCES `Tenant`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `BuildingInspection_buildingId_fkey` FOREIGN KEY (`buildingId`) REFERENCES `Building`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `BuildingInspection_createdByUserId_fkey` FOREIGN KEY (`createdByUserId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `BuildingAttachment` (
+  `id` CHAR(36) NOT NULL,
+  `tenantId` CHAR(36) NOT NULL,
+  `buildingId` CHAR(36) NOT NULL,
+  `inspectionId` CHAR(36) NULL,
+  `uploadedByUserId` CHAR(36) NOT NULL,
+  `kind` ENUM('INSPECTION_REPORT', 'PROPERTY_DOCUMENT', 'BUILDING_PHOTO') NOT NULL,
+  `storageKey` VARCHAR(500) NOT NULL,
+  `fileName` VARCHAR(255) NOT NULL,
+  `originalName` VARCHAR(255) NOT NULL,
+  `mimeType` VARCHAR(120) NOT NULL,
+  `sizeBytes` BIGINT NOT NULL,
+  `sha256` CHAR(64) NOT NULL,
+  `metadata` JSON NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `deletedAt` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `BuildingAttachment_storageKey_key` (`storageKey`),
+  INDEX `BuildingAttachment_tenant_building_kind_idx` (`tenantId`, `buildingId`, `kind`, `deletedAt`),
+  INDEX `BuildingAttachment_inspection_idx` (`inspectionId`),
+  CONSTRAINT `BuildingAttachment_tenantId_fkey` FOREIGN KEY (`tenantId`) REFERENCES `Tenant`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `BuildingAttachment_buildingId_fkey` FOREIGN KEY (`buildingId`) REFERENCES `Building`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `BuildingAttachment_inspectionId_fkey` FOREIGN KEY (`inspectionId`) REFERENCES `BuildingInspection`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `BuildingAttachment_uploadedByUserId_fkey` FOREIGN KEY (`uploadedByUserId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

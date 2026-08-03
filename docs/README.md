@@ -26,6 +26,7 @@ Este diretório é a fonte de verdade funcional e técnica do produto. Atualize 
 20. [Gestão por desempenho](19-v013-gestao-por-desempenho.md)
 21. [Governança operacional](20-v014-governanca-operacional.md)
 22. [Dossiê patrimonial e vistorias](21-v015-dossie-patrimonial.md)
+23. [Carteira contratual fictícia](22-v015-dados-ficticios-contratos.md)
 
 As decisões arquiteturais permanentes ficam em [`docs/adr`](adr/).
 

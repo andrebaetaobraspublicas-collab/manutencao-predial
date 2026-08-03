@@ -48,6 +48,7 @@ Essa classificação deve ser preservada no frontend e na comunicação comercia
 | Aperfeiçoamento operacional v0.11 | mapa com estilo rotulado e fallback; fornecedores com categorias, endereço, consórcios e sanções; dossiê contratual; importador XLSX SINAPI e tabelas próprias |
 | Governança operacional v0.14 | especialidades de fornecedores corrigidas; edição e arquivamento auditado; administração direta de usuários; PDFs enriquecidos; portfólio demonstrativo cumulativo |
 | Dossiê patrimonial v0.15 | mapa de ruas configurável; PDFs e fotos privados; histórico de vistorias; planos associados; arquivamento administrativo com análise de vínculos |
+| Homologação contratual v0.15 | carteira fictícia idempotente com contratos, aditivos, ajustes, subcontratações, empenhos, medições e três estágios de orçamento |
 
 ## 3. Modelado, mas ainda sem fluxo completo
 
@@ -122,7 +123,7 @@ builds NestJS/Next.js foram aprovados localmente. A matriz e2e passou a tentar a
 biblioteca, configuração, dashboard e pontos de dados. A aplicação da migration em MySQL limpo e
 a suíte e2e completa permanecem gates obrigatórios do CI antes do deploy Hostinger.
 
-Na v0.15.0, `prisma validate`, lint de API/frontend, **86 testes unitários em 24 suítes** e os
+Na v0.15.0, `prisma validate`, lint de API/frontend, **87 testes unitários em 25 suítes** e os
 builds NestJS/Next.js foram aprovados localmente. A suíte de edificações cobre o isolamento por
 organização na análise prévia de exclusão. A migration é aditiva e tem rollback operacional
 documentado; a aplicação em MySQL e o smoke público permanecem gates do deploy Hostinger.

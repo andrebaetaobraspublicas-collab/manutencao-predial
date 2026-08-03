@@ -28,6 +28,9 @@ jobs:
       JWT_ACCESS_SECRET: ci-secret-with-at-least-thirty-two-characters
       COOKIE_SECURE: "false"
       NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+      SEED_ADMIN_EMAIL: ci-admin@example.test
+      SEED_ADMIN_PASSWORD: ci-demo-password-with-at-least-12-chars
+      SEED_CONTRACT_TEST_DATA_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,6 +45,10 @@ jobs:
           npm run prisma:generate -w @gestaopredios/api
       - name: Apply versioned migrations
         run: npm run prisma:deploy -w @gestaopredios/api
+      - name: Seed fictitious portfolio twice
+        run: |
+          npm run prisma:seed -w @gestaopredios/api
+          npm run prisma:seed -w @gestaopredios/api
       - name: Lint
         run: npm run lint
       - name: Unit tests

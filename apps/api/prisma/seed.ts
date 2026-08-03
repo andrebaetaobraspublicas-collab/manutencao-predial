@@ -40,6 +40,7 @@ import {
 } from '../src/generated/prisma/client';
 import { KPI_LIBRARY, KPI_LIBRARY_VERSION } from '../src/modules/kpis/kpi-library';
 import { parseMySqlUrl } from '../src/prisma/database-url';
+import { provisionContractTestData } from './contract-test-data';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL não configurada.');
@@ -972,6 +973,9 @@ async function main() {
     primaryBuildingId: building.id,
     primarySupplierId: supplier.id,
   });
+  if (process.env.SEED_CONTRACT_TEST_DATA_ENABLED !== 'false') {
+    await provisionContractTestData(prisma, { tenantId: tenant.id, userId: user.id });
+  }
   await provisionPerformanceSeed({ tenantId: tenant.id, userId: user.id, buildingId: building.id,
     supplierId: supplier.id, contractId: contract.id });
 

@@ -327,7 +327,7 @@ export class BudgetsService {
         state: catalog.state,
         referenceMonth: catalog.referenceMonth,
         priceRegime: catalog.priceRegime,
-        version: { startsWith: `${versionRoot}-` },
+        version: { in: ['ISD', 'ICD', 'CSD', 'CCD'].map((suffix) => `${versionRoot}-${suffix}`) },
       },
       select: { id: true },
     });

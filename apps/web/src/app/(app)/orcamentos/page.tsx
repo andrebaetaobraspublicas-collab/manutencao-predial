@@ -36,6 +36,7 @@ type Catalog = {
 };
 type CatalogItem = {
   id: string;
+  catalogId: string;
   type: 'INPUT' | 'COMPOSITION';
   code: string;
   description: string;
@@ -49,6 +50,7 @@ type SearchResponse = {
   items: CatalogItem[];
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
   facets: { units: string[] };
+  scope: { catalogIds: string[]; includesInputsAndCompositions: boolean };
 };
 type Budget = {
   id: string;
@@ -156,7 +158,7 @@ export default function BudgetsPage() {
       setForm((value) => ({
         ...value,
         workOrderId: searchParams.get('workOrderId') || value.workOrderId || orderRows.items[0]?.id || '',
-        catalogId: value.catalogId || catalogRows[0]?.id || '',
+        catalogId: value.catalogId || dedupeCatalogs(catalogRows)[0]?.id || '',
       }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Falha ao carregar orçamentos.');
@@ -208,6 +210,7 @@ export default function BudgetsPage() {
     [form.items],
   );
   const total = subtotal * (1 + Number(form.bdiPercentage || 0) / 100);
+  const catalogOptions = useMemo(() => dedupeCatalogs(catalogs), [catalogs]);
   const selectedCount = Object.keys(selectedItems).length;
   const pageItems = results?.items ?? [];
   const allPageSelected = pageItems.length > 0 && pageItems.every((item) => selectedItems[item.id]);
@@ -283,7 +286,7 @@ export default function BudgetsPage() {
     setDetailLoading(true);
     try {
       setDetail(await apiFetch<CatalogItemDetail>(
-        `/budgets/sinapi/catalogs/${form.catalogId}/items/${item.id}`,
+        `/budgets/sinapi/catalogs/${item.catalogId}/items/${item.id}`,
       ));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Falha ao consultar o item.');
@@ -434,7 +437,7 @@ export default function BudgetsPage() {
               <select className="select" value={form.catalogId}
                 onChange={(event) => selectCatalog(event.target.value)}>
                 <option value="">Somente itens próprios</option>
-                {catalogs.map((catalog) => (
+                {catalogOptions.map((catalog) => (
                   <option key={catalog.id} value={catalog.id}>{catalogLabel(catalog)}</option>
                 ))}
               </select>
@@ -770,7 +773,23 @@ function F({ c, l, children }: { c: string; l: string; children: React.ReactNode
 }
 
 function catalogLabel(catalog: Catalog) {
-  return `${catalog.source} ${catalog.state} · ${formatMonth(catalog.referenceMonth)} · ${kindLabel(catalog.catalogKind)} · ${regimeLabel(catalog.priceRegime)}`;
+  const contents = catalog.source === 'SINAPI' ? 'Composições e insumos' : kindLabel(catalog.catalogKind);
+  return `${catalog.source} ${catalog.state} · ${formatMonth(catalog.referenceMonth)} · ${contents} · ${regimeLabel(catalog.priceRegime)}`;
+}
+
+function dedupeCatalogs(catalogs: Catalog[]) {
+  const families = new Map<string, Catalog>();
+  for (const catalog of catalogs) {
+    const rootVersion = catalog.version.replace(/-(ISD|ICD|CSD|CCD)$/i, '');
+    const key = catalog.source === 'SINAPI'
+      ? [catalog.source, catalog.state, catalog.referenceMonth, catalog.priceRegime, rootVersion].join('|')
+      : catalog.id;
+    const current = families.get(key);
+    if (!current || (catalog.catalogKind === 'COMPOSITIONS' && current.catalogKind !== 'COMPOSITIONS')) {
+      families.set(key, catalog);
+    }
+  }
+  return [...families.values()];
 }
 
 function formatMonth(value?: string) {

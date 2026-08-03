@@ -13,6 +13,8 @@
 - Ampliado o seed cumulativo para um portfólio de homologação com edificações, fornecedores,
   contratos, OS, orçamentos, ativos, planos, empenhos, medição, KPIs e alertas.
 - Adicionadas migration compatível, documentação de rollback e validações multi-tenant.
+- Corrigida a detecção do artefato da API na Hostinger para observar o `dist/main.js` reconstruído,
+  em vez da data do diretório estável do runtime.
 
 ## 0.13.0 — gestão contratual por desempenho
 

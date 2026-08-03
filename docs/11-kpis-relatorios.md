@@ -184,3 +184,14 @@ Todo relatório deve conter:
 - aviso quando houver cobertura incompleta;
 - identificador verificável do relatório;
 - versão do layout/motor.
+
+## 12. Implementação da gestão por desempenho
+
+A v0.13 materializa este catálogo na biblioteca `PERFORMANCE_BR_2026.1`. O contrato escolhe os
+KPIs aplicáveis, pesos, metas, faixas e papel financeiro. O motor normaliza os resultados para
+escores de 0 a 100, calcula `IGD = Σ(escore × peso) ÷ Σ(pesos)` e classifica Excelente, Bom,
+Regular, Insatisfatório ou Crítico.
+
+Faixas podem produzir glosa, bonificação ou apenas alerta. O reflexo na medição conserva o KPI,
+valor medido, meta, faixa, fórmula, percentual, base, teto e valor financeiro. Ausência de fonte
+não é zero: indicadores sem dados nativos permanecem sem medição até receberem ponto auditável.

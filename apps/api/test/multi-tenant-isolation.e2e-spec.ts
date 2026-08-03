@@ -23,6 +23,7 @@ type TenantFixture = {
   maintenancePlanId: string;
   sinapiCatalogId: string;
   budgetId: string;
+  kpiDefinitionId: string;
 };
 
 describe('isolamento multiempresa', () => {
@@ -194,6 +195,34 @@ describe('isolamento multiempresa', () => {
     expect(contract.body.amendments).toHaveLength(1);
   });
 
+  it('isola biblioteca, configuração contratual, dashboard e dados de KPIs', async () => {
+    const definitions = await tenantA.agent.get('/api/v1/kpis/definitions').expect(200);
+    expect(definitions.body.some((item: { id: string }) => item.id === tenantB.kpiDefinitionId)).toBe(false);
+
+    await tenantA.agent
+      .get(`/api/v1/kpis/contracts/${tenantB.contractId}/dashboard?referenceMonth=2026-08`)
+      .expect(404);
+
+    await tenantA.agent
+      .post(`/api/v1/kpis/contracts/${tenantA.contractId}/configurations`)
+      .send({
+        definitionId: tenantB.kpiDefinitionId,
+        weight: 10,
+        financialRole: 'PERFORMANCE',
+        bands: [{ label: 'Bom', rating: 'GOOD', minValue: 0, score: 100 }],
+      })
+      .expect(400);
+
+    await tenantA.agent
+      .post('/api/v1/kpis/data-points')
+      .send({
+        definitionId: tenantB.kpiDefinitionId,
+        occurredAt: '2026-08-02T12:00:00.000Z',
+        value: 99,
+      })
+      .expect(400);
+  });
+
   it('isola decisões e evidências do piloto por organização', async () => {
     await tenantB.agent
       .post('/api/v1/pilot/scenarios/ACCESS_SECURITY/decision')
@@ -361,6 +390,8 @@ async function createTenantFixture(
       items: [{ catalogItemId: catalogItems.body[0].id, quantity: 2 }] })
     .expect(200);
 
+  const kpiDefinitions = await agent.get('/api/v1/kpis/definitions').expect(200);
+
   return {
     agent,
     buildingId: building.body.id,
@@ -375,5 +406,6 @@ async function createTenantFixture(
     maintenancePlanId: maintenancePlan.body.id,
     sinapiCatalogId: catalog.body.id,
     budgetId: budget.body.id,
+    kpiDefinitionId: kpiDefinitions.body[0].id,
   };
 }

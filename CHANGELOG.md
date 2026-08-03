@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.13.0 — gestão contratual por desempenho
+
+- Ampliada a biblioteca para mais de 90 KPIs agrupados em SLA, manutenção, disponibilidade,
+  qualidade, segurança, satisfação, financeiro, sustentabilidade, documentação, preditiva e sistemas.
+- Adicionados indicadores personalizados, pontos de dados auditáveis e memória completa de fórmula,
+  exemplo, objetivo, fonte, periodicidade, meta, faixa, peso e critérios financeiros.
+- Implementados seleção e pesos por contrato, faixas de desempenho, IGD ponderado, alertas,
+  tendências, rankings e dashboards executivos.
+- Integradas glosas e bonificações parametrizadas à medição mensal, com tetos, arredondamento,
+  vínculo ao KPI e memória financeira rastreável.
+- Adicionados seed cumulativo, migration aditiva, testes das regras e isolamento multi-tenant.
+
 ## 0.12.0 — custos executados e Plano Inteligente
 
 - Adicionados data-base/índice de reajuste e fotos na abertura da OS.

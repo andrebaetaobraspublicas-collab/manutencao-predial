@@ -1,0 +1,220 @@
+.filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 2fr) repeat(4, minmax(120px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.filterActions {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 1px;
+}
+
+.catalogSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 12px;
+}
+
+.catalogSummary > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.catalogSummary strong {
+  color: var(--text);
+}
+
+.catalogSummary span {
+  color: var(--text-soft);
+  font-size: 0.79rem;
+}
+
+.checkColumn {
+  width: 42px;
+}
+
+.selectedRow {
+  background: rgba(16, 86, 122, 0.055);
+}
+
+.money {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.noResults {
+  padding: 30px !important;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+}
+
+.pagination label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination select {
+  min-width: 74px;
+}
+
+.budgetFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.totals {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.totals span {
+  white-space: nowrap;
+}
+
+.totals strong {
+  color: var(--text);
+  margin-left: 5px;
+}
+
+.helpText {
+  margin: 12px 0 0;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 27, 42, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgba(7, 28, 45, 0.28);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modalHeader h2 {
+  margin: 8px 0 0;
+  font-size: 1.08rem;
+  line-height: 1.4;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 22px 24px;
+}
+
+.detailItem {
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+}
+
+.detailItem span {
+  color: var(--text-soft);
+  font-size: 0.72rem;
+}
+
+.detailItem strong {
+  overflow-wrap: anywhere;
+  font-size: 0.88rem;
+}
+
+.modal > :global(.notice) {
+  margin: 0 24px 22px;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 1200px) {
+  .filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .filters,
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .filterActions,
+  .catalogSummary,
+  .budgetFooter,
+  .totals,
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .catalogSummary,
+  .budgetFooter,
+  .pagination {
+    display: flex;
+  }
+
+  .totals {
+    display: flex;
+  }
+
+  .modalBackdrop {
+    padding: 10px;
+  }
+}

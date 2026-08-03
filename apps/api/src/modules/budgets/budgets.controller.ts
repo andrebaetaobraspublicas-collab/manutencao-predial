@@ -7,7 +7,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { MembershipRole } from '../../generated/prisma/client';
 import { BudgetsService } from './budgets.service';
-import { BudgetStageQuery, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
+import { BudgetStageQuery, CatalogItemSearchQuery, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
 
 const READ = [MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER,
   MembershipRole.CONTRACT_MANAGER, MembershipRole.CONTRACT_INSPECTOR, MembershipRole.OPERATOR, MembershipRole.AUDITOR];
@@ -25,6 +25,18 @@ export class BudgetsController {
   @Roles(...READ) @Get('sinapi/catalogs/:id/items')
   catalogItems(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Query('search') search?: string) {
     return this.service.listCatalogItems(user.tenantId, id, search);
+  }
+
+  @Roles(...READ) @Get('sinapi/catalogs/:id/search')
+  searchCatalogItems(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string,
+    @Query() query: CatalogItemSearchQuery) {
+    return this.service.searchCatalogItems(user.tenantId, id, query);
+  }
+
+  @Roles(...READ) @Get('sinapi/catalogs/:id/items/:itemId')
+  catalogItem(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string,
+    @Param('itemId') itemId: string) {
+    return this.service.getCatalogItem(user.tenantId, id, itemId);
   }
 
   @Roles(...WRITE) @Post('sinapi/catalogs')

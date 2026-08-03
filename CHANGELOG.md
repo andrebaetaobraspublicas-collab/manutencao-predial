@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.15.1 — experiência de orçamento e consulta SINAPI
+
+- Tornada a competência da importação editável e opcional para o SINAPI oficial, que continua
+  sendo lido diretamente do XLSX; quando informado, o mês é validado contra o relatório.
+- Adicionada pesquisa paginada de composições e insumos por texto, tipo, unidade e faixa de custo,
+  sempre isolada por organização e catálogo.
+- Adicionadas seleção por caixas de marcação, inclusão em massa no orçamento da OS e consulta
+  detalhada da composição ou insumo sintético com competência, UF, regime e metadados disponíveis.
+- Reorganizada a tela para separar configuração, exploração do catálogo, itens do orçamento,
+  importação e orçamentos já registrados, com comportamento responsivo.
+
 ## 0.14.0 — governança operacional e dados demonstrativos
 
 - Corrigidas as áreas de atuação de fornecedores para usar múltiplas especialidades ativas da

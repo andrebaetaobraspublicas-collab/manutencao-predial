@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { AuditAction, BudgetItemKind, BudgetStage, BudgetStatus, Prisma, WorkOrderStatus } from '../../generated/prisma/client';
+import type { SinapiCatalog } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CatalogFileSource, CatalogItemSearchQuery, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
 import { parseCustomWorkbook, parseOfficialSinapiWorkbook } from './xlsx-catalog-parser';
@@ -34,10 +35,11 @@ export class BudgetsService {
     if (query.minCost !== undefined && query.maxCost !== undefined && query.minCost > query.maxCost) {
       throw new BadRequestException('O custo mínimo não pode ser maior que o custo máximo.');
     }
+    const catalogIds = await this.catalogFamilyIds(tenantId, catalog);
     const term = query.search?.trim();
     const where: Prisma.SinapiCatalogItemWhereInput = {
       tenantId,
-      catalogId: id,
+      catalogId: { in: catalogIds },
       ...(term ? { OR: [{ code: { contains: term } }, { description: { contains: term } }] } : {}),
       ...(query.type ? { type: query.type } : {}),
       ...(query.unit?.trim() ? { unit: query.unit.trim().toUpperCase() } : {}),
@@ -59,7 +61,7 @@ export class BudgetsService {
       }),
       this.prisma.sinapiCatalogItem.count({ where }),
       this.prisma.sinapiCatalogItem.findMany({
-        where: { tenantId, catalogId: id },
+        where: { tenantId, catalogId: { in: catalogIds } },
         select: { unit: true },
         distinct: ['unit'],
         orderBy: { unit: 'asc' },
@@ -75,6 +77,7 @@ export class BudgetsService {
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
       facets: { units: unitRows.map((row) => row.unit) },
+      scope: { catalogIds, includesInputsAndCompositions: catalogIds.length > 1 },
     };
   }
 
@@ -217,15 +220,16 @@ export class BudgetsService {
     if (current && current.status !== BudgetStatus.DRAFT && current.status !== BudgetStatus.REJECTED) {
       throw new BadRequestException('Somente orçamentos em rascunho ou rejeitados podem ser editados.');
     }
-    const [workOrder, selectedCatalog, catalogItems] = await Promise.all([
+    const [workOrder, selectedCatalog] = await Promise.all([
       this.prisma.workOrder.findFirst({ where: { id: workOrderId, tenantId, deletedAt: null } }),
       dto.catalogId ? this.prisma.sinapiCatalog.findFirst({ where: { id: dto.catalogId, tenantId, active: true } }) : null,
-      this.prisma.sinapiCatalogItem.findMany({ where: { tenantId,
-        id: { in: dto.items.map((item) => item.catalogItemId).filter((id): id is string => Boolean(id)) },
-        ...(dto.catalogId ? { catalogId: dto.catalogId } : {}) } }),
     ]);
     if (!workOrder) throw new NotFoundException('Ordem de serviço não encontrada.');
     if (dto.catalogId && !selectedCatalog) throw new BadRequestException('Catálogo SINAPI inválido para a organização.');
+    const allowedCatalogIds = selectedCatalog ? await this.catalogFamilyIds(tenantId, selectedCatalog) : undefined;
+    const catalogItems = await this.prisma.sinapiCatalogItem.findMany({ where: { tenantId,
+      id: { in: dto.items.map((item) => item.catalogItemId).filter((id): id is string => Boolean(id)) },
+      ...(allowedCatalogIds ? { catalogId: { in: allowedCatalogIds } } : {}) } });
     const finalBudgetStatuses = new Set<WorkOrderStatus>([
       WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.WAITING_APPROVAL,
       WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED,
@@ -236,7 +240,7 @@ export class BudgetsService {
     const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
     const items = dto.items.map((item) => {
       const catalog = item.catalogItemId ? catalogById.get(item.catalogItemId) : undefined;
-      if (item.catalogItemId && !catalog) throw new BadRequestException('Item não pertence ao catálogo SINAPI selecionado.');
+      if (item.catalogItemId && !catalog) throw new BadRequestException('Item não pertence à base SINAPI e ao regime selecionados.');
       if (!catalog && (!item.code || !item.description || !item.unit || item.unitCost === undefined)) {
         throw new BadRequestException('Item livre exige código, descrição, unidade e custo unitário.');
       }
@@ -310,6 +314,24 @@ export class BudgetsService {
     if (type === 'INPUT') return BudgetItemKind.INPUT;
     if (type === 'COMPOSITION') return BudgetItemKind.COMPOSITION;
     return BudgetItemKind.SERVICE;
+  }
+
+  private async catalogFamilyIds(tenantId: string, catalog: SinapiCatalog) {
+    if (catalog.source !== 'SINAPI') return [catalog.id];
+    const versionRoot = catalog.version.replace(/-(ISD|ICD|CSD|CCD)$/i, '');
+    const family = await this.prisma.sinapiCatalog.findMany({
+      where: {
+        tenantId,
+        active: true,
+        source: catalog.source,
+        state: catalog.state,
+        referenceMonth: catalog.referenceMonth,
+        priceRegime: catalog.priceRegime,
+        version: { startsWith: `${versionRoot}-` },
+      },
+      select: { id: true },
+    });
+    return family.length ? family.map((item) => item.id) : [catalog.id];
   }
 
   private revision(tx: Prisma.TransactionClient, budget: { id: string; tenantId: string; version: number;

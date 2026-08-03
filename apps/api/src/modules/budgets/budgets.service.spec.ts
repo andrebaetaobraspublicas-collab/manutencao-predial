@@ -8,6 +8,9 @@ describe('BudgetsService catalog search', () => {
     id: 'catalog-1',
     tenantId: 'tenant-1',
     active: true,
+    source: 'SINAPI',
+    version: '2026.04-CSD',
+    priceRegime: 'NON_EXEMPT',
     referenceMonth: '2026-04',
     state: 'MG',
   };
@@ -24,7 +27,10 @@ describe('BudgetsService catalog search', () => {
 
   function setup() {
     const prisma = {
-      sinapiCatalog: { findFirst: jest.fn().mockResolvedValue(catalog) },
+      sinapiCatalog: {
+        findFirst: jest.fn().mockResolvedValue(catalog),
+        findMany: jest.fn().mockResolvedValue([{ id: 'catalog-1' }, { id: 'catalog-inputs' }]),
+      },
       sinapiCatalogItem: {
         findMany: jest.fn()
           .mockResolvedValueOnce([item])
@@ -48,12 +54,17 @@ describe('BudgetsService catalog search', () => {
     });
 
     expect(prisma.sinapiCatalogItem.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      where: expect.objectContaining({ tenantId: 'tenant-1', catalogId: 'catalog-1', unit: 'M2' }),
+      where: expect.objectContaining({
+        tenantId: 'tenant-1',
+        catalogId: { in: ['catalog-1', 'catalog-inputs'] },
+        unit: 'M2',
+      }),
       skip: 25,
       take: 25,
     }));
     expect(result.pagination).toEqual({ page: 2, pageSize: 25, total: 1, totalPages: 1 });
     expect(result.facets.units).toEqual(['M2']);
+    expect(result.scope.includesInputsAndCompositions).toBe(true);
   });
 
   it('rejeita faixa de custo invertida', async () => {

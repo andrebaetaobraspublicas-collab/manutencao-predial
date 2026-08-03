@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { createHash } from 'node:crypto';
 import { AuditAction, BudgetItemKind, BudgetStage, BudgetStatus, Prisma, WorkOrderStatus } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CatalogFileSource, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
+import { CatalogFileSource, CatalogItemSearchQuery, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
 import { parseCustomWorkbook, parseOfficialSinapiWorkbook } from './xlsx-catalog-parser';
 
 const TRANSITIONS: Record<BudgetStatus, BudgetStatus[]> = {
@@ -26,6 +26,65 @@ export class BudgetsService {
     return this.prisma.sinapiCatalogItem.findMany({ where: { tenantId, catalogId: id,
       ...(search?.trim() ? { OR: [{ code: { contains: search.trim() } }, { description: { contains: search.trim() } }] } : {}) },
       orderBy: [{ type: 'asc' }, { code: 'asc' }], take: 200 });
+  }
+
+  async searchCatalogItems(tenantId: string, id: string, query: CatalogItemSearchQuery) {
+    const catalog = await this.prisma.sinapiCatalog.findFirst({ where: { id, tenantId, active: true } });
+    if (!catalog) throw new NotFoundException('Catálogo SINAPI não encontrado.');
+    if (query.minCost !== undefined && query.maxCost !== undefined && query.minCost > query.maxCost) {
+      throw new BadRequestException('O custo mínimo não pode ser maior que o custo máximo.');
+    }
+    const term = query.search?.trim();
+    const where: Prisma.SinapiCatalogItemWhereInput = {
+      tenantId,
+      catalogId: id,
+      ...(term ? { OR: [{ code: { contains: term } }, { description: { contains: term } }] } : {}),
+      ...(query.type ? { type: query.type } : {}),
+      ...(query.unit?.trim() ? { unit: query.unit.trim().toUpperCase() } : {}),
+      ...(query.minCost !== undefined || query.maxCost !== undefined ? {
+        unitCost: {
+          ...(query.minCost !== undefined ? { gte: query.minCost } : {}),
+          ...(query.maxCost !== undefined ? { lte: query.maxCost } : {}),
+        },
+      } : {}),
+    };
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 25;
+    const [items, total, unitRows] = await Promise.all([
+      this.prisma.sinapiCatalogItem.findMany({
+        where,
+        orderBy: [{ type: 'asc' }, { code: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.sinapiCatalogItem.count({ where }),
+      this.prisma.sinapiCatalogItem.findMany({
+        where: { tenantId, catalogId: id },
+        select: { unit: true },
+        distinct: ['unit'],
+        orderBy: { unit: 'asc' },
+      }),
+    ]);
+    return {
+      catalog,
+      items,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
+      facets: { units: unitRows.map((row) => row.unit) },
+    };
+  }
+
+  async getCatalogItem(tenantId: string, catalogId: string, itemId: string) {
+    const item = await this.prisma.sinapiCatalogItem.findFirst({
+      where: { id: itemId, catalogId, tenantId },
+      include: { catalog: true },
+    });
+    if (!item) throw new NotFoundException('Item do catálogo SINAPI não encontrado.');
+    return item;
   }
 
   async importCatalog(tenantId: string, actorUserId: string, dto: ImportSinapiCatalogDto) {
@@ -66,6 +125,14 @@ export class BudgetsService {
       : [await parseCustomWorkbook(file.buffer)];
     if (dto.sourceType === CatalogFileSource.CUSTOM && !dto.referenceMonth) {
       throw new BadRequestException('Informe a competência da tabela própria.');
+    }
+    if (dto.sourceType === CatalogFileSource.SINAPI && dto.referenceMonth) {
+      const detectedMonths = [...new Set(catalogs.map((catalog) => catalog.referenceMonth))];
+      if (detectedMonths.length !== 1 || detectedMonths[0] !== dto.referenceMonth) {
+        throw new BadRequestException(
+          `A competência informada (${dto.referenceMonth}) diverge da competência identificada no arquivo (${detectedMonths.join(', ')}).`,
+        );
+      }
     }
     const source = dto.sourceType === CatalogFileSource.SINAPI ? 'SINAPI' : 'PROPRIO';
     for (const parsed of catalogs) {

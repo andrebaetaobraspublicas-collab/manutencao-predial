@@ -65,6 +65,47 @@ export class ImportCatalogFileDto {
   version!: string;
 }
 
+export class CatalogItemSearchQuery {
+  @IsOptional()
+  @IsString()
+  @Length(1, 200)
+  search?: string;
+
+  @IsOptional()
+  @IsEnum(SinapiItemType)
+  type?: SinapiItemType;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 20)
+  unit?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @Min(0)
+  minCost?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @Min(0)
+  maxCost?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize = 25;
+}
+
 export class BudgetItemDto {
   @IsOptional() @IsUUID() catalogItemId?: string;
   @IsOptional() @IsEnum(BudgetItemKind) kind?: BudgetItemKind;

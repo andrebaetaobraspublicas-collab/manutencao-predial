@@ -335,6 +335,26 @@ servidor com `Decimal`; rejeições e cancelamentos exigem justificativa.
 `Contract` aceita `adjustmentBaseDate` e `adjustmentIndex`. A prévia inteligente sempre declara
 validação humana obrigatória e não reproduz texto normativo.
 
+### 7.3 Gestão contratual por desempenho v0.13
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| GET/POST | `/kpis/definitions` | consulta a biblioteca ou cria KPI personalizado |
+| PATCH | `/kpis/definitions/:id` | versiona definição personalizada ou ativa/desativa item |
+| POST | `/kpis/definitions/defaults` | sincroniza a biblioteca `PERFORMANCE_BR_2026.1` |
+| GET/POST | `/kpis/contracts/:contractId/configurations` | lista/vincula KPIs, pesos e faixas ao contrato |
+| PATCH | `/kpis/contract-configurations/:id` | altera configuração contratual preservando histórico |
+| POST | `/kpis/data-points` | registra leitura auditável para fontes externas/manuais |
+| POST | `/kpis/contracts/:contractId/calculate` | calcula competência, escores, IGD, alertas e ajustes |
+| GET | `/kpis/contracts/:contractId/dashboard` | dashboard executivo reconciliado da competência |
+| GET | `/kpis/analysis` | rankings de contratos, fornecedores e edificações |
+| GET | `/kpis/alerts` | alertas tenant-scoped por severidade e contrato |
+
+O cálculo usa somente dados do tenant autenticado. Ao criar uma medição em contrato configurado,
+a API calcula automaticamente a competência e aplica glosas/bonificações enquanto o boletim está
+em rascunho. Indicadores sem fonte nativa ficam sem medição até receberem `KpiDataPoint`; ausência
+de dados não é interpretada como desempenho zero.
+
 
 | Método | Rota | Finalidade |
 |---|---|---|

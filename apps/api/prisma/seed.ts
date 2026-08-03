@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { hash } from 'bcryptjs';
+import { createHash } from 'node:crypto';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import {
   BillingInterval,
@@ -12,8 +13,15 @@ import {
   CommitmentMovementType,
   ContractStatus,
   ContractType,
+  KpiAggregation,
+  KpiAdjustmentStatus,
+  KpiAdjustmentType,
+  KpiAlertSeverity,
+  KpiAlertType,
   KpiCategory,
   KpiDirection,
+  KpiFinancialRole,
+  KpiPeriodicity,
   FrequencyUnit,
   MaintenancePlanType,
   MeasurementStatus,
@@ -29,6 +37,7 @@ import {
   WorkOrderPriority,
   WorkOrderStatus,
 } from '../src/generated/prisma/client';
+import { KPI_LIBRARY, KPI_LIBRARY_VERSION } from '../src/modules/kpis/kpi-library';
 import { parseMySqlUrl } from '../src/prisma/database-url';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -47,24 +56,6 @@ const seedAdminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@gestaodepredios.co
 const prisma = new PrismaClient({
   adapter: new PrismaMariaDb(parseMySqlUrl(databaseUrl)),
 });
-
-const kpis = [
-  ['SLA_COMPLIANCE', 'Cumprimento do SLA de resolução', KpiCategory.SLA, '%', KpiDirection.HIGHER_IS_BETTER, 95],
-  ['MTTA_HOURS', 'Tempo médio até o primeiro atendimento', KpiCategory.OPERATIONAL, 'horas', KpiDirection.LOWER_IS_BETTER, 4],
-  ['MTTR_HOURS', 'Tempo médio para resolução', KpiCategory.RELIABILITY, 'horas', KpiDirection.LOWER_IS_BETTER, 24],
-  ['BACKLOG_TOTAL', 'Backlog total de ordens de serviço', KpiCategory.OPERATIONAL, 'OS', KpiDirection.LOWER_IS_BETTER, 20],
-  ['BACKLOG_OVER_30D', 'OS abertas há mais de 30 dias', KpiCategory.OPERATIONAL, 'OS', KpiDirection.LOWER_IS_BETTER, 0],
-  ['USER_SATISFACTION', 'Índice de satisfação do usuário', KpiCategory.SATISFACTION, 'nota 1-5', KpiDirection.HIGHER_IS_BETTER, 4.5],
-  ['NPS', 'Net Promoter Score dos usuários', KpiCategory.SATISFACTION, 'pontos', KpiDirection.HIGHER_IS_BETTER, 60],
-  ['CORRECTIVE_RECURRENCE', 'Taxa de reincidência de manutenção corretiva', KpiCategory.RELIABILITY, '%', KpiDirection.LOWER_IS_BETTER, 5],
-  ['CORRECTIVE_FAILURE_REDUCTION', 'Redução de falhas corretivas por manutenção preventiva', KpiCategory.RELIABILITY, '%', KpiDirection.HIGHER_IS_BETTER, 15],
-  ['PREVENTIVE_COMPLIANCE', 'Execução do plano preventivo no prazo', KpiCategory.OPERATIONAL, '%', KpiDirection.HIGHER_IS_BETTER, 95],
-  ['ENERGY_REDUCTION', 'Redução do consumo de energia', KpiCategory.SUSTAINABILITY, '%', KpiDirection.HIGHER_IS_BETTER, 5],
-  ['WATER_REDUCTION', 'Redução do consumo de água', KpiCategory.SUSTAINABILITY, '%', KpiDirection.HIGHER_IS_BETTER, 5],
-  ['WASTE_DIVERSION', 'Resíduos destinados à reciclagem/reuso', KpiCategory.SUSTAINABILITY, '%', KpiDirection.HIGHER_IS_BETTER, 60],
-  ['CONTRACT_EXECUTION', 'Execução financeira do contrato', KpiCategory.FINANCIAL, '%', KpiDirection.TARGET_RANGE, 100],
-  ['SAFETY_COMPLIANCE', 'Conformidade documental de segurança do trabalho', KpiCategory.SAFETY, '%', KpiDirection.HIGHER_IS_BETTER, 100],
-] as const;
 
 const defaultSlaByPriority: Record<
   WorkOrderPriority,
@@ -325,6 +316,109 @@ async function provisionFunctionalDemoData(input: {
     create: { tenantId, key: 'WORK_ORDER:2026', currentValue: 4 }, update: {} });
   await prisma.tenantSequence.updateMany({ where: { tenantId, key: 'WORK_ORDER:2026', currentValue: { lt: 4 } },
     data: { currentValue: 4 } });
+}
+
+async function provisionPerformanceSeed(input: { tenantId: string; userId: string; contractId: string;
+  buildingId: string; supplierId: string }) {
+  const { tenantId, userId, contractId, buildingId, supplierId } = input;
+  for (const item of KPI_LIBRARY) await prisma.kpiDefinition.upsert({
+    where: { tenantId_code: { tenantId, code: item.code } },
+    create: { tenantId, ...item, source: KPI_LIBRARY_VERSION, systemProvided: true },
+    update: { ...item, source: KPI_LIBRARY_VERSION, systemProvided: true, deletedAt: null },
+  });
+  const igdDefinition = await prisma.kpiDefinition.upsert({
+    where: { tenantId_code: { tenantId, code: 'GLOBAL_PERFORMANCE_INDEX' } },
+    create: { tenantId, code: 'GLOBAL_PERFORMANCE_INDEX', name: 'Índice Global de Desempenho (IGD)',
+      description: 'Soma ponderada dos escores dos KPIs do contrato.', category: KpiCategory.CONTRACTUAL,
+      unit: 'pontos', direction: KpiDirection.HIGHER_IS_BETTER, periodicity: KpiPeriodicity.MONTHLY,
+      aggregation: KpiAggregation.AVERAGE, calculationMethod: 'WEIGHTED_IGD', source: KPI_LIBRARY_VERSION,
+      systemProvided: true, formula: 'IGD = Σ(escore × peso) ÷ Σ(pesos)', targetValue: 85,
+      objective: 'Sintetizar o desempenho contratual.', dataSource: 'KPIs contratuais' },
+    update: { source: KPI_LIBRARY_VERSION, systemProvided: true, deletedAt: null },
+  });
+  const selections = [
+    { code: 'SLA_COMPLIANCE', weight: 25, value: 88, role: KpiFinancialRole.DEDUCTION },
+    { code: 'MONTHLY_PLAN_COMPLIANCE', weight: 25, value: 96, role: KpiFinancialRole.DEDUCTION_AND_BONUS },
+    { code: 'REOPEN_RATE_30D', weight: 15, value: 4, role: KpiFinancialRole.DEDUCTION },
+    { code: 'USER_SATISFACTION', weight: 15, value: 4.6, role: KpiFinancialRole.BONUS },
+    { code: 'CLOSED_CORRECTLY', weight: 20, value: 94, role: KpiFinancialRole.DEDUCTION },
+  ] as const;
+  const referenceMonth = new Date().toISOString().slice(0, 7);
+  const periodStart = new Date(`${referenceMonth}-01T00:00:00.000Z`);
+  const periodEnd = new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1, 1));
+  const measurementByCode = new Map<string, { id: string; bindingId: string }>();
+  for (const selection of selections) {
+    const definition = await prisma.kpiDefinition.findUniqueOrThrow({ where: { tenantId_code: { tenantId, code: selection.code } } });
+    const target = definition.targetValue?.toNumber() ?? 95;
+    const warning = definition.warningValue?.toNumber() ?? (definition.direction === KpiDirection.LOWER_IS_BETTER ? target * 1.25 : target * .95);
+    const critical = definition.criticalValue?.toNumber() ?? (definition.direction === KpiDirection.LOWER_IS_BETTER ? target * 1.5 : target * .85);
+    const binding = await prisma.contractKpi.upsert({ where: { contractId_definitionId: { contractId, definitionId: definition.id } },
+      create: { tenantId, contractId, definitionId: definition.id, targetValue: target, warningValue: warning,
+        criticalValue: critical, weight: selection.weight, financialRole: selection.role,
+        deductionCapPercent: 3, bonusCapPercent: 1, actionPlanTrigger: true },
+      update: {} });
+    const higher = definition.direction !== KpiDirection.LOWER_IS_BETTER;
+    const bands = higher ? [
+      { rating: 'CRITICAL', label: 'Crítico', minValue: null, maxValue: critical, score: 40, adjustmentType: KpiAdjustmentType.DEDUCTION, adjustmentPercent: 2, triggerActionPlan: true },
+      { rating: 'REGULAR', label: 'Regular', minValue: critical, maxValue: warning, score: 70, adjustmentType: KpiAdjustmentType.DEDUCTION, adjustmentPercent: 1, triggerActionPlan: false },
+      { rating: 'GOOD', label: 'Bom', minValue: warning, maxValue: target, score: 85, adjustmentType: KpiAdjustmentType.NONE, adjustmentPercent: null, triggerActionPlan: false },
+      { rating: 'EXCELLENT', label: 'Excelente', minValue: target, maxValue: null, score: 100, adjustmentType: selection.role === KpiFinancialRole.BONUS || selection.role === KpiFinancialRole.DEDUCTION_AND_BONUS ? KpiAdjustmentType.BONUS : KpiAdjustmentType.NONE, adjustmentPercent: 0.5, triggerActionPlan: false },
+    ] : [
+      { rating: 'EXCELLENT', label: 'Excelente', minValue: null, maxValue: target, score: 100, adjustmentType: KpiAdjustmentType.NONE, adjustmentPercent: null, triggerActionPlan: false },
+      { rating: 'GOOD', label: 'Bom', minValue: target, maxValue: warning, score: 85, adjustmentType: KpiAdjustmentType.NONE, adjustmentPercent: null, triggerActionPlan: false },
+      { rating: 'REGULAR', label: 'Regular', minValue: warning, maxValue: critical, score: 70, adjustmentType: KpiAdjustmentType.DEDUCTION, adjustmentPercent: 1, triggerActionPlan: false },
+      { rating: 'CRITICAL', label: 'Crítico', minValue: critical, maxValue: null, score: 40, adjustmentType: KpiAdjustmentType.DEDUCTION, adjustmentPercent: 2, triggerActionPlan: true },
+    ];
+    for (const [sortOrder, band] of bands.entries()) await prisma.kpiPerformanceBand.upsert({
+      where: { contractKpiId_rating: { contractKpiId: binding.id, rating: band.rating } },
+      create: { tenantId, contractKpiId: binding.id, ...band, sortOrder },
+      update: {},
+    });
+    const score = selection.code === 'SLA_COMPLIANCE' ? 70 : selection.code === 'CLOSED_CORRECTLY' ? 85 : 100;
+    const calculationKey = createHash('sha256').update(`seed:${tenantId}:${contractId}:${selection.code}:${referenceMonth}`).digest('hex');
+    const measured = await prisma.kpiMeasurement.upsert({ where: { calculationKey },
+      create: { tenantId, definitionId: definition.id, contractId, buildingId, supplierId, periodStart, periodEnd,
+        value: selection.value, normalizedScore: score, performanceBand: score === 100 ? 'EXCELLENT' : score === 85 ? 'GOOD' : 'REGULAR',
+        calculationKey, formulaVersion: definition.version, targetValue: target, source: 'SEED_DEMONSTRATION',
+        formulaSnapshot: definition.formula, details: { demonstration: true, libraryVersion: KPI_LIBRARY_VERSION } },
+      update: { value: selection.value, normalizedScore: score, targetValue: target,
+        details: { demonstration: true, libraryVersion: KPI_LIBRARY_VERSION }, computedAt: new Date() } });
+    measurementByCode.set(selection.code, { id: measured.id, bindingId: binding.id });
+  }
+  const igdKey = createHash('sha256').update(`seed:${tenantId}:${contractId}:IGD:${referenceMonth}`).digest('hex');
+  await prisma.kpiMeasurement.upsert({ where: { calculationKey: igdKey }, create: { tenantId,
+    definitionId: igdDefinition.id, contractId, periodStart, periodEnd, value: 85.25, normalizedScore: 85.25,
+    performanceBand: 'GOOD', calculationKey: igdKey, formulaVersion: igdDefinition.version, targetValue: 85,
+    source: 'WEIGHTED_IGD', formulaSnapshot: igdDefinition.formula, details: { demonstration: true, components: selections.length } },
+    update: { value: 85.25, normalizedScore: 85.25, performanceBand: 'GOOD', computedAt: new Date() } });
+  const availability = await prisma.kpiDefinition.findUniqueOrThrow({ where: { tenantId_code: { tenantId, code: 'ELEVATOR_AVAILABILITY' } } });
+  await prisma.kpiDataPoint.upsert({ where: { tenantId_definitionId_sourceReference: { tenantId, definitionId: availability.id,
+    sourceReference: `DEMO-ELEVATOR-${referenceMonth}` } }, create: { tenantId, definitionId: availability.id,
+    buildingId, contractId, supplierId, occurredAt: new Date(), value: 99.2, numerator: 714.24, denominator: 720,
+    source: 'DEMONSTRATION', sourceReference: `DEMO-ELEVATOR-${referenceMonth}`, dimensions: { system: 'ELEVADOR-01' },
+    notes: 'Ponto de disponibilidade demonstrativo.' }, update: { value: 99.2, numerator: 714.24, denominator: 720 } });
+  const financial = await prisma.measurement.findFirst({ where: { tenantId, contractId, referenceMonth, status: MeasurementStatus.DRAFT } });
+  const sla = measurementByCode.get('SLA_COMPLIANCE');
+  if (financial && sla) {
+    const amount = financial.grossAmount.times(.01).toDecimalPlaces(2);
+    await prisma.kpiFinancialAdjustment.upsert({ where: { financialMeasurementId_contractKpiId: {
+      financialMeasurementId: financial.id, contractKpiId: sla.bindingId } }, create: { tenantId, contractId,
+      contractKpiId: sla.bindingId, kpiMeasurementId: sla.id, financialMeasurementId: financial.id, referenceMonth,
+      type: KpiAdjustmentType.DEDUCTION, percentage: 1, basisAmount: financial.grossAmount, amount,
+      formula: '1% × valor bruto da medição', calculationMemory: { measuredValue: 88, target: 95, band: 'REGULAR' },
+      status: KpiAdjustmentStatus.APPLIED, appliedAt: new Date() }, update: { amount, status: KpiAdjustmentStatus.APPLIED, appliedAt: new Date() } });
+    await prisma.measurement.update({ where: { id: financial.id }, data: { performanceDeductions: amount,
+      deductions: amount, bonuses: 0, performanceIndex: 85.25, netAmount: financial.grossAmount.minus(amount) } });
+    const dedupeKey = createHash('sha256').update(`seed-alert:${contractId}:${referenceMonth}:SLA`).digest('hex');
+    await prisma.kpiAlert.upsert({ where: { tenantId_dedupeKey: { tenantId, dedupeKey } }, create: { tenantId,
+      contractId, contractKpiId: sla.bindingId, kpiMeasurementId: sla.id, type: KpiAlertType.TARGET_MISSED,
+      severity: KpiAlertSeverity.WARNING, title: 'Cumprimento do SLA abaixo da meta',
+      message: 'Resultado demonstrativo de 88% frente à meta contratual de 95%.', dedupeKey, actionPlanRequired: true },
+      update: { resolvedAt: null, acknowledgedAt: null } });
+  }
+  if (!await prisma.auditLog.findFirst({ where: { tenantId, entityType: 'KpiSeed', entityId: contractId } }))
+    await prisma.auditLog.create({ data: { tenantId, actorUserId: userId, action: 'CREATE', entityType: 'KpiSeed',
+      entityId: contractId, afterData: { libraryVersion: KPI_LIBRARY_VERSION, definitions: KPI_LIBRARY.length, demonstration: true } } });
 }
 
 async function main() {
@@ -661,22 +755,8 @@ async function main() {
 
   await provisionFunctionalDemoData({ tenantId: tenant.id, userId: user.id, buildingId: building.id,
     supplierId: supplier.id, contractId: contract.id });
-
-  for (const [code, name, category, unit, direction, target] of kpis) {
-    await prisma.kpiDefinition.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code } },
-      update: {},
-      create: {
-        tenantId: tenant.id,
-        code,
-        name,
-        category,
-        unit,
-        direction,
-        targetValue: target,
-      },
-    });
-  }
+  await provisionPerformanceSeed({ tenantId: tenant.id, userId: user.id, buildingId: building.id,
+    supplierId: supplier.id, contractId: contract.id });
 
   console.log(`Seed concluído. Login: ${seedAdminEmail}`);
 }

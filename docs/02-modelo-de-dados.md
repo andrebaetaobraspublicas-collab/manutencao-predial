@@ -319,3 +319,20 @@ exige migration nem seed adicional.
 - documentos de terceirizados com criptografia e retenção reforçadas;
 - tabela de baseline de energia/água e leituras por imóvel;
 - outbox transacional para eventos externos quando e-mail/webhooks exigirem robustez.
+
+## 12. Gestão por desempenho v0.13
+
+- `KpiDefinition` conserva a biblioteca tenant-scoped e a memória versionada: fórmula, exemplo,
+  objetivo, fonte, periodicidade, agregação, metas, faixa aceitável, peso sugerido e critérios de
+  glosa/bonificação. Indicadores do sistema não são editados; personalizações criam nova definição.
+- `ContractKpi` seleciona o indicador para o contrato e congela meta, peso, papel financeiro, tetos
+  e arredondamento. `KpiPerformanceBand` define enquadramento, escore e ajuste por faixa sem apagar
+  versões desativadas.
+- `KpiDataPoint` recebe leituras auditáveis para fontes ainda não nativas, como disponibilidade,
+  consumo, sensores e segurança. O cálculo é automático depois da ingestão e nunca fabrica dado ausente.
+- `KpiMeasurement` aceita dimensões de contrato, OS, plano, ativo, edifício e fornecedor, guarda
+  fórmula, versão, detalhes, escore normalizado e faixa. A chave de cálculo permanece idempotente.
+- `KpiFinancialAdjustment` liga KPI, configuração contratual e medição financeira, preservando base,
+  percentual, teto, valor e memória. `KpiAlert` usa chave de deduplicação e registra plano de ação.
+- `Measurement` separa deduções manuais, glosas de desempenho, bônus e IGD; o líquido deriva de
+  `bruto - deduções + bônus` usando `Decimal`.

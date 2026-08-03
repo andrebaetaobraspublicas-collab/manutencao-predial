@@ -246,12 +246,19 @@ enum MaintenanceGenerationStatus {
 enum KpiCategory {
   OPERATIONAL
   SLA
+  PREVENTIVE_MAINTENANCE
+  CORRECTIVE_MAINTENANCE
+  AVAILABILITY
+  QUALITY
   SATISFACTION
   FINANCIAL
   CONTRACTUAL
   SUSTAINABILITY
   RELIABILITY
   SAFETY
+  DOCUMENTATION
+  PREDICTIVE
+  SYSTEM_SPECIFIC
 }
 
 enum KpiDirection {
@@ -261,16 +268,68 @@ enum KpiDirection {
 }
 
 enum KpiPeriodicity {
+  REAL_TIME
   DAILY
   WEEKLY
+  BIWEEKLY
   MONTHLY
+  BIMONTHLY
   QUARTERLY
+  SEMIANNUAL
   YEARLY
+  PER_WORK_ORDER
+  PER_ASSET
+  PER_SYSTEM
+  PER_CONTRACT
 }
 
 enum KpiMeasurementStatus {
   FINAL
   FAILED
+}
+
+enum KpiAggregation {
+  COUNT
+  SUM
+  AVERAGE
+  RATIO
+  LATEST
+}
+
+enum KpiFinancialRole {
+  INFORMATIONAL
+  PERFORMANCE
+  DEDUCTION
+  BONUS
+  DEDUCTION_AND_BONUS
+}
+
+enum KpiAdjustmentType {
+  NONE
+  DEDUCTION
+  BONUS
+}
+
+enum KpiAdjustmentStatus {
+  CALCULATED
+  APPLIED
+  WAIVED
+}
+
+enum KpiAlertType {
+  NEAR_LIMIT
+  TARGET_MISSED
+  SLA_EXPIRING
+  CRITICAL_ASSET
+  PERFORMANCE_DROP
+  CONTRACT_RISK
+  ACTION_PLAN
+}
+
+enum KpiAlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
 }
 
 enum BillingInterval {
@@ -380,6 +439,11 @@ model Tenant {
   maintenanceRuns      MaintenancePlanGeneration[]
   kpiDefinitions       KpiDefinition[]
   kpiMeasurements      KpiMeasurement[]
+  contractKpis         ContractKpi[]
+  kpiBands             KpiPerformanceBand[]
+  kpiDataPoints        KpiDataPoint[]
+  kpiAdjustments       KpiFinancialAdjustment[]
+  kpiAlerts            KpiAlert[]
   subscriptions        TenantSubscription[]
   auditLogs            AuditLog[]
   sequences            TenantSequence[]
@@ -573,6 +637,7 @@ model Building {
   assets                     Asset[]
   maintenancePlans           MaintenancePlan[]
   kpiMeasurements            KpiMeasurement[]
+  kpiDataPoints              KpiDataPoint[]
 
   @@unique([tenantId, code])
   @@index([tenantId, status, deletedAt])
@@ -613,6 +678,7 @@ model Supplier {
   consortiumMemberships  SupplierConsortiumMember[] @relation("ConsortiumMember")
   authorizedSubcontracts ContractSubcontract[]
   kpiMeasurements        KpiMeasurement[]
+  kpiDataPoints          KpiDataPoint[]
   maintenancePlans       MaintenancePlan[]
 
   @@unique([tenantId, taxId])
@@ -653,33 +719,33 @@ model SupplierConsortiumMember {
 }
 
 model Contract {
-  id                    String                @id @default(uuid()) @db.Char(36)
-  tenantId              String                @db.Char(36)
-  supplierId            String                @db.Char(36)
-  code                  String                @db.VarChar(80)
-  administrativeProcess String?               @db.VarChar(120)
-  object                String                @db.Text
+  id                    String                   @id @default(uuid()) @db.Char(36)
+  tenantId              String                   @db.Char(36)
+  supplierId            String                   @db.Char(36)
+  code                  String                   @db.VarChar(80)
+  administrativeProcess String?                  @db.VarChar(120)
+  object                String                   @db.Text
   type                  ContractType
-  status                ContractStatus        @default(DRAFT)
-  managerUserId         String?               @db.Char(36)
-  inspectorUserId       String?               @db.Char(36)
+  status                ContractStatus           @default(DRAFT)
+  managerUserId         String?                  @db.Char(36)
+  inspectorUserId       String?                  @db.Char(36)
   startDate             DateTime
   endDate               DateTime
   signatureDate         DateTime?
-  originalValue         Decimal               @db.Decimal(16, 2)
-  currentValue          Decimal               @db.Decimal(16, 2)
-  measuredValue         Decimal               @default(0) @db.Decimal(16, 2)
-  paidValue             Decimal               @default(0) @db.Decimal(16, 2)
+  originalValue         Decimal                  @db.Decimal(16, 2)
+  currentValue          Decimal                  @db.Decimal(16, 2)
+  measuredValue         Decimal                  @default(0) @db.Decimal(16, 2)
+  paidValue             Decimal                  @default(0) @db.Decimal(16, 2)
   adjustmentBaseDate    DateTime?
-  adjustmentIndex       String?               @db.VarChar(80)
-  notes                 String?               @db.Text
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
+  adjustmentIndex       String?                  @db.VarChar(80)
+  notes                 String?                  @db.Text
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
   deletedAt             DateTime?
-  tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  supplier              Supplier              @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  manager               User?                 @relation("ContractManager", fields: [managerUserId], references: [id], onDelete: SetNull)
-  inspector             User?                 @relation("ContractInspector", fields: [inspectorUserId], references: [id], onDelete: SetNull)
+  tenant                Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  supplier              Supplier                 @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  manager               User?                    @relation("ContractManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  inspector             User?                    @relation("ContractInspector", fields: [inspectorUserId], references: [id], onDelete: SetNull)
   buildings             ContractBuilding[]
   workOrders            WorkOrderContract[]
   amendments            ContractAmendment[]
@@ -690,6 +756,10 @@ model Contract {
   measurements          Measurement[]
   maintenancePlans      MaintenancePlan[]
   kpiMeasurements       KpiMeasurement[]
+  kpiConfigurations     ContractKpi[]
+  kpiDataPoints         KpiDataPoint[]
+  kpiAdjustments        KpiFinancialAdjustment[]
+  kpiAlerts             KpiAlert[]
   slaPolicies           SlaPolicy[]
 
   @@unique([tenantId, code])
@@ -925,6 +995,7 @@ model WorkOrder {
   checklistItems              WorkOrderChecklistItem[]
   notifications               Notification[]
   reopenings                  WorkOrderReopening[]
+  kpiMeasurements             KpiMeasurement[]
 
   @@unique([tenantId, number])
   @@index([tenantId, status, openedAt, deletedAt])
@@ -1140,38 +1211,42 @@ model SinapiCatalogItem {
 }
 
 model Measurement {
-  id                  String               @id @default(uuid()) @db.Char(36)
-  tenantId            String               @db.Char(36)
-  contractId          String               @db.Char(36)
-  commitmentId        String?              @db.Char(36)
-  createdByUserId     String?              @db.Char(36)
-  reviewedByUserId    String?              @db.Char(36)
-  approvedByUserId    String?              @db.Char(36)
-  number              String               @db.VarChar(60)
-  referenceMonth      String               @db.VarChar(7)
-  status              MeasurementStatus    @default(DRAFT)
-  grossAmount         Decimal              @default(0) @db.Decimal(16, 2)
-  deductions          Decimal              @default(0) @db.Decimal(16, 2)
-  netAmount           Decimal              @default(0) @db.Decimal(16, 2)
-  submittedAt         DateTime?
-  reviewedAt          DateTime?
-  approvedAt          DateTime?
-  liquidatedAt        DateTime?
-  paidAt              DateTime?
-  canceledAt          DateTime?
-  decisionNote        String?              @db.Text
-  version             Int                  @default(0)
-  notes               String?              @db.Text
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  contract            Contract             @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  commitment          Commitment?          @relation(fields: [commitmentId], references: [id], onDelete: SetNull)
-  createdBy           User?                @relation("MeasurementCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  reviewedBy          User?                @relation("MeasurementReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  approvedBy          User?                @relation("MeasurementApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
-  items               MeasurementItem[]
-  commitmentMovements CommitmentMovement[]
+  id                    String                   @id @default(uuid()) @db.Char(36)
+  tenantId              String                   @db.Char(36)
+  contractId            String                   @db.Char(36)
+  commitmentId          String?                  @db.Char(36)
+  createdByUserId       String?                  @db.Char(36)
+  reviewedByUserId      String?                  @db.Char(36)
+  approvedByUserId      String?                  @db.Char(36)
+  number                String                   @db.VarChar(60)
+  referenceMonth        String                   @db.VarChar(7)
+  status                MeasurementStatus        @default(DRAFT)
+  grossAmount           Decimal                  @default(0) @db.Decimal(16, 2)
+  deductions            Decimal                  @default(0) @db.Decimal(16, 2)
+  performanceDeductions Decimal                  @default(0) @db.Decimal(16, 2)
+  bonuses               Decimal                  @default(0) @db.Decimal(16, 2)
+  performanceIndex      Decimal?                 @db.Decimal(9, 4)
+  netAmount             Decimal                  @default(0) @db.Decimal(16, 2)
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  approvedAt            DateTime?
+  liquidatedAt          DateTime?
+  paidAt                DateTime?
+  canceledAt            DateTime?
+  decisionNote          String?                  @db.Text
+  version               Int                      @default(0)
+  notes                 String?                  @db.Text
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  tenant                Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract              Contract                 @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  commitment            Commitment?              @relation(fields: [commitmentId], references: [id], onDelete: SetNull)
+  createdBy             User?                    @relation("MeasurementCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  reviewedBy            User?                    @relation("MeasurementReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  approvedBy            User?                    @relation("MeasurementApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  items                 MeasurementItem[]
+  commitmentMovements   CommitmentMovement[]
+  kpiAdjustments        KpiFinancialAdjustment[]
 
   @@unique([contractId, number])
   @@index([tenantId, referenceMonth, status])
@@ -1519,6 +1594,7 @@ model Asset {
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   building         Building          @relation(fields: [buildingId], references: [id], onDelete: Restrict)
   maintenancePlans MaintenancePlan[]
+  kpiMeasurements  KpiMeasurement[]
 
   @@unique([tenantId, tag])
   @@index([tenantId, buildingId, status, deletedAt])
@@ -1566,6 +1642,7 @@ model MaintenancePlan {
   assignedTo            User?                       @relation("MaintenancePlanAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   generatedWorkOrders   WorkOrder[]
   generations           MaintenancePlanGeneration[]
+  kpiMeasurements       KpiMeasurement[]
 
   @@index([tenantId, active, nextDueAt])
   @@index([buildingId, type])
@@ -1593,59 +1670,227 @@ model MaintenancePlanGeneration {
 }
 
 model KpiDefinition {
-  id            String           @id @default(uuid()) @db.Char(36)
-  tenantId      String           @db.Char(36)
-  code          String           @db.VarChar(80)
-  name          String           @db.VarChar(180)
-  description   String?          @db.Text
-  category      KpiCategory
-  unit          String           @db.VarChar(40)
-  direction     KpiDirection
-  periodicity   KpiPeriodicity   @default(MONTHLY)
-  version       Int              @default(1)
-  source        String?          @db.VarChar(80)
-  decimalPlaces Int              @default(2)
-  formula       String?          @db.Text
-  targetValue   Decimal?         @db.Decimal(18, 6)
-  warningValue  Decimal?         @db.Decimal(18, 6)
-  criticalValue Decimal?         @db.Decimal(18, 6)
-  active        Boolean          @default(true)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  measurements  KpiMeasurement[]
+  id                String           @id @default(uuid()) @db.Char(36)
+  tenantId          String           @db.Char(36)
+  code              String           @db.VarChar(80)
+  name              String           @db.VarChar(180)
+  description       String?          @db.Text
+  category          KpiCategory
+  unit              String           @db.VarChar(40)
+  direction         KpiDirection
+  periodicity       KpiPeriodicity   @default(MONTHLY)
+  aggregation       KpiAggregation   @default(AVERAGE)
+  version           Int              @default(1)
+  source            String?          @db.VarChar(80)
+  calculationMethod String           @default("DATA_POINT_AVERAGE") @db.VarChar(100)
+  systemProvided    Boolean          @default(false)
+  decimalPlaces     Int              @default(2)
+  formula           String?          @db.Text
+  formulaExample    String?          @db.Text
+  objective         String?          @db.Text
+  dataSource        String?          @db.VarChar(220)
+  acceptableRange   String?          @db.VarChar(180)
+  responsibleRole   String?          @db.VarChar(120)
+  defaultWeight     Decimal?         @db.Decimal(7, 4)
+  deductionCriteria String?          @db.Text
+  bonusCriteria     String?          @db.Text
+  targetValue       Decimal?         @db.Decimal(18, 6)
+  warningValue      Decimal?         @db.Decimal(18, 6)
+  criticalValue     Decimal?         @db.Decimal(18, 6)
+  benchmarkValue    Decimal?         @db.Decimal(18, 6)
+  formulaConfig     Json?
+  active            Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  deletedAt         DateTime?
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  measurements      KpiMeasurement[]
+  contractBindings  ContractKpi[]
+  dataPoints        KpiDataPoint[]
 
   @@unique([tenantId, code])
-  @@index([tenantId, category, active])
+  @@index([tenantId, category, active, deletedAt])
 }
 
 model KpiMeasurement {
-  id             String               @id @default(uuid()) @db.Char(36)
-  tenantId       String               @db.Char(36)
-  definitionId   String               @db.Char(36)
-  buildingId     String?              @db.Char(36)
-  contractId     String?              @db.Char(36)
-  supplierId     String?              @db.Char(36)
-  periodStart    DateTime
-  periodEnd      DateTime
-  value          Decimal              @db.Decimal(18, 6)
-  status         KpiMeasurementStatus @default(FINAL)
-  calculationKey String               @unique @db.Char(64)
-  formulaVersion Int                  @default(1)
-  targetValue    Decimal?             @db.Decimal(18, 6)
-  source         String?              @db.VarChar(80)
-  details        Json?
-  computedAt     DateTime             @default(now())
-  createdAt      DateTime             @default(now())
-  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  definition     KpiDefinition        @relation(fields: [definitionId], references: [id], onDelete: Cascade)
-  building       Building?            @relation(fields: [buildingId], references: [id], onDelete: SetNull)
-  contract       Contract?            @relation(fields: [contractId], references: [id], onDelete: SetNull)
-  supplier       Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  id                   String                   @id @default(uuid()) @db.Char(36)
+  tenantId             String                   @db.Char(36)
+  definitionId         String                   @db.Char(36)
+  buildingId           String?                  @db.Char(36)
+  contractId           String?                  @db.Char(36)
+  supplierId           String?                  @db.Char(36)
+  workOrderId          String?                  @db.Char(36)
+  maintenancePlanId    String?                  @db.Char(36)
+  assetId              String?                  @db.Char(36)
+  periodStart          DateTime
+  periodEnd            DateTime
+  value                Decimal                  @db.Decimal(18, 6)
+  normalizedScore      Decimal?                 @db.Decimal(9, 4)
+  performanceBand      String?                  @db.VarChar(30)
+  status               KpiMeasurementStatus     @default(FINAL)
+  calculationKey       String                   @unique @db.Char(64)
+  formulaVersion       Int                      @default(1)
+  targetValue          Decimal?                 @db.Decimal(18, 6)
+  source               String?                  @db.VarChar(80)
+  formulaSnapshot      String?                  @db.Text
+  details              Json?
+  computedAt           DateTime                 @default(now())
+  createdAt            DateTime                 @default(now())
+  tenant               Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  definition           KpiDefinition            @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  building             Building?                @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  contract             Contract?                @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  supplier             Supplier?                @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  workOrder            WorkOrder?               @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  maintenancePlan      MaintenancePlan?         @relation(fields: [maintenancePlanId], references: [id], onDelete: SetNull)
+  asset                Asset?                   @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  financialAdjustments KpiFinancialAdjustment[]
+  alerts               KpiAlert[]
 
   @@index([tenantId, definitionId, periodEnd])
   @@index([tenantId, buildingId, periodEnd])
   @@index([tenantId, contractId, periodEnd])
+  @@index([tenantId, supplierId, periodEnd])
+  @@index([tenantId, workOrderId, periodEnd])
+}
+
+model ContractKpi {
+  id                   String                   @id @default(uuid()) @db.Char(36)
+  tenantId             String                   @db.Char(36)
+  contractId           String                   @db.Char(36)
+  definitionId         String                   @db.Char(36)
+  targetValue          Decimal?                 @db.Decimal(18, 6)
+  warningValue         Decimal?                 @db.Decimal(18, 6)
+  criticalValue        Decimal?                 @db.Decimal(18, 6)
+  weight               Decimal                  @default(0) @db.Decimal(7, 4)
+  financialRole        KpiFinancialRole         @default(PERFORMANCE)
+  deductionCapPercent  Decimal?                 @db.Decimal(7, 4)
+  bonusCapPercent      Decimal?                 @db.Decimal(7, 4)
+  roundingScale        Int                      @default(2)
+  roundingMode         String                   @default("HALF_UP") @db.VarChar(30)
+  actionPlanTrigger    Boolean                  @default(false)
+  active               Boolean                  @default(true)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  deletedAt            DateTime?
+  tenant               Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract             Contract                 @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  definition           KpiDefinition            @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  bands                KpiPerformanceBand[]
+  financialAdjustments KpiFinancialAdjustment[]
+  alerts               KpiAlert[]
+
+  @@unique([contractId, definitionId])
+  @@index([tenantId, contractId, active, deletedAt])
+}
+
+model KpiPerformanceBand {
+  id                String            @id @default(uuid()) @db.Char(36)
+  tenantId          String            @db.Char(36)
+  contractKpiId     String            @db.Char(36)
+  label             String            @db.VarChar(80)
+  rating            String            @db.VarChar(30)
+  minValue          Decimal?          @db.Decimal(18, 6)
+  maxValue          Decimal?          @db.Decimal(18, 6)
+  score             Decimal           @db.Decimal(7, 4)
+  adjustmentType    KpiAdjustmentType @default(NONE)
+  adjustmentPercent Decimal?          @db.Decimal(7, 4)
+  fixedAmount       Decimal?          @db.Decimal(16, 2)
+  triggerActionPlan Boolean           @default(false)
+  sortOrder         Int               @default(0)
+  active            Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contractKpi       ContractKpi       @relation(fields: [contractKpiId], references: [id], onDelete: Cascade)
+
+  @@unique([contractKpiId, rating])
+  @@index([tenantId, contractKpiId, active, sortOrder])
+}
+
+model KpiDataPoint {
+  id              String        @id @default(uuid()) @db.Char(36)
+  tenantId        String        @db.Char(36)
+  definitionId    String        @db.Char(36)
+  buildingId      String?       @db.Char(36)
+  contractId      String?       @db.Char(36)
+  supplierId      String?       @db.Char(36)
+  occurredAt      DateTime
+  value           Decimal       @db.Decimal(18, 6)
+  numerator       Decimal?      @db.Decimal(18, 6)
+  denominator     Decimal?      @db.Decimal(18, 6)
+  source          String        @default("USER_INPUT") @db.VarChar(80)
+  sourceReference String?       @db.VarChar(160)
+  dimensions      Json?
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  definition      KpiDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  building        Building?     @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  contract        Contract?     @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  supplier        Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, definitionId, sourceReference])
+  @@index([tenantId, definitionId, occurredAt])
+  @@index([tenantId, contractId, occurredAt])
+}
+
+model KpiFinancialAdjustment {
+  id                     String              @id @default(uuid()) @db.Char(36)
+  tenantId               String              @db.Char(36)
+  contractId             String              @db.Char(36)
+  contractKpiId          String              @db.Char(36)
+  kpiMeasurementId       String              @db.Char(36)
+  financialMeasurementId String?             @db.Char(36)
+  referenceMonth         String              @db.VarChar(7)
+  type                   KpiAdjustmentType
+  percentage             Decimal             @default(0) @db.Decimal(7, 4)
+  basisAmount            Decimal             @db.Decimal(16, 2)
+  amount                 Decimal             @db.Decimal(16, 2)
+  formula                String              @db.Text
+  calculationMemory      Json
+  status                 KpiAdjustmentStatus @default(CALCULATED)
+  appliedAt              DateTime?
+  waivedAt               DateTime?
+  justification          String?             @db.Text
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  tenant                 Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract               Contract            @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  contractKpi            ContractKpi         @relation(fields: [contractKpiId], references: [id], onDelete: Restrict)
+  kpiMeasurement         KpiMeasurement      @relation(fields: [kpiMeasurementId], references: [id], onDelete: Restrict)
+  financialMeasurement   Measurement?        @relation(fields: [financialMeasurementId], references: [id], onDelete: SetNull)
+
+  @@unique([financialMeasurementId, contractKpiId], map: "KpiAdjustment_measurement_contractKpi_key")
+  @@index([tenantId, contractId, referenceMonth, status], map: "KpiAdjustment_tenant_contract_month_status_idx")
+  @@index([tenantId, kpiMeasurementId], map: "KpiAdjustment_tenant_kpiMeasurement_idx")
+}
+
+model KpiAlert {
+  id                 String           @id @default(uuid()) @db.Char(36)
+  tenantId           String           @db.Char(36)
+  contractId         String?          @db.Char(36)
+  contractKpiId      String?          @db.Char(36)
+  kpiMeasurementId   String?          @db.Char(36)
+  type               KpiAlertType
+  severity           KpiAlertSeverity
+  title              String           @db.VarChar(180)
+  message            String           @db.Text
+  dedupeKey          String           @db.Char(64)
+  actionPlanRequired Boolean          @default(false)
+  acknowledgedAt     DateTime?
+  resolvedAt         DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  tenant             Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract           Contract?        @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  contractKpi        ContractKpi?     @relation(fields: [contractKpiId], references: [id], onDelete: SetNull)
+  kpiMeasurement     KpiMeasurement?  @relation(fields: [kpiMeasurementId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, dedupeKey])
+  @@index([tenantId, severity, resolvedAt, createdAt])
+  @@index([tenantId, contractId, resolvedAt])
 }
 
 model SaaSPlan {

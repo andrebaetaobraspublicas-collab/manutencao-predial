@@ -9,6 +9,7 @@ import {
   WorkOrderStatus,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { KpisService } from '../kpis/kpis.service';
 import {
   CreateCommitmentDto,
   CreateCommitmentMovementDto,
@@ -20,7 +21,7 @@ import { assertCommitmentMovementBalance, canTransitionMeasurement } from './fin
 
 @Injectable()
 export class FinanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly kpis: KpisService) {}
 
   listCommitments(tenantId: string) {
     return this.prisma.commitment.findMany({
@@ -88,7 +89,7 @@ export class FinanceService {
         createdBy: { select: { id: true, name: true } }, reviewedBy: { select: { id: true, name: true } },
         approvedBy: { select: { id: true, name: true } },
         items: { include: { workOrder: { select: { id: true, number: true, title: true, status: true } } } },
-        commitmentMovements: true },
+        commitmentMovements: true, kpiAdjustments: { include: { contractKpi: { include: { definition: true } }, kpiMeasurement: true } } },
     });
     if (!item) throw new NotFoundException('Medição não encontrada.');
     return item;
@@ -128,7 +129,7 @@ export class FinanceService {
     });
     const gross = values.reduce((total, item) => total.plus(item.amount), new Prisma.Decimal(0));
     const deductions = values.reduce((total, item) => total.plus(item.deduction), new Prisma.Decimal(0));
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       for (const workOrderId of ids) {
         await tx.$queryRaw`SELECT id FROM WorkOrder WHERE id = ${workOrderId} AND tenantId = ${tenantId} FOR UPDATE`;
       }
@@ -157,6 +158,14 @@ export class FinanceService {
       }
       throw error;
     });
+    const configured = await this.prisma.contractKpi.count({ where: { tenantId, contractId: dto.contractId, active: true, deletedAt: null } });
+    if (configured) {
+      await this.kpis.calculateContractPerformance(tenantId, actorUserId, dto.contractId, {
+        referenceMonth: dto.referenceMonth, financialMeasurementId: created.id,
+      });
+      return this.getMeasurement(tenantId, created.id);
+    }
+    return created;
   }
 
   async consolidateFinalBudgets(tenantId: string, actorUserId: string, dto: ConsolidateMeasurementDto) {

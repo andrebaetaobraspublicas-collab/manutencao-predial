@@ -175,6 +175,12 @@ primeira versão explicável do Plano Inteligente. O motor cobre um catálogo in
 não substitui o responsável técnico; biblioteca ampla, Gantt, LCC e relatórios completos continuam
 como evolução.
 
+**Gestão por desempenho v0.13.0:** biblioteca ampla e extensível de KPIs, configuração por contrato,
+faixas, pesos, IGD, alertas e reflexos financeiros auditáveis foram integrados às medições. Fontes
+nativas da OS, planos, contratos, orçamentos, evidências e satisfação são calculadas diretamente;
+disponibilidade, segurança, consumo e sensores usam pontos de dados auditáveis até existirem
+integrações específicas.
+
 O detalhamento e os critérios de aceite estão em `docs/13-plano-inicial-de-issues-codex.md`.
 
 ---

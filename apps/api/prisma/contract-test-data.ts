@@ -6,6 +6,17 @@ import {
   BudgetStage,
   BudgetStatus,
   CommitmentMovementType,
+  ConstructionDiaryStatus,
+  ContractApostilleType,
+  ContractCommunicationPriority,
+  ContractExecutionRegime,
+  ContractGuaranteeModality,
+  ContractGuaranteeStatus,
+  ContractInspectionRole,
+  ContractNature,
+  ContractReceiptDecision,
+  ContractReceiptStatus,
+  ContractReceiptType,
   ContractStatus,
   ContractType,
   MeasurementStatus,
@@ -28,6 +39,13 @@ export const CONTRACT_TEST_DATA_EXPECTED = {
   measurements: 8,
   budgets: 24,
   budgetItems: 48,
+  inspectors: 2,
+  inspectionTeamAssignments: 5,
+  guarantees: 3,
+  apostilles: 4,
+  receipts: 3,
+  constructionDiaries: 5,
+  communications: 5,
 } as const;
 
 type ContractSeed = {
@@ -261,10 +279,13 @@ export async function provisionContractTestData(prisma: PrismaClient, input: {
     }
     const contract = await prisma.contract.upsert({
       where: { tenantId_code: { tenantId, code: seed.code } },
-      update: { deletedAt: null },
+      update: { deletedAt: null, executionRegime: ContractExecutionRegime.GLOBAL_PRICE,
+        nature: seed.type === ContractType.SUPPLY ? ContractNature.SCOPE : ContractNature.CONTINUOUS },
       create: {
         tenantId, supplierId: supplier.id, code: seed.code, administrativeProcess: seed.process,
-        object: seed.object, type: seed.type, status: seed.status, managerUserId: userId,
+        object: seed.object, type: seed.type, executionRegime: ContractExecutionRegime.GLOBAL_PRICE,
+        nature: seed.type === ContractType.SUPPLY ? ContractNature.SCOPE : ContractNature.CONTINUOUS,
+        status: seed.status, managerUserId: userId,
         inspectorUserId: userId, startDate: atNoon(seed.startDate), endDate: atNoon(seed.endDate),
         signatureDate: atNoon(seed.startDate), originalValue: seed.originalValue,
         currentValue: seed.originalValue, adjustmentBaseDate: atNoon(seed.startDate),
@@ -284,6 +305,185 @@ export async function provisionContractTestData(prisma: PrismaClient, input: {
   const contractByCode = new Map(contracts.map((item) => [item.code, item]));
   if (contracts.length !== CONTRACT_TEST_DATA_EXPECTED.contracts) {
     throw new Error('A carteira fictícia de contratos não foi provisionada integralmente.');
+  }
+
+  const inspectorSeeds = [
+    {
+      registrationNumber: 'FISC-DEMO-001',
+      name: 'Mariana Alves Costa',
+      cpf: '11122233344',
+      jobTitle: 'Engenheira Civil',
+      professionalEducation: 'Engenharia Civil',
+      professionalCouncil: 'CREA-DF 000001/D',
+      department: 'Coordenação de Manutenção Predial',
+      email: 'mariana.fiscal@example.com',
+      specialty: 'Edificações',
+      availableHours: 40,
+      maxProcesses: 8,
+      designationOrdinance: 'Portaria DEMO nº 101/2026',
+    },
+    {
+      registrationNumber: 'FISC-DEMO-002',
+      name: 'Bruno Henrique Lima',
+      cpf: '55566677788',
+      jobTitle: 'Fiscal Administrativo',
+      professionalEducation: 'Administração',
+      department: 'Núcleo de Gestão Contratual',
+      email: 'bruno.fiscal@example.com',
+      specialty: 'Fiscalização administrativa',
+      availableHours: 40,
+      maxProcesses: 10,
+      designationOrdinance: 'Portaria DEMO nº 102/2026',
+    },
+  ] as const;
+  const inspectors: Awaited<ReturnType<typeof prisma.inspectorProfile.upsert>>[] = [];
+  for (const seed of inspectorSeeds) {
+    inspectors.push(await prisma.inspectorProfile.upsert({
+      where: { tenantId_registrationNumber: { tenantId, registrationNumber: seed.registrationNumber } },
+      update: { ...seed, deletedAt: null, status: 'ACTIVE' },
+      create: { tenantId, createdByUserId: userId, ...seed,
+        notes: `${DEMO_MARKER} Perfil de fiscalização criado para homologação.` },
+    }));
+  }
+
+  const teamSeeds = [
+    ['CT-2026/001', inspectors[0]!.id, ContractInspectionRole.TECHNICAL_INSPECTOR, true],
+    ['CT-2026/001', inspectors[1]!.id, ContractInspectionRole.ADMINISTRATIVE_INSPECTOR, true],
+    ['CT-2026/002', inspectors[0]!.id, ContractInspectionRole.CONTRACT_MANAGER, true],
+    ['CT-2026/003', inspectors[1]!.id, ContractInspectionRole.CONTRACT_MANAGER, true],
+    ['CT-2026/004', inspectors[0]!.id, ContractInspectionRole.TECHNICAL_INSPECTOR, true],
+  ] as const;
+  for (const [contractCode, inspectorProfileId, role, isPrimary] of teamSeeds) {
+    const contract = contractByCode.get(contractCode)!;
+    const existing = await prisma.contractInspectionTeamMember.findFirst({
+      where: { tenantId, contractId: contract.id, inspectorProfileId, role, deletedAt: null },
+    });
+    if (!existing) await prisma.contractInspectionTeamMember.create({ data: {
+      tenantId, contractId: contract.id, inspectorProfileId, assignedByUserId: userId, role,
+      designationAct: `Portaria DEMO de fiscalização — ${contract.code}`,
+      startsAt: atNoon('2026-01-02'), isPrimary,
+      notes: `${DEMO_MARKER} Designação fictícia para teste do dossiê contratual.`,
+    } });
+  }
+
+  const guaranteeSeeds = [
+    { contractCode: 'CT-2026/001', number: 'AP-DEMO-001/2026', modality: ContractGuaranteeModality.SURETY_BOND,
+      percentage: 5, startsAt: '2026-01-01', endsAt: '2027-03-31', status: ContractGuaranteeStatus.APPROVED },
+    { contractCode: 'CT-2026/002', number: 'CF-DEMO-002/2026', modality: ContractGuaranteeModality.BANK_GUARANTEE,
+      percentage: 5, startsAt: '2026-01-01', endsAt: '2027-09-30', status: ContractGuaranteeStatus.APPROVED },
+    { contractCode: 'CT-2026/004', number: 'AP-DEMO-003/2026', modality: ContractGuaranteeModality.SURETY_BOND,
+      percentage: 10, startsAt: '2026-02-01', endsAt: '2027-04-30', status: ContractGuaranteeStatus.UNDER_REVIEW },
+  ] as const;
+  for (const seed of guaranteeSeeds) {
+    const contract = contractByCode.get(seed.contractCode)!;
+    await prisma.contractGuarantee.upsert({
+      where: { contractId_number: { contractId: contract.id, number: seed.number } },
+      update: { deletedAt: null },
+      create: {
+        tenantId, contractId: contract.id, createdByUserId: userId,
+        analystInspectorId: inspectors[0]!.id, number: seed.number, modality: seed.modality,
+        guarantorName: 'Seguradora Demonstração S.A.', guarantorTaxId: '99999999000199',
+        contractPercentage: seed.percentage,
+        guaranteedValue: new Prisma.Decimal(contract.originalValue).mul(seed.percentage).div(100),
+        minimumPercentage: 5, issuedAt: atNoon(seed.startsAt), startsAt: atNoon(seed.startsAt),
+        endsAt: atNoon(seed.endsAt), status: seed.status, workflow: 'Análise inicial',
+        coverages: 'Execução contratual, multas, obrigações trabalhistas e correção de vícios.',
+        history: `${DEMO_MARKER} Garantia contratual fictícia para homologação.`,
+      },
+    });
+  }
+
+  const apostilleSeeds = [
+    { contractCode: 'CT-2026/001', number: 'APOST-DEMO-001/2026', type: ContractApostilleType.PRICE_ADJUSTMENT,
+      date: '2026-04-01', index: 'IPCA', percentage: 2.5, valueChange: 37500 },
+    { contractCode: 'CT-2026/002', number: 'APOST-DEMO-002/2026', type: ContractApostilleType.REPACTUATION,
+      date: '2026-05-02', index: 'CCT-DEMO', percentage: 1.8, valueChange: 7200 },
+    { contractCode: 'CT-2026/003', number: 'APOST-DEMO-003/2026', type: ContractApostilleType.BUDGET_ALLOCATION_CHANGE,
+      date: '2026-06-03', index: null, percentage: null, valueChange: 0 },
+    { contractCode: 'CT-2026/004', number: 'APOST-DEMO-004/2026', type: ContractApostilleType.MONETARY_UPDATE,
+      date: '2026-07-04', index: 'IPCA-E', percentage: 1.2, valueChange: 5040 },
+  ] as const;
+  for (const seed of apostilleSeeds) {
+    const contract = contractByCode.get(seed.contractCode)!;
+    const valueBefore = new Prisma.Decimal(contract.originalValue);
+    await prisma.contractApostille.upsert({
+      where: { contractId_number: { contractId: contract.id, number: seed.number } },
+      update: { deletedAt: null, status: 'ACTIVE' },
+      create: {
+        tenantId, contractId: contract.id, createdByUserId: userId, number: seed.number,
+        type: seed.type, date: atNoon(seed.date), indexName: seed.index,
+        percentage: seed.percentage, valueBefore, valueChange: seed.valueChange,
+        valueAfter: valueBefore.plus(seed.valueChange),
+        calculationMemo: `${DEMO_MARKER} Memória de cálculo simplificada para teste.`,
+        justification: `${DEMO_MARKER} Apostilamento fictício para homologação.`,
+      },
+    });
+  }
+
+  const receiptSeeds = [
+    ['CT-2026/001', 'TRP-DEMO-001/2026', ContractReceiptType.PARTIAL, ContractReceiptStatus.WITH_PENDING_ITEMS],
+    ['CT-2026/002', 'TRP-DEMO-002/2026', ContractReceiptType.PROVISIONAL, ContractReceiptStatus.OBSERVATION_PERIOD],
+    ['CT-2026/003', 'TRD-DEMO-003/2026', ContractReceiptType.DEFINITIVE, ContractReceiptStatus.TERM_ISSUED],
+  ] as const;
+  for (const [contractCode, number, type, status] of receiptSeeds) {
+    const contract = contractByCode.get(contractCode)!;
+    await prisma.contractReceipt.upsert({
+      where: { contractId_number: { contractId: contract.id, number } },
+      update: { deletedAt: null },
+      create: {
+        tenantId, contractId: contract.id, createdByUserId: userId,
+        responsibleInspectorId: inspectors[0]!.id, number, type,
+        objectCategory: 'Obras e serviços de engenharia', requestProtocol: `PROT-${number}`,
+        protocolAt: atNoon('2026-07-10'), inspectionDate: atNoon('2026-07-15'), status,
+        provisionalRequired: true, decision: ContractReceiptDecision.APPROVE_WITH_PENDING_ITEMS,
+        commissionOrdinance: 'Portaria DEMO nº 150/2026', quorum: 'Quórum atendido',
+        contractorDocuments: 'Relatório final, as built e certificados de garantia.',
+        inspectionsAndTests: 'Vistoria visual, teste funcional e conferência documental.',
+        observationStartsAt: atNoon('2026-07-15'), observationEndsAt: atNoon('2026-08-15'),
+        consolidatedOpinion: `${DEMO_MARKER} Recebimento aprovado com pendências de baixa criticidade.`,
+        pendingItems: { items: [{ description: 'Complementar manual técnico', criticality: 'Baixa', status: 'Aberta' }] },
+      },
+    });
+  }
+
+  for (const [index, contract] of contracts.entries()) {
+    const diaryNumber = `DO-DEMO-${String(index + 1).padStart(3, '0')}/2026`;
+    await prisma.constructionDiary.upsert({
+      where: { contractId_number: { contractId: contract.id, number: diaryNumber } },
+      update: { deletedAt: null },
+      create: {
+        tenantId, contractId: contract.id, createdByUserId: userId,
+        responsibleInspectorId: inspectors[index % inspectors.length]!.id,
+        number: diaryNumber, date: atNoon(`2026-07-${String(20 + index).padStart(2, '0')}`),
+        operationalSituation: 'Execução normal dos serviços programados', weather: 'Ensolarado',
+        temperatureCelsius: 26, precipitationMm: 0, status: ConstructionDiaryStatus.VALIDATED,
+        workFront: 'Áreas técnicas e ambientes administrativos', ownWorkforce: 4,
+        outsourcedWorkforce: 6, servicesPerformed: 'Inspeções, ajustes e substituições programadas.',
+        servicesInProgress: 'Testes funcionais e limpeza técnica.',
+        occurrencesAndRisks: `${DEMO_MARKER} Sem acidentes; sinalização reforçada na frente de trabalho.`,
+        contractualImpact: 'Sem impacto identificado',
+        inspectionDirections: 'Manter isolamento da área e registrar evidências fotográficas.',
+      },
+    });
+
+    const communicationNumber = `CP-DEMO-${String(index + 1).padStart(3, '0')}/2026`;
+    await prisma.contractCommunicationClaim.upsert({
+      where: { contractId_number: { contractId: contract.id, number: communicationNumber } },
+      update: { deletedAt: null },
+      create: {
+        tenantId, contractId: contract.id, createdByUserId: userId,
+        responsibleInspectorId: inspectors[index % inspectors.length]!.id,
+        number: communicationNumber, type: index % 2 ? 'Pedido de orientação técnica' : 'Solicitação de esclarecimento',
+        protocolDate: atNoon(`2026-07-${String(10 + index).padStart(2, '0')}`),
+        sender: 'Contratada', recipient: 'Fiscalização', priority: ContractCommunicationPriority.NORMAL,
+        currentStatus: index < 3 ? 'Em instrução' : 'Decidido', claimNature: 'Escopo',
+        workflowStage: index < 3 ? 'Manifestação técnica' : 'Comunicação da decisão',
+        standardDecisionDays: 30, decisionDeadline: atNoon(`2026-08-${String(10 + index).padStart(2, '0')}`),
+        subject: `Esclarecimento operacional do ${contract.code}`,
+        detailedDescription: `${DEMO_MARKER} Comunicação fictícia sobre método executivo e sequência dos serviços.`,
+        inspectionOpinion: 'A fiscalização orienta seguir o procedimento técnico aprovado.',
+      },
+    });
   }
 
   for (const seed of AMENDMENT_SEEDS) {
@@ -465,14 +665,17 @@ export async function provisionContractTestData(prisma: PrismaClient, input: {
   }
 
   for (const contract of contracts) {
-    const [amendments, adjustments, measurements] = await Promise.all([
+    const [amendments, adjustments, apostilles, measurements] = await Promise.all([
       prisma.contractAmendment.findMany({ where: { tenantId, contractId: contract.id,
         status: 'ACTIVE', canceledAt: null } }),
       prisma.contractAdjustment.findMany({ where: { tenantId, contractId: contract.id,
         status: 'ACTIVE', canceledAt: null } }),
+      prisma.contractApostille.findMany({ where: { tenantId, contractId: contract.id,
+        status: 'ACTIVE', deletedAt: null } }),
       prisma.measurement.findMany({ where: { tenantId, contractId: contract.id, canceledAt: null } }),
     ]);
-    const currentValue = [...amendments.map((item) => item.valueChange), ...adjustments.map((item) => item.amount)]
+    const currentValue = [...amendments.map((item) => item.valueChange), ...adjustments.map((item) => item.amount),
+      ...apostilles.map((item) => item.valueChange)]
       .reduce<Prisma.Decimal>((total, value) => value ? total.plus(value) : total,
         new Prisma.Decimal(contract.originalValue));
     const measuredStatuses = new Set<MeasurementStatus>([
@@ -511,7 +714,7 @@ export async function provisionContractTestData(prisma: PrismaClient, input: {
   } })) await prisma.notification.create({ data: {
     tenantId, userId, eventType: 'CONTRACT_EXPIRING',
     title: 'Carteira contratual fictícia disponível',
-    message: 'Contratos, aditivos, ajustes, subcontratações, empenhos, medições e orçamentos DEMO foram criados.',
+    message: 'Contratos, fiscalização, garantias, apostilamentos, recebimentos, diários, pleitos e dados financeiros DEMO foram criados.',
     actionUrl: '/contratos',
   } });
 }

@@ -79,6 +79,121 @@ enum ContractStatus {
   CLOSED
 }
 
+enum ContractExecutionRegime {
+  UNIT_PRICE
+  GLOBAL_PRICE
+  TASK
+  INTEGRAL
+  INTEGRATED
+  SEMI_INTEGRATED
+  SUPPLY_AND_ASSOCIATED_SERVICE
+}
+
+enum ContractNature {
+  CONTINUOUS
+  SCOPE
+}
+
+enum InspectorProfileStatus {
+  ACTIVE
+  LEAVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum ContractInspectionRole {
+  CONTRACT_MANAGER
+  SUBSTITUTE_MANAGER
+  TECHNICAL_INSPECTOR
+  ADMINISTRATIVE_INSPECTOR
+  SECTORAL_INSPECTOR
+  SUBSTITUTE_INSPECTOR
+}
+
+enum ContractGuaranteeModality {
+  CASH_DEPOSIT
+  PUBLIC_DEBT_BONDS
+  SURETY_BOND
+  BANK_GUARANTEE
+  OTHER
+}
+
+enum ContractGuaranteeStatus {
+  REQUIRED
+  PRESENTED
+  UNDER_REVIEW
+  APPROVED
+  COMPLEMENT_REQUESTED
+  RENEWAL_REQUESTED
+  REPLACED
+  UNDER_EXECUTION
+  EXECUTED
+  RELEASED
+  EXPIRED
+}
+
+enum ContractApostilleType {
+  PRICE_ADJUSTMENT
+  REPACTUATION
+  MONETARY_UPDATE
+  BUDGET_ALLOCATION_CHANGE
+  FUNDING_SOURCE_CHANGE
+  REGISTRATION_CORRECTION
+  OTHER_LEGAL_BASIS
+}
+
+enum ContractReceiptType {
+  PROVISIONAL
+  DEFINITIVE
+  PARTIAL
+  BY_STAGE
+  REJECTION
+}
+
+enum ContractReceiptStatus {
+  REQUESTED
+  UNDER_REVIEW
+  INSPECTION_SCHEDULED
+  WITH_PENDING_ITEMS
+  AWAITING_CORRECTIONS
+  APPROVED_PROVISIONAL
+  OBSERVATION_PERIOD
+  APPROVED_DEFINITIVE
+  TERM_ISSUED
+  REJECTED
+  CLOSED
+}
+
+enum ContractReceiptDecision {
+  APPROVE
+  APPROVE_WITH_PENDING_ITEMS
+  REJECT
+  SUSPEND_FOR_DILIGENCE
+}
+
+enum ConstructionDiaryStatus {
+  OPEN
+  CLOSED
+  VALIDATED
+  CONTESTED
+}
+
+enum ContractCommunicationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum ContractDossierAttachmentEntity {
+  CONTRACT
+  GUARANTEE
+  APOSTILLE
+  RECEIPT
+  CONSTRUCTION_DIARY
+  COMMUNICATION_CLAIM
+}
+
 enum AmendmentType {
   VALUE_INCREASE
   VALUE_DECREASE
@@ -413,123 +528,141 @@ enum NotificationOutboxStatus {
 }
 
 model Tenant {
-  id                   String                      @id @default(uuid()) @db.Char(36)
-  name                 String                      @db.VarChar(160)
-  slug                 String                      @unique @db.VarChar(100)
-  taxId                String?                     @db.VarChar(24)
-  status               TenantStatus                @default(TRIAL)
-  timezone             String                      @default("America/Sao_Paulo") @db.VarChar(60)
-  locale               String                      @default("pt-BR") @db.VarChar(10)
-  trialEndsAt          DateTime?
-  stripeCustomerId     String?                     @unique @db.VarChar(120)
-  settings             Json?
-  createdAt            DateTime                    @default(now())
-  updatedAt            DateTime                    @updatedAt
-  deletedAt            DateTime?
-  memberships          TenantMembership[]
-  buildings            Building[]
-  suppliers            Supplier[]
-  supplierServiceAreas SupplierServiceArea[]
-  consortiumMembers    SupplierConsortiumMember[]
-  contracts            Contract[]
-  contractAmendments   ContractAmendment[]
-  contractAdjustments  ContractAdjustment[]
-  contractSubcontracts ContractSubcontract[]
-  workOrders           WorkOrder[]
-  workOrderPendencies  WorkOrderPendency[]
-  workOrderAttachments WorkOrderAttachment[]
-  buildingAttachments  BuildingAttachment[]
-  buildingInspections  BuildingInspection[]
-  workOrderBudgets     WorkOrderBudget[]
-  budgetItems          BudgetItem[]
-  budgetRevisions      BudgetRevision[]
-  sinapiCatalogs       SinapiCatalog[]
-  sinapiCatalogItems   SinapiCatalogItem[]
-  measurements         Measurement[]
-  measurementItems     MeasurementItem[]
-  commitments          Commitment[]
-  commitmentMovements  CommitmentMovement[]
-  penalties            ContractPenalty[]
-  assets               Asset[]
-  maintenancePlans     MaintenancePlan[]
-  maintenanceRuns      MaintenancePlanGeneration[]
-  kpiDefinitions       KpiDefinition[]
-  kpiMeasurements      KpiMeasurement[]
-  contractKpis         ContractKpi[]
-  kpiBands             KpiPerformanceBand[]
-  kpiDataPoints        KpiDataPoint[]
-  kpiAdjustments       KpiFinancialAdjustment[]
-  kpiAlerts            KpiAlert[]
-  subscriptions        TenantSubscription[]
-  auditLogs            AuditLog[]
-  sequences            TenantSequence[]
-  invitations          TenantInvitation[]
-  operationalCatalog   OperationalCatalogItem[]
-  checklistTemplates   ChecklistTemplateItem[]
-  slaCalendars         SlaCalendar[]
-  slaHolidays          SlaHoliday[]
-  slaPolicies          SlaPolicy[]
-  geocodingCache       GeocodingCache[]
-  workOrderComments    WorkOrderComment[]
-  workOrderChecklists  WorkOrderChecklistItem[]
-  notifications        Notification[]
-  notificationPrefs    NotificationPreference[]
-  notificationOutbox   NotificationOutbox[]
-  reopenings           WorkOrderReopening[]
+  id                         String                         @id @default(uuid()) @db.Char(36)
+  name                       String                         @db.VarChar(160)
+  slug                       String                         @unique @db.VarChar(100)
+  taxId                      String?                        @db.VarChar(24)
+  status                     TenantStatus                   @default(TRIAL)
+  timezone                   String                         @default("America/Sao_Paulo") @db.VarChar(60)
+  locale                     String                         @default("pt-BR") @db.VarChar(10)
+  trialEndsAt                DateTime?
+  stripeCustomerId           String?                        @unique @db.VarChar(120)
+  settings                   Json?
+  createdAt                  DateTime                       @default(now())
+  updatedAt                  DateTime                       @updatedAt
+  deletedAt                  DateTime?
+  memberships                TenantMembership[]
+  buildings                  Building[]
+  suppliers                  Supplier[]
+  supplierServiceAreas       SupplierServiceArea[]
+  consortiumMembers          SupplierConsortiumMember[]
+  contracts                  Contract[]
+  contractAmendments         ContractAmendment[]
+  contractAdjustments        ContractAdjustment[]
+  contractSubcontracts       ContractSubcontract[]
+  inspectorProfiles          InspectorProfile[]
+  inspectionTeam             ContractInspectionTeamMember[]
+  contractGuarantees         ContractGuarantee[]
+  contractApostilles         ContractApostille[]
+  contractReceipts           ContractReceipt[]
+  constructionDiaries        ConstructionDiary[]
+  contractCommunications     ContractCommunicationClaim[]
+  contractDossierAttachments ContractDossierAttachment[]
+  workOrders                 WorkOrder[]
+  workOrderPendencies        WorkOrderPendency[]
+  workOrderAttachments       WorkOrderAttachment[]
+  buildingAttachments        BuildingAttachment[]
+  buildingInspections        BuildingInspection[]
+  workOrderBudgets           WorkOrderBudget[]
+  budgetItems                BudgetItem[]
+  budgetRevisions            BudgetRevision[]
+  sinapiCatalogs             SinapiCatalog[]
+  sinapiCatalogItems         SinapiCatalogItem[]
+  measurements               Measurement[]
+  measurementItems           MeasurementItem[]
+  commitments                Commitment[]
+  commitmentMovements        CommitmentMovement[]
+  penalties                  ContractPenalty[]
+  assets                     Asset[]
+  maintenancePlans           MaintenancePlan[]
+  maintenanceRuns            MaintenancePlanGeneration[]
+  kpiDefinitions             KpiDefinition[]
+  kpiMeasurements            KpiMeasurement[]
+  contractKpis               ContractKpi[]
+  kpiBands                   KpiPerformanceBand[]
+  kpiDataPoints              KpiDataPoint[]
+  kpiAdjustments             KpiFinancialAdjustment[]
+  kpiAlerts                  KpiAlert[]
+  subscriptions              TenantSubscription[]
+  auditLogs                  AuditLog[]
+  sequences                  TenantSequence[]
+  invitations                TenantInvitation[]
+  operationalCatalog         OperationalCatalogItem[]
+  checklistTemplates         ChecklistTemplateItem[]
+  slaCalendars               SlaCalendar[]
+  slaHolidays                SlaHoliday[]
+  slaPolicies                SlaPolicy[]
+  geocodingCache             GeocodingCache[]
+  workOrderComments          WorkOrderComment[]
+  workOrderChecklists        WorkOrderChecklistItem[]
+  notifications              Notification[]
+  notificationPrefs          NotificationPreference[]
+  notificationOutbox         NotificationOutbox[]
+  reopenings                 WorkOrderReopening[]
 
   @@index([status])
   @@index([deletedAt])
 }
 
 model User {
-  id                         String                       @id @default(uuid()) @db.Char(36)
-  name                       String                       @db.VarChar(160)
-  email                      String                       @unique @db.VarChar(190)
-  passwordHash               String                       @db.VarChar(255)
-  phone                      String?                      @db.VarChar(30)
-  status                     UserStatus                   @default(ACTIVE)
-  emailVerifiedAt            DateTime?
-  lastLoginAt                DateTime?
-  createdAt                  DateTime                     @default(now())
-  updatedAt                  DateTime                     @updatedAt
-  deletedAt                  DateTime?
-  memberships                TenantMembership[]
-  refreshSessions            RefreshSession[]
-  requestedWorkOrders        WorkOrder[]                  @relation("WorkOrderRequester")
-  assignedWorkOrders         WorkOrder[]                  @relation("WorkOrderAssignee")
-  createdWorkOrders          WorkOrder[]                  @relation("WorkOrderCreator")
-  managedBuildings           Building[]                   @relation("BuildingManager")
-  managedContracts           Contract[]                   @relation("ContractManager")
-  inspectedContracts         Contract[]                   @relation("ContractInspector")
-  pendenciesResponsibleFor   WorkOrderPendency[]          @relation("PendencyResponsible")
-  uploadedAttachments        WorkOrderAttachment[]        @relation("AttachmentUploader")
-  uploadedBuildingFiles      BuildingAttachment[]         @relation("BuildingAttachmentUploader")
-  createdBuildingInspections BuildingInspection[]         @relation("BuildingInspectionCreator")
-  statusChanges              WorkOrderStatusHistory[]     @relation("StatusChangedBy")
-  satisfactionResponses      SatisfactionResponse[]       @relation("SatisfactionResponder")
-  approvedMeasurements       Measurement[]                @relation("MeasurementApprover")
-  createdMeasurements        Measurement[]                @relation("MeasurementCreator")
-  reviewedMeasurements       Measurement[]                @relation("MeasurementReviewer")
-  createdCommitments         Commitment[]                 @relation("CommitmentCreator")
-  commitmentMovements        CommitmentMovement[]         @relation("CommitmentMovementCreator")
-  submittedBudgets           WorkOrderBudget[]            @relation("BudgetSubmitter")
-  approvedBudgets            WorkOrderBudget[]            @relation("BudgetApprover")
-  budgetRevisions            BudgetRevision[]             @relation("BudgetRevisionCreator")
-  importedSinapiCatalogs     SinapiCatalog[]              @relation("SinapiImporter")
-  assignedMaintenancePlans   MaintenancePlan[]            @relation("MaintenancePlanAssignee")
-  registeredPenalties        ContractPenalty[]            @relation("PenaltyRegistrar")
-  auditLogs                  AuditLog[]                   @relation("AuditActor")
-  accountTokens              AccountToken[]
-  invitationsSent            TenantInvitation[]           @relation("InvitationSender")
-  geocodingConfirmations     Building[]                   @relation("BuildingGeocodingConfirmer")
-  acceptedWorkOrders         WorkOrder[]                  @relation("WorkOrderAccepter")
-  workOrderComments          WorkOrderComment[]
-  commentMentions            WorkOrderCommentMention[]
-  checklistResponses         WorkOrderChecklistResponse[]
-  notifications              Notification[]
-  notificationPreferences    NotificationPreference[]
-  notificationOutbox         NotificationOutbox[]
-  workOrderReopenings        WorkOrderReopening[]
+  id                            String                         @id @default(uuid()) @db.Char(36)
+  name                          String                         @db.VarChar(160)
+  email                         String                         @unique @db.VarChar(190)
+  passwordHash                  String                         @db.VarChar(255)
+  phone                         String?                        @db.VarChar(30)
+  status                        UserStatus                     @default(ACTIVE)
+  emailVerifiedAt               DateTime?
+  lastLoginAt                   DateTime?
+  createdAt                     DateTime                       @default(now())
+  updatedAt                     DateTime                       @updatedAt
+  deletedAt                     DateTime?
+  memberships                   TenantMembership[]
+  refreshSessions               RefreshSession[]
+  requestedWorkOrders           WorkOrder[]                    @relation("WorkOrderRequester")
+  assignedWorkOrders            WorkOrder[]                    @relation("WorkOrderAssignee")
+  createdWorkOrders             WorkOrder[]                    @relation("WorkOrderCreator")
+  managedBuildings              Building[]                     @relation("BuildingManager")
+  managedContracts              Contract[]                     @relation("ContractManager")
+  inspectedContracts            Contract[]                     @relation("ContractInspector")
+  inspectorProfiles             InspectorProfile[]             @relation("InspectorProfileUser")
+  createdInspectorProfiles      InspectorProfile[]             @relation("InspectorProfileCreator")
+  assignedInspectionTeams       ContractInspectionTeamMember[] @relation("InspectionTeamAssigner")
+  analyzedGuarantees            ContractGuarantee[]            @relation("GuaranteeAnalyst")
+  createdGuarantees             ContractGuarantee[]            @relation("GuaranteeCreator")
+  createdApostilles             ContractApostille[]            @relation("ApostilleCreator")
+  createdReceipts               ContractReceipt[]              @relation("ReceiptCreator")
+  createdConstructionDiaries    ConstructionDiary[]            @relation("ConstructionDiaryCreator")
+  createdContractCommunications ContractCommunicationClaim[]   @relation("ContractCommunicationCreator")
+  uploadedContractDossierFiles  ContractDossierAttachment[]    @relation("ContractDossierUploader")
+  pendenciesResponsibleFor      WorkOrderPendency[]            @relation("PendencyResponsible")
+  uploadedAttachments           WorkOrderAttachment[]          @relation("AttachmentUploader")
+  uploadedBuildingFiles         BuildingAttachment[]           @relation("BuildingAttachmentUploader")
+  createdBuildingInspections    BuildingInspection[]           @relation("BuildingInspectionCreator")
+  statusChanges                 WorkOrderStatusHistory[]       @relation("StatusChangedBy")
+  satisfactionResponses         SatisfactionResponse[]         @relation("SatisfactionResponder")
+  approvedMeasurements          Measurement[]                  @relation("MeasurementApprover")
+  createdMeasurements           Measurement[]                  @relation("MeasurementCreator")
+  reviewedMeasurements          Measurement[]                  @relation("MeasurementReviewer")
+  createdCommitments            Commitment[]                   @relation("CommitmentCreator")
+  commitmentMovements           CommitmentMovement[]           @relation("CommitmentMovementCreator")
+  submittedBudgets              WorkOrderBudget[]              @relation("BudgetSubmitter")
+  approvedBudgets               WorkOrderBudget[]              @relation("BudgetApprover")
+  budgetRevisions               BudgetRevision[]               @relation("BudgetRevisionCreator")
+  importedSinapiCatalogs        SinapiCatalog[]                @relation("SinapiImporter")
+  assignedMaintenancePlans      MaintenancePlan[]              @relation("MaintenancePlanAssignee")
+  registeredPenalties           ContractPenalty[]              @relation("PenaltyRegistrar")
+  auditLogs                     AuditLog[]                     @relation("AuditActor")
+  accountTokens                 AccountToken[]
+  invitationsSent               TenantInvitation[]             @relation("InvitationSender")
+  geocodingConfirmations        Building[]                     @relation("BuildingGeocodingConfirmer")
+  acceptedWorkOrders            WorkOrder[]                    @relation("WorkOrderAccepter")
+  workOrderComments             WorkOrderComment[]
+  commentMentions               WorkOrderCommentMention[]
+  checklistResponses            WorkOrderChecklistResponse[]
+  notifications                 Notification[]
+  notificationPreferences       NotificationPreference[]
+  notificationOutbox            NotificationOutbox[]
+  workOrderReopenings           WorkOrderReopening[]
 
   @@index([status])
   @@index([deletedAt])
@@ -785,39 +918,48 @@ model SupplierConsortiumMember {
 }
 
 model Contract {
-  id                    String                   @id @default(uuid()) @db.Char(36)
-  tenantId              String                   @db.Char(36)
-  supplierId            String                   @db.Char(36)
-  code                  String                   @db.VarChar(80)
-  administrativeProcess String?                  @db.VarChar(120)
-  object                String                   @db.Text
+  id                    String                         @id @default(uuid()) @db.Char(36)
+  tenantId              String                         @db.Char(36)
+  supplierId            String                         @db.Char(36)
+  code                  String                         @db.VarChar(80)
+  administrativeProcess String?                        @db.VarChar(120)
+  object                String                         @db.Text
   type                  ContractType
-  status                ContractStatus           @default(DRAFT)
-  managerUserId         String?                  @db.Char(36)
-  inspectorUserId       String?                  @db.Char(36)
+  executionRegime       ContractExecutionRegime?       @default(GLOBAL_PRICE)
+  nature                ContractNature?                @default(CONTINUOUS)
+  status                ContractStatus                 @default(DRAFT)
+  managerUserId         String?                        @db.Char(36)
+  inspectorUserId       String?                        @db.Char(36)
   startDate             DateTime
   endDate               DateTime
   signatureDate         DateTime?
-  originalValue         Decimal                  @db.Decimal(16, 2)
-  currentValue          Decimal                  @db.Decimal(16, 2)
-  measuredValue         Decimal                  @default(0) @db.Decimal(16, 2)
-  paidValue             Decimal                  @default(0) @db.Decimal(16, 2)
+  originalValue         Decimal                        @db.Decimal(16, 2)
+  currentValue          Decimal                        @db.Decimal(16, 2)
+  measuredValue         Decimal                        @default(0) @db.Decimal(16, 2)
+  paidValue             Decimal                        @default(0) @db.Decimal(16, 2)
   adjustmentBaseDate    DateTime?
-  adjustmentIndex       String?                  @db.VarChar(80)
-  notes                 String?                  @db.Text
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
+  adjustmentIndex       String?                        @db.VarChar(80)
+  notes                 String?                        @db.Text
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
   deletedAt             DateTime?
-  tenant                Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  supplier              Supplier                 @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  manager               User?                    @relation("ContractManager", fields: [managerUserId], references: [id], onDelete: SetNull)
-  inspector             User?                    @relation("ContractInspector", fields: [inspectorUserId], references: [id], onDelete: SetNull)
+  tenant                Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  supplier              Supplier                       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  manager               User?                          @relation("ContractManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  inspector             User?                          @relation("ContractInspector", fields: [inspectorUserId], references: [id], onDelete: SetNull)
   buildings             ContractBuilding[]
   workOrders            WorkOrderContract[]
   amendments            ContractAmendment[]
   adjustments           ContractAdjustment[]
   subcontractors        ContractSubcontract[]
   penalties             ContractPenalty[]
+  inspectionTeam        ContractInspectionTeamMember[]
+  guarantees            ContractGuarantee[]
+  apostilles            ContractApostille[]
+  receipts              ContractReceipt[]
+  constructionDiaries   ConstructionDiary[]
+  communications        ContractCommunicationClaim[]
+  dossierAttachments    ContractDossierAttachment[]
   commitments           Commitment[]
   measurements          Measurement[]
   maintenancePlans      MaintenancePlan[]
@@ -936,6 +1078,287 @@ model ContractPenalty {
 
   @@index([tenantId, supplierId, appliedAt])
   @@index([contractId])
+}
+
+model InspectorProfile {
+  id                    String                         @id @default(uuid()) @db.Char(36)
+  tenantId              String                         @db.Char(36)
+  userId                String?                        @db.Char(36)
+  createdByUserId       String                         @db.Char(36)
+  name                  String                         @db.VarChar(160)
+  registrationNumber    String                         @db.VarChar(80)
+  cpf                   String?                        @db.VarChar(14)
+  jobTitle              String                         @db.VarChar(120)
+  professionalEducation String?                        @db.VarChar(120)
+  professionalCouncil   String?                        @db.VarChar(80)
+  department            String?                        @db.VarChar(160)
+  phone                 String?                        @db.VarChar(30)
+  email                 String?                        @db.VarChar(190)
+  specialty             String                         @db.VarChar(160)
+  status                InspectorProfileStatus         @default(ACTIVE)
+  availableHours        Int                            @default(40)
+  maxProcesses          Int                            @default(8)
+  baseLatitude          Decimal?                       @db.Decimal(10, 7)
+  baseLongitude         Decimal?                       @db.Decimal(10, 7)
+  restrictedCompanies   String?                        @db.Text
+  designationOrdinance  String?                        @db.VarChar(220)
+  notes                 String?                        @db.Text
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
+  deletedAt             DateTime?
+  tenant                Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user                  User?                          @relation("InspectorProfileUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy             User                           @relation("InspectorProfileCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  contractAssignments   ContractInspectionTeamMember[]
+  guaranteeAnalyses     ContractGuarantee[]            @relation("GuaranteeInspector")
+  receipts              ContractReceipt[]
+  constructionDiaries   ConstructionDiary[]
+  communications        ContractCommunicationClaim[]
+
+  @@unique([tenantId, registrationNumber])
+  @@index([tenantId, status, deletedAt])
+  @@index([tenantId, specialty, status])
+  @@index([userId])
+}
+
+model ContractInspectionTeamMember {
+  id                 String                 @id @default(uuid()) @db.Char(36)
+  tenantId           String                 @db.Char(36)
+  contractId         String                 @db.Char(36)
+  inspectorProfileId String                 @db.Char(36)
+  assignedByUserId   String                 @db.Char(36)
+  role               ContractInspectionRole
+  designationAct     String                 @db.VarChar(220)
+  startsAt           DateTime
+  endsAt             DateTime?
+  isPrimary          Boolean                @default(false)
+  notes              String?                @db.Text
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  deletedAt          DateTime?
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract           Contract               @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  inspector          InspectorProfile       @relation(fields: [inspectorProfileId], references: [id], onDelete: Restrict)
+  assignedBy         User                   @relation("InspectionTeamAssigner", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, contractId, deletedAt])
+  @@index([tenantId, inspectorProfileId, startsAt, endsAt])
+}
+
+model ContractGuarantee {
+  id                 String                    @id @default(uuid()) @db.Char(36)
+  tenantId           String                    @db.Char(36)
+  contractId         String                    @db.Char(36)
+  createdByUserId    String                    @db.Char(36)
+  analystUserId      String?                   @db.Char(36)
+  analystInspectorId String?                   @db.Char(36)
+  number             String                    @db.VarChar(120)
+  modality           ContractGuaranteeModality
+  guarantorName      String?                   @db.VarChar(200)
+  guarantorTaxId     String?                   @db.VarChar(24)
+  contractPercentage Decimal                   @default(5) @db.Decimal(9, 6)
+  guaranteedValue    Decimal                   @db.Decimal(16, 2)
+  minimumPercentage  Decimal                   @default(5) @db.Decimal(9, 6)
+  issuedAt           DateTime?
+  startsAt           DateTime
+  endsAt             DateTime
+  status             ContractGuaranteeStatus   @default(PRESENTED)
+  workflow           String                    @default("Análise inicial") @db.VarChar(120)
+  executionValue     Decimal                   @default(0) @db.Decimal(16, 2)
+  recoveredValue     Decimal                   @default(0) @db.Decimal(16, 2)
+  releasedAt         DateTime?
+  coverages          String?                   @db.Text
+  history            String?                   @db.Text
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  deletedAt          DateTime?
+  tenant             Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract           Contract                  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  createdBy          User                      @relation("GuaranteeCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  analystUser        User?                     @relation("GuaranteeAnalyst", fields: [analystUserId], references: [id], onDelete: SetNull)
+  analystInspector   InspectorProfile?         @relation("GuaranteeInspector", fields: [analystInspectorId], references: [id], onDelete: SetNull)
+
+  @@unique([contractId, number])
+  @@index([tenantId, contractId, status, deletedAt])
+  @@index([tenantId, endsAt, status])
+}
+
+model ContractApostille {
+  id              String                @id @default(uuid()) @db.Char(36)
+  tenantId        String                @db.Char(36)
+  contractId      String                @db.Char(36)
+  createdByUserId String                @db.Char(36)
+  number          String                @db.VarChar(80)
+  type            ContractApostilleType
+  date            DateTime
+  indexName       String?               @db.VarChar(100)
+  percentage      Decimal?              @db.Decimal(9, 6)
+  valueBefore     Decimal               @db.Decimal(16, 2)
+  valueChange     Decimal               @default(0) @db.Decimal(16, 2)
+  valueAfter      Decimal               @db.Decimal(16, 2)
+  calculationMemo String?               @db.Text
+  justification   String                @db.Text
+  status          String                @default("ACTIVE") @db.VarChar(30)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  deletedAt       DateTime?
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract        Contract              @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  createdBy       User                  @relation("ApostilleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([contractId, number])
+  @@index([tenantId, contractId, date, deletedAt])
+}
+
+model ContractReceipt {
+  id                      String                  @id @default(uuid()) @db.Char(36)
+  tenantId                String                  @db.Char(36)
+  contractId              String                  @db.Char(36)
+  createdByUserId         String                  @db.Char(36)
+  responsibleInspectorId  String?                 @db.Char(36)
+  number                  String                  @db.VarChar(100)
+  type                    ContractReceiptType
+  objectCategory          String                  @db.VarChar(120)
+  requestProtocol         String?                 @db.VarChar(120)
+  protocolAt              DateTime?
+  inspectionDate          DateTime?
+  status                  ContractReceiptStatus   @default(REQUESTED)
+  provisionalRequired     Boolean                 @default(true)
+  decision                ContractReceiptDecision
+  commissionOrdinance     String?                 @db.VarChar(500)
+  quorum                  String?                 @db.VarChar(80)
+  contractorDocuments     String?                 @db.Text
+  inspectionsAndTests     String?                 @db.Text
+  observationStartsAt     DateTime?
+  observationEndsAt       DateTime?
+  technicalWarrantyEndsAt DateTime?
+  occurrences             String?                 @db.Text
+  consolidatedOpinion     String                  @db.Text
+  competentAuthority      String?                 @db.VarChar(180)
+  pendingItems            Json?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  deletedAt               DateTime?
+  tenant                  Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract                Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  createdBy               User                    @relation("ReceiptCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  responsibleInspector    InspectorProfile?       @relation(fields: [responsibleInspectorId], references: [id], onDelete: SetNull)
+
+  @@unique([contractId, number])
+  @@index([tenantId, contractId, status, deletedAt])
+}
+
+model ConstructionDiary {
+  id                     String                  @id @default(uuid()) @db.Char(36)
+  tenantId               String                  @db.Char(36)
+  contractId             String                  @db.Char(36)
+  workOrderId            String?                 @db.Char(36)
+  createdByUserId        String                  @db.Char(36)
+  responsibleInspectorId String?                 @db.Char(36)
+  number                 String                  @db.VarChar(100)
+  date                   DateTime
+  openedAt               DateTime?
+  closedAt               DateTime?
+  operationalSituation   String                  @db.VarChar(160)
+  weather                String?                 @db.VarChar(80)
+  temperatureCelsius     Decimal?                @db.Decimal(5, 2)
+  precipitationMm        Decimal?                @db.Decimal(8, 2)
+  status                 ConstructionDiaryStatus @default(OPEN)
+  workFront              String?                 @db.VarChar(180)
+  ownWorkforce           Int                     @default(0)
+  outsourcedWorkforce    Int                     @default(0)
+  servicesPerformed      String?                 @db.Text
+  servicesInProgress     String?                 @db.Text
+  servicesCompleted      String?                 @db.Text
+  equipmentMobilized     String?                 @db.Text
+  equipmentDemobilized   String?                 @db.Text
+  materialsReceived      String?                 @db.Text
+  testsAndQualityControl String?                 @db.Text
+  occurrencesAndRisks    String?                 @db.Text
+  contractualImpact      String?                 @db.VarChar(160)
+  formalCommunications   String?                 @db.Text
+  inspectionDirections   String?                 @db.Text
+  notes                  String?                 @db.Text
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  deletedAt              DateTime?
+  tenant                 Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract               Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  workOrder              WorkOrder?              @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  createdBy              User                    @relation("ConstructionDiaryCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  responsibleInspector   InspectorProfile?       @relation(fields: [responsibleInspectorId], references: [id], onDelete: SetNull)
+
+  @@unique([contractId, number])
+  @@index([tenantId, contractId, date, deletedAt])
+  @@index([workOrderId])
+}
+
+model ContractCommunicationClaim {
+  id                     String                        @id @default(uuid()) @db.Char(36)
+  tenantId               String                        @db.Char(36)
+  contractId             String                        @db.Char(36)
+  createdByUserId        String                        @db.Char(36)
+  responsibleInspectorId String?                       @db.Char(36)
+  number                 String                        @db.VarChar(100)
+  type                   String                        @db.VarChar(160)
+  protocolDate           DateTime
+  sender                 String                        @db.VarChar(100)
+  recipient              String                        @db.VarChar(100)
+  priority               ContractCommunicationPriority @default(NORMAL)
+  currentStatus          String                        @db.VarChar(120)
+  claimNature            String?                       @db.VarChar(100)
+  workflowStage          String                        @db.VarChar(120)
+  instructionStartsAt    DateTime?
+  instructionEndsAt      DateTime?
+  standardDecisionDays   Int                           @default(30)
+  decisionDeadline       DateTime?
+  extensionApproved      Boolean                       @default(false)
+  extensionJustification String?                       @db.Text
+  technicalDeadline      DateTime?
+  inspectionDeadline     DateTime?
+  legalDeadline          DateTime?
+  appealDeadline         DateTime?
+  subject                String                        @db.VarChar(240)
+  detailedDescription    String                        @db.Text
+  technicalOpinion       String?                       @db.Text
+  inspectionOpinion      String?                       @db.Text
+  legalOpinion           String?                       @db.Text
+  decision               String?                       @db.Text
+  forwardedModule        String?                       @db.VarChar(120)
+  createdAt              DateTime                      @default(now())
+  updatedAt              DateTime                      @updatedAt
+  deletedAt              DateTime?
+  tenant                 Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract               Contract                      @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  createdBy              User                          @relation("ContractCommunicationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  responsibleInspector   InspectorProfile?             @relation(fields: [responsibleInspectorId], references: [id], onDelete: SetNull)
+
+  @@unique([contractId, number])
+  @@index([tenantId, contractId, protocolDate, deletedAt])
+  @@index([tenantId, currentStatus, decisionDeadline])
+}
+
+model ContractDossierAttachment {
+  id               String                          @id @default(uuid()) @db.Char(36)
+  tenantId         String                          @db.Char(36)
+  contractId       String                          @db.Char(36)
+  uploadedByUserId String                          @db.Char(36)
+  entityType       ContractDossierAttachmentEntity
+  entityId         String?                         @db.Char(36)
+  kind             String                          @db.VarChar(80)
+  storageKey       String                          @unique @db.VarChar(500)
+  fileName         String                          @db.VarChar(255)
+  originalName     String                          @db.VarChar(255)
+  mimeType         String                          @db.VarChar(120)
+  sizeBytes        BigInt
+  sha256           String                          @db.Char(64)
+  createdAt        DateTime                        @default(now())
+  deletedAt        DateTime?
+  tenant           Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract         Contract                        @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  uploadedBy       User                            @relation("ContractDossierUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, contractId, entityType, entityId, deletedAt], map: "ContractDossierAttachment_entity_idx")
 }
 
 model Commitment {
@@ -1062,6 +1485,7 @@ model WorkOrder {
   notifications               Notification[]
   reopenings                  WorkOrderReopening[]
   kpiMeasurements             KpiMeasurement[]
+  constructionDiaries         ConstructionDiary[]
 
   @@unique([tenantId, number])
   @@index([tenantId, status, openedAt, deletedAt])

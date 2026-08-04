@@ -11,7 +11,12 @@ import {
   IsUUID,
   Length,
 } from 'class-validator';
-import { ContractStatus, ContractType } from '../../../generated/prisma/client';
+import {
+  ContractExecutionRegime,
+  ContractNature,
+  ContractStatus,
+  ContractType,
+} from '../../../generated/prisma/client';
 
 export class CreateContractDto {
   @ApiProperty({ example: 'CT-2026/001' })
@@ -30,6 +35,16 @@ export class CreateContractDto {
   @ApiProperty({ enum: ContractType })
   @IsEnum(ContractType)
   type!: ContractType;
+
+  @ApiPropertyOptional({ enum: ContractExecutionRegime, default: ContractExecutionRegime.GLOBAL_PRICE })
+  @IsOptional()
+  @IsEnum(ContractExecutionRegime)
+  executionRegime?: ContractExecutionRegime;
+
+  @ApiPropertyOptional({ enum: ContractNature, default: ContractNature.CONTINUOUS })
+  @IsOptional()
+  @IsEnum(ContractNature)
+  nature?: ContractNature;
 
   @ApiPropertyOptional({ enum: ContractStatus, default: ContractStatus.ACTIVE })
   @IsOptional()

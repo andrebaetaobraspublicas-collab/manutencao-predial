@@ -43,6 +43,7 @@ const NAVIGATION = [
     label: 'Contratos',
     items: [
       { href: '/contratos', label: 'Contratos', icon: FileText },
+      { href: '/fiscais', label: 'Fiscais', icon: ShieldCheck },
       { href: '/fornecedores', label: 'Fornecedores', icon: UsersRound },
       { href: '/medicoes', label: 'Medições', icon: ClipboardCheck },
       { href: '/empenhos', label: 'Empenhos', icon: HandCoins },

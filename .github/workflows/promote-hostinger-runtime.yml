@@ -37,6 +37,8 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          printf '%s\n' "$RELEASE_SHA" > apps/api/hostinger-release-sha.txt
+          git add -f apps/api/hostinger-release-sha.txt
           git commit --allow-empty -m "Deploy API ${RELEASE_SHA}"
           git push --force origin "HEAD:refs/heads/${API_DEPLOY_BRANCH}"
 
@@ -55,20 +57,15 @@ jobs:
         run: |
           set -euo pipefail
           remote="${SSH_USER}@${SSH_HOST}"
-          commit_epoch="$(git show -s --format=%ct "$RELEASE_SHA")"
+          release_marker="${APP_ROOT}/apps/api/hostinger-release-sha.txt"
           ready=false
           ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10)
 
           for attempt in $(seq 1 90); do
-            target="$(ssh "${ssh_args[@]}" "$remote" "readlink -f '$APP_ROOT' 2>/dev/null || true" 2>/dev/null || true)"
-            if [[ -n "$target" ]]; then
-              # O diretório current/nodejs é estável e pode conservar o mtime entre releases.
-              # dist/main.js é recriado por cada build e identifica a troca do artefato real.
-              build_epoch="$(ssh "${ssh_args[@]}" "$remote" "stat -c %Y '$target/apps/api/dist/main.js' 2>/dev/null || echo 0" 2>/dev/null || true)"
-              if [[ "$build_epoch" =~ ^[0-9]+$ ]] && (( build_epoch >= commit_epoch )); then
-                ready=true
-                break
-              fi
+            deployed_release="$(ssh "${ssh_args[@]}" "$remote" "cat '$release_marker' 2>/dev/null || true" 2>/dev/null || true)"
+            if [[ "$deployed_release" == "$RELEASE_SHA" ]]; then
+              ready=true
+              break
             fi
             sleep 10
           done

@@ -260,8 +260,9 @@ Fluxo de promoção:
 2. abrir PR para `main` e aguardar a CI de lint, testes e builds;
 3. revisar migration e compatibilidade de rollback quando houver mudança de banco;
 4. mesclar o PR aprovado em `main` e aguardar o auto-deploy dos dois Web Apps;
-5. o workflow `Promote Hostinger runtime` confirma que o diretório `current` é posterior ao commit,
-   grava o SHA no artefato, recicla somente o Passenger da API e valida `/health/ready`;
+5. o workflow `Promote Hostinger runtime` inclui o SHA da versão na branch técnica, confirma que
+   esse marcador chegou ao diretório `current`, grava o SHA no artefato, recicla somente o
+   Passenger da API e valida `/health/ready`;
 6. considerar a promoção concluída somente quando `release` for igual ao SHA do merge e o banco
    estiver `reachable`;
 7. executar login, páginas gerenciais e smoke tests proporcionais à mudança;

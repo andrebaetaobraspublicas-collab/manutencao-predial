@@ -282,6 +282,8 @@ export type Contract = {
   code: string;
   object: string;
   type: string;
+  executionRegime?: string | null;
+  nature?: string | null;
   status: string;
   startDate: string;
   endDate: string;
@@ -301,11 +303,58 @@ export type Contract = {
   adjustments?: Array<Record<string, unknown>>;
   subcontractors?: Array<Record<string, unknown>>;
   penalties?: Array<Record<string, unknown>>;
+  inspectionTeam?: Array<Record<string, unknown> & { inspector?: InspectorProfile }>;
+  guarantees?: Array<Record<string, unknown>>;
+  apostilles?: Array<Record<string, unknown>>;
+  receipts?: Array<Record<string, unknown>>;
+  constructionDiaries?: Array<Record<string, unknown>>;
+  communications?: Array<Record<string, unknown>>;
+  dossierAttachments?: ContractDossierAttachment[];
   commitments?: Array<Record<string, unknown>>;
   measurements?: Array<Record<string, unknown>>;
   workOrders?: Array<{ workOrder: { id: string; number: string; title: string; status: string } }>;
   _count?: { workOrders: number; measurements: number; amendments: number; adjustments: number;
-    subcontractors: number; penalties: number; commitments: number };
+    subcontractors: number; penalties: number; commitments: number; inspectionTeam?: number;
+    guarantees?: number; apostilles?: number; receipts?: number; constructionDiaries?: number;
+    communications?: number };
+};
+
+export type InspectorProfile = {
+  id: string;
+  userId?: string | null;
+  name: string;
+  registrationNumber: string;
+  cpf?: string | null;
+  jobTitle: string;
+  professionalEducation?: string | null;
+  professionalCouncil?: string | null;
+  department?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  specialty: string;
+  status: string;
+  availableHours: number;
+  maxProcesses: number;
+  baseLatitude?: string | number | null;
+  baseLongitude?: string | number | null;
+  restrictedCompanies?: string | null;
+  designationOrdinance?: string | null;
+  notes?: string | null;
+  activeAssignments?: number;
+  assignedContractValue?: string | number;
+  user?: { id: string; name: string; email: string } | null;
+  contractAssignments?: Array<Record<string, unknown>>;
+};
+
+export type ContractDossierAttachment = {
+  id: string;
+  entityType: string;
+  entityId?: string | null;
+  kind: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: string | number;
+  createdAt: string;
 };
 
 export type WorkOrder = {

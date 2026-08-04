@@ -1,4 +1,4 @@
-# Estado verificável da implementação — v0.15.0
+# Estado verificável da implementação — v0.16.0
 
 Data de referência: **3 de agosto de 2026**.
 
@@ -49,6 +49,7 @@ Essa classificação deve ser preservada no frontend e na comunicação comercia
 | Governança operacional v0.14 | especialidades de fornecedores corrigidas; edição e arquivamento auditado; administração direta de usuários; PDFs enriquecidos; portfólio demonstrativo cumulativo |
 | Dossiê patrimonial v0.15 | mapa de ruas configurável; PDFs e fotos privados; histórico de vistorias; planos associados; arquivamento administrativo com análise de vínculos |
 | Homologação contratual v0.15 | carteira fictícia idempotente com contratos, aditivos, ajustes, subcontratações, empenhos, medições e três estágios de orçamento |
+| Gestão e fiscalização v0.16 | regime e natureza contratual; cadastro de fiscais; equipe; garantias; apostilamentos; recebimentos; diário; comunicações/pleitos; anexos privados e dados demonstrativos |
 
 ## 3. Modelado, mas ainda sem fluxo completo
 

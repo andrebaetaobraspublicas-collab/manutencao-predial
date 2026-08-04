@@ -1,8 +1,14 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createHash, randomUUID } from 'node:crypto';
+import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { extension } from 'mime-types';
 import {
   AdjustmentType,
   AmendmentType,
   AuditAction,
+  ContractDossierAttachmentEntity,
   MembershipRole,
   MembershipStatus,
   Prisma,
@@ -17,10 +23,21 @@ import {
   CreateContractPenaltyDto,
   CreateContractSubcontractDto,
 } from './dto/contract-events.dto';
+import {
+  CreateConstructionDiaryDto,
+  CreateContractApostilleDto,
+  CreateContractCommunicationClaimDto,
+  CreateContractGuaranteeDto,
+  CreateContractInspectionTeamMemberDto,
+  CreateContractReceiptDto,
+} from './dto/contract-governance.dto';
 
 @Injectable()
 export class ContractsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   async create(tenantId: string, actorUserId: string, dto: CreateContractDto) {
     const normalizedCode = dto.code.trim().toUpperCase();
@@ -61,6 +78,8 @@ export class ContractsService {
           administrativeProcess: dto.administrativeProcess?.trim(),
           object: dto.object.trim(),
           type: dto.type,
+          executionRegime: dto.executionRegime ?? 'GLOBAL_PRICE',
+          nature: dto.nature ?? 'CONTINUOUS',
           status: dto.status ?? 'ACTIVE',
           startDate,
           endDate,
@@ -92,7 +111,9 @@ export class ContractsService {
         supplier: { select: { id: true, legalName: true, tradeName: true } },
         buildings: { include: { building: { select: { id: true, code: true, name: true } } } },
         _count: { select: { workOrders: true, measurements: true, amendments: true, adjustments: true,
-          subcontractors: true, penalties: true, commitments: true } },
+          subcontractors: true, penalties: true, commitments: true, inspectionTeam: true,
+          guarantees: true, apostilles: true, receipts: true, constructionDiaries: true,
+          communications: true } },
       },
     });
   }
@@ -107,6 +128,41 @@ export class ContractsService {
         adjustments: { orderBy: { createdAt: 'desc' } },
         subcontractors: { orderBy: { createdAt: 'desc' }, include: { supplier: true } },
         penalties: { orderBy: { appliedAt: 'desc' } },
+        inspectionTeam: {
+          where: { deletedAt: null },
+          orderBy: [{ isPrimary: 'desc' }, { startsAt: 'desc' }],
+          include: { inspector: true },
+        },
+        guarantees: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          include: { analystInspector: { select: { id: true, name: true } } },
+        },
+        apostilles: { where: { deletedAt: null }, orderBy: { date: 'desc' } },
+        receipts: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          include: { responsibleInspector: { select: { id: true, name: true } } },
+        },
+        constructionDiaries: {
+          where: { deletedAt: null },
+          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+          include: {
+            responsibleInspector: { select: { id: true, name: true } },
+            workOrder: { select: { id: true, number: true, title: true } },
+          },
+        },
+        communications: {
+          where: { deletedAt: null },
+          orderBy: { protocolDate: 'desc' },
+          include: { responsibleInspector: { select: { id: true, name: true } } },
+        },
+        dossierAttachments: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, entityType: true, entityId: true, kind: true, originalName: true,
+            mimeType: true, sizeBytes: true, createdAt: true },
+        },
         commitments: { include: { movements: true } },
         measurements: { orderBy: { referenceMonth: 'desc' } },
         workOrders: {
@@ -167,6 +223,8 @@ export class ContractsService {
           administrativeProcess: dto.administrativeProcess,
           object: dto.object,
           type: dto.type,
+          executionRegime: dto.executionRegime,
+          nature: dto.nature,
           status: dto.status,
           startDate: dto.startDate ? new Date(dto.startDate) : undefined,
           endDate: dto.endDate ? new Date(dto.endDate) : undefined,
@@ -313,13 +371,603 @@ export class ContractsService {
     });
   }
 
+  async addInspectionTeamMember(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    dto: CreateContractInspectionTeamMemberDto,
+  ) {
+    await Promise.all([
+      this.get(tenantId, contractId),
+      this.ensureInspectorBelongsToTenant(tenantId, dto.inspectorProfileId),
+    ]);
+    const startsAt = new Date(dto.startsAt);
+    const endsAt = dto.endsAt ? new Date(dto.endsAt) : undefined;
+    if (endsAt && endsAt < startsAt) {
+      throw new BadRequestException('O fim da designação não pode ser anterior ao início.');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.isPrimary) {
+        await tx.contractInspectionTeamMember.updateMany({
+          where: { tenantId, contractId, role: dto.role, isPrimary: true, deletedAt: null },
+          data: { isPrimary: false },
+        });
+      }
+      const assignment = await tx.contractInspectionTeamMember.create({ data: {
+        tenantId,
+        contractId,
+        inspectorProfileId: dto.inspectorProfileId,
+        assignedByUserId: actorUserId,
+        role: dto.role,
+        designationAct: dto.designationAct.trim(),
+        startsAt,
+        endsAt,
+        isPrimary: dto.isPrimary ?? false,
+        notes: dto.notes?.trim(),
+      } });
+      await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE,
+        'ContractInspectionTeamMember', assignment.id, {
+          contractId,
+          inspectorProfileId: assignment.inspectorProfileId,
+          role: assignment.role,
+          designationAct: assignment.designationAct,
+        });
+      return assignment;
+    });
+  }
+
+  async addGuarantee(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    dto: CreateContractGuaranteeDto,
+  ) {
+    const contract = await this.get(tenantId, contractId);
+    await Promise.all([
+      this.ensureInspectorBelongsToTenant(tenantId, dto.analystInspectorId),
+      this.ensureUsersBelongToTenant(tenantId, [dto.analystUserId]),
+    ]);
+    const startsAt = new Date(dto.startsAt);
+    const endsAt = new Date(dto.endsAt);
+    if (endsAt <= startsAt) {
+      throw new BadRequestException('O fim da vigência da garantia deve ser posterior ao início.');
+    }
+    const guaranteedValue = dto.guaranteedValue ?? Number(
+      new Prisma.Decimal(contract.currentValue).mul(dto.contractPercentage).div(100).toFixed(2),
+    );
+    if (guaranteedValue <= 0) {
+      throw new BadRequestException('O valor garantido deve ser maior que zero.');
+    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const guarantee = await tx.contractGuarantee.create({ data: {
+          tenantId,
+          contractId,
+          createdByUserId: actorUserId,
+          analystUserId: dto.analystUserId,
+          analystInspectorId: dto.analystInspectorId,
+          number: dto.number.trim(),
+          modality: dto.modality,
+          guarantorName: dto.guarantorName?.trim(),
+          guarantorTaxId: dto.guarantorTaxId?.trim(),
+          contractPercentage: dto.contractPercentage,
+          guaranteedValue,
+          minimumPercentage: dto.minimumPercentage,
+          issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : undefined,
+          startsAt,
+          endsAt,
+          status: dto.status,
+          workflow: dto.workflow.trim(),
+          executionValue: dto.executionValue ?? 0,
+          recoveredValue: dto.recoveredValue ?? 0,
+          releasedAt: dto.releasedAt ? new Date(dto.releasedAt) : undefined,
+          coverages: dto.coverages?.trim(),
+          history: dto.history?.trim(),
+        } });
+        await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE,
+          'ContractGuarantee', guarantee.id, {
+            contractId,
+            number: guarantee.number,
+            status: guarantee.status,
+            guaranteedValue: guarantee.guaranteedValue.toString(),
+          });
+        return guarantee;
+      });
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Já existe garantia com esse número no contrato.');
+      }
+      throw error;
+    }
+  }
+
+  async addApostille(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    dto: CreateContractApostilleDto,
+  ) {
+    await this.get(tenantId, contractId);
+    const financialTypes = new Set(['PRICE_ADJUSTMENT', 'REPACTUATION', 'MONETARY_UPDATE']);
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM Contract WHERE id = ${contractId} AND tenantId = ${tenantId} FOR UPDATE`;
+        const locked = await tx.contract.findFirstOrThrow({
+          where: { id: contractId, tenantId, deletedAt: null },
+          select: { currentValue: true },
+        });
+        const valueBefore = new Prisma.Decimal(locked.currentValue);
+        let valueChange = new Prisma.Decimal(dto.valueChange ?? 0);
+        if (financialTypes.has(dto.type) && dto.valueChange === undefined && dto.percentage !== undefined) {
+          valueChange = valueBefore.mul(dto.percentage).div(100).toDecimalPlaces(2);
+        }
+        if (!financialTypes.has(dto.type)) valueChange = new Prisma.Decimal(0);
+        if (financialTypes.has(dto.type) && valueChange.isZero()) {
+          throw new BadRequestException('Informe o percentual ou o impacto financeiro do apostilamento.');
+        }
+        const valueAfter = valueBefore.plus(valueChange);
+        if (valueAfter.isNegative()) {
+          throw new BadRequestException('O apostilamento não pode tornar o valor contratual negativo.');
+        }
+        const apostille = await tx.contractApostille.create({ data: {
+          tenantId,
+          contractId,
+          createdByUserId: actorUserId,
+          number: dto.number.trim(),
+          type: dto.type,
+          date: new Date(dto.date),
+          indexName: dto.indexName?.trim(),
+          percentage: dto.percentage,
+          valueBefore,
+          valueChange,
+          valueAfter,
+          calculationMemo: dto.calculationMemo?.trim(),
+          justification: dto.justification.trim(),
+        } });
+        await this.recomputeFinancials(tx, tenantId, contractId);
+        await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE,
+          'ContractApostille', apostille.id, {
+            contractId,
+            number: apostille.number,
+            type: apostille.type,
+            valueChange: apostille.valueChange.toString(),
+          });
+        return apostille;
+      });
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Já existe apostilamento com esse número no contrato.');
+      }
+      throw error;
+    }
+  }
+
+  async addReceipt(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    dto: CreateContractReceiptDto,
+  ) {
+    await Promise.all([
+      this.get(tenantId, contractId),
+      this.ensureInspectorBelongsToTenant(tenantId, dto.responsibleInspectorId),
+    ]);
+    const observationStartsAt = dto.observationStartsAt ? new Date(dto.observationStartsAt) : undefined;
+    const observationEndsAt = dto.observationEndsAt ? new Date(dto.observationEndsAt) : undefined;
+    if (observationStartsAt && observationEndsAt && observationEndsAt < observationStartsAt) {
+      throw new BadRequestException('O fim da observação não pode ser anterior ao início.');
+    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const receipt = await tx.contractReceipt.create({ data: {
+          tenantId,
+          contractId,
+          createdByUserId: actorUserId,
+          responsibleInspectorId: dto.responsibleInspectorId,
+          number: dto.number.trim(),
+          type: dto.type,
+          objectCategory: dto.objectCategory.trim(),
+          requestProtocol: dto.requestProtocol?.trim(),
+          protocolAt: dto.protocolAt ? new Date(dto.protocolAt) : undefined,
+          inspectionDate: dto.inspectionDate ? new Date(dto.inspectionDate) : undefined,
+          status: dto.status,
+          provisionalRequired: dto.provisionalRequired,
+          decision: dto.decision,
+          commissionOrdinance: dto.commissionOrdinance?.trim(),
+          quorum: dto.quorum?.trim(),
+          contractorDocuments: dto.contractorDocuments?.trim(),
+          inspectionsAndTests: dto.inspectionsAndTests?.trim(),
+          observationStartsAt,
+          observationEndsAt,
+          technicalWarrantyEndsAt: dto.technicalWarrantyEndsAt ? new Date(dto.technicalWarrantyEndsAt) : undefined,
+          occurrences: dto.occurrences?.trim(),
+          consolidatedOpinion: dto.consolidatedOpinion.trim(),
+          competentAuthority: dto.competentAuthority?.trim(),
+          pendingItems: dto.pendingItems as Prisma.InputJsonValue | undefined,
+        } });
+        await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE,
+          'ContractReceipt', receipt.id, {
+            contractId,
+            number: receipt.number,
+            type: receipt.type,
+            status: receipt.status,
+          });
+        return receipt;
+      });
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Já existe recebimento com esse número no contrato.');
+      }
+      throw error;
+    }
+  }
+
+  async addConstructionDiary(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    dto: CreateConstructionDiaryDto,
+  ) {
+    await Promise.all([
+      this.get(tenantId, contractId),
+      this.ensureInspectorBelongsToTenant(tenantId, dto.responsibleInspectorId),
+    ]);
+    if (dto.workOrderId) {
+      const link = await this.prisma.workOrderContract.findFirst({
+        where: { contractId, workOrderId: dto.workOrderId, contract: { tenantId, deletedAt: null } },
+        select: { id: true },
+      });
+      if (!link) throw new BadRequestException('A ordem de serviço não está vinculada ao contrato.');
+    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const diary = await tx.constructionDiary.create({ data: {
+          tenantId,
+          contractId,
+          workOrderId: dto.workOrderId,
+          createdByUserId: actorUserId,
+          responsibleInspectorId: dto.responsibleInspectorId,
+          number: dto.number.trim(),
+          date: new Date(dto.date),
+          openedAt: dto.openedAt ? new Date(dto.openedAt) : undefined,
+          closedAt: dto.closedAt ? new Date(dto.closedAt) : undefined,
+          operationalSituation: dto.operationalSituation.trim(),
+          weather: dto.weather?.trim(),
+          temperatureCelsius: dto.temperatureCelsius,
+          precipitationMm: dto.precipitationMm,
+          status: dto.status,
+          workFront: dto.workFront?.trim(),
+          ownWorkforce: dto.ownWorkforce ?? 0,
+          outsourcedWorkforce: dto.outsourcedWorkforce ?? 0,
+          servicesPerformed: dto.servicesPerformed?.trim(),
+          servicesInProgress: dto.servicesInProgress?.trim(),
+          servicesCompleted: dto.servicesCompleted?.trim(),
+          equipmentMobilized: dto.equipmentMobilized?.trim(),
+          equipmentDemobilized: dto.equipmentDemobilized?.trim(),
+          materialsReceived: dto.materialsReceived?.trim(),
+          testsAndQualityControl: dto.testsAndQualityControl?.trim(),
+          occurrencesAndRisks: dto.occurrencesAndRisks?.trim(),
+          contractualImpact: dto.contractualImpact?.trim(),
+          formalCommunications: dto.formalCommunications?.trim(),
+          inspectionDirections: dto.inspectionDirections?.trim(),
+          notes: dto.notes?.trim(),
+        } });
+        await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE,
+          'ConstructionDiary', diary.id, {
+            contractId,
+            number: diary.number,
+            date: diary.date.toISOString(),
+            status: diary.status,
+          });
+        return diary;
+      });
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Já existe diário com esse número no contrato.');
+      }
+      throw error;
+    }
+  }
+
+  async addCommunicationClaim(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    dto: CreateContractCommunicationClaimDto,
+  ) {
+    await Promise.all([
+      this.get(tenantId, contractId),
+      this.ensureInspectorBelongsToTenant(tenantId, dto.responsibleInspectorId),
+    ]);
+    const protocolDate = new Date(dto.protocolDate);
+    const standardDecisionDays = dto.standardDecisionDays ?? 30;
+    const decisionDeadline = dto.decisionDeadline
+      ? new Date(dto.decisionDeadline)
+      : new Date(protocolDate.getTime() + standardDecisionDays * 86_400_000);
+    if (dto.extensionApproved && !dto.extensionJustification?.trim()) {
+      throw new BadRequestException('A prorrogação de prazo exige justificativa.');
+    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const communication = await tx.contractCommunicationClaim.create({ data: {
+          tenantId,
+          contractId,
+          createdByUserId: actorUserId,
+          responsibleInspectorId: dto.responsibleInspectorId,
+          number: dto.number.trim(),
+          type: dto.type.trim(),
+          protocolDate,
+          sender: dto.sender.trim(),
+          recipient: dto.recipient.trim(),
+          priority: dto.priority,
+          currentStatus: dto.currentStatus.trim(),
+          claimNature: dto.claimNature?.trim(),
+          workflowStage: dto.workflowStage.trim(),
+          instructionStartsAt: dto.instructionStartsAt ? new Date(dto.instructionStartsAt) : undefined,
+          instructionEndsAt: dto.instructionEndsAt ? new Date(dto.instructionEndsAt) : undefined,
+          standardDecisionDays,
+          decisionDeadline,
+          extensionApproved: dto.extensionApproved ?? false,
+          extensionJustification: dto.extensionJustification?.trim(),
+          technicalDeadline: dto.technicalDeadline ? new Date(dto.technicalDeadline) : undefined,
+          inspectionDeadline: dto.inspectionDeadline ? new Date(dto.inspectionDeadline) : undefined,
+          legalDeadline: dto.legalDeadline ? new Date(dto.legalDeadline) : undefined,
+          appealDeadline: dto.appealDeadline ? new Date(dto.appealDeadline) : undefined,
+          subject: dto.subject.trim(),
+          detailedDescription: dto.detailedDescription.trim(),
+          technicalOpinion: dto.technicalOpinion?.trim(),
+          inspectionOpinion: dto.inspectionOpinion?.trim(),
+          legalOpinion: dto.legalOpinion?.trim(),
+          decision: dto.decision?.trim(),
+          forwardedModule: dto.forwardedModule?.trim(),
+        } });
+        await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE,
+          'ContractCommunicationClaim', communication.id, {
+            contractId,
+            number: communication.number,
+            type: communication.type,
+            status: communication.currentStatus,
+            decisionDeadline: communication.decisionDeadline?.toISOString() ?? null,
+          });
+        return communication;
+      });
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Já existe comunicação ou pleito com esse número no contrato.');
+      }
+      throw error;
+    }
+  }
+
+  async archiveGovernanceEntry(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    kind: string,
+    entryId: string,
+  ) {
+    await this.get(tenantId, contractId);
+    const now = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      let affected = 0;
+      let entityType = '';
+      switch (kind) {
+        case 'amendments':
+          entityType = 'ContractAmendment';
+          affected = (await tx.contractAmendment.updateMany({
+            where: { id: entryId, tenantId, contractId, canceledAt: null },
+            data: { canceledAt: now, status: 'CANCELED' },
+          })).count;
+          if (affected) await this.recomputeFinancials(tx, tenantId, contractId);
+          break;
+        case 'adjustments':
+          entityType = 'ContractAdjustment';
+          affected = (await tx.contractAdjustment.updateMany({
+            where: { id: entryId, tenantId, contractId, canceledAt: null },
+            data: { canceledAt: now, status: 'CANCELED' },
+          })).count;
+          if (affected) await this.recomputeFinancials(tx, tenantId, contractId);
+          break;
+        case 'subcontracts':
+          entityType = 'ContractSubcontract';
+          affected = (await tx.contractSubcontract.updateMany({
+            where: { id: entryId, tenantId, contractId, canceledAt: null },
+            data: { canceledAt: now, status: 'CANCELED' },
+          })).count;
+          break;
+        case 'penalties':
+          entityType = 'ContractPenalty';
+          affected = (await tx.contractPenalty.updateMany({
+            where: { id: entryId, tenantId, contractId, status: { not: 'CANCELED' } },
+            data: { status: 'CANCELED' },
+          })).count;
+          break;
+        case 'inspection-team':
+          entityType = 'ContractInspectionTeamMember';
+          affected = (await tx.contractInspectionTeamMember.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: { deletedAt: now, endsAt: now },
+          })).count;
+          break;
+        case 'guarantees':
+          entityType = 'ContractGuarantee';
+          affected = (await tx.contractGuarantee.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: { deletedAt: now },
+          })).count;
+          break;
+        case 'apostilles':
+          entityType = 'ContractApostille';
+          affected = (await tx.contractApostille.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: { deletedAt: now, status: 'CANCELED' },
+          })).count;
+          if (affected) await this.recomputeFinancials(tx, tenantId, contractId);
+          break;
+        case 'receipts':
+          entityType = 'ContractReceipt';
+          affected = (await tx.contractReceipt.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: { deletedAt: now },
+          })).count;
+          break;
+        case 'construction-diaries':
+          entityType = 'ConstructionDiary';
+          affected = (await tx.constructionDiary.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: { deletedAt: now },
+          })).count;
+          break;
+        case 'communications':
+          entityType = 'ContractCommunicationClaim';
+          affected = (await tx.contractCommunicationClaim.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: { deletedAt: now },
+          })).count;
+          break;
+        default:
+          throw new BadRequestException('Tipo de registro contratual inválido.');
+      }
+      if (!affected) throw new NotFoundException('Registro contratual não encontrado.');
+      await this.audit(tx, tenantId, actorUserId, AuditAction.DELETE, entityType, entryId, {
+        contractId,
+        archived: true,
+      });
+      return { id: entryId, archived: true };
+    });
+  }
+
+  async uploadDossierAttachment(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    entityType: ContractDossierAttachmentEntity,
+    entityId: string | undefined,
+    kind: string,
+    file?: Express.Multer.File,
+  ) {
+    await this.get(tenantId, contractId);
+    if (!file) throw new BadRequestException('Arquivo não enviado.');
+    if (!Object.values(ContractDossierAttachmentEntity).includes(entityType)) {
+      throw new BadRequestException('Tipo de vínculo do anexo inválido.');
+    }
+    if (!kind?.trim()) throw new BadRequestException('Informe a classificação do documento.');
+    await this.ensureDossierEntity(tenantId, contractId, entityType, entityId);
+
+    const acceptedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (!acceptedMimeTypes.includes(file.mimetype) || !this.hasExpectedSignature(file.buffer, file.mimetype)) {
+      throw new BadRequestException('Somente PDF e imagens JPG/PNG/WebP válidos são aceitos.');
+    }
+    const root = path.resolve(this.config.get<string>('UPLOAD_ROOT') ?? './uploads');
+    const relativeDir = path.join(tenantId, 'contracts', contractId);
+    const absoluteDir = this.resolveInsideRoot(root, relativeDir);
+    await mkdir(absoluteDir, { recursive: true });
+    const fileName = `${randomUUID()}.${extension(file.mimetype) || 'bin'}`;
+    const storageKey = path.join(relativeDir, fileName).replaceAll(path.sep, '/');
+    const absolutePath = path.join(absoluteDir, fileName);
+    await writeFile(absolutePath, file.buffer, { flag: 'wx' });
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const locked = await tx.contract.findFirst({
+          where: { id: contractId, tenantId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!locked) throw new ConflictException('O contrato não está mais disponível.');
+        const attachment = await tx.contractDossierAttachment.create({ data: {
+          tenantId,
+          contractId,
+          uploadedByUserId: actorUserId,
+          entityType,
+          entityId: entityId || undefined,
+          kind: kind.trim().slice(0, 80),
+          storageKey,
+          fileName,
+          originalName: path.basename(file.originalname).replace(/[\r\n\0]/g, '_').slice(0, 255),
+          mimeType: file.mimetype,
+          sizeBytes: BigInt(file.size),
+          sha256: createHash('sha256').update(file.buffer).digest('hex'),
+        } });
+        await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE,
+          'ContractDossierAttachment', attachment.id, {
+            contractId,
+            entityType,
+            entityId: entityId ?? null,
+            kind: attachment.kind,
+            originalName: attachment.originalName,
+          });
+        return attachment;
+      });
+    } catch (error) {
+      await unlink(absolutePath).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async resolveDossierAttachmentForDownload(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    attachmentId: string,
+  ) {
+    await this.get(tenantId, contractId);
+    const attachment = await this.prisma.contractDossierAttachment.findFirst({
+      where: { id: attachmentId, tenantId, contractId, deletedAt: null },
+    });
+    if (!attachment) throw new NotFoundException('Documento contratual não encontrado.');
+    const root = path.resolve(this.config.get<string>('UPLOAD_ROOT') ?? './uploads');
+    const absolutePath = this.resolveInsideRoot(root, attachment.storageKey);
+    try {
+      await access(absolutePath);
+    } catch {
+      throw new NotFoundException('Arquivo físico não localizado.');
+    }
+    await this.prisma.auditLog.create({ data: {
+      tenantId,
+      actorUserId,
+      action: AuditAction.DOWNLOAD,
+      entityType: 'ContractDossierAttachment',
+      entityId: attachment.id,
+      afterData: { contractId, originalName: attachment.originalName },
+    } });
+    return { attachment, absolutePath };
+  }
+
+  async archiveDossierAttachment(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    attachmentId: string,
+  ) {
+    await this.get(tenantId, contractId);
+    const current = await this.prisma.contractDossierAttachment.findFirst({
+      where: { id: attachmentId, tenantId, contractId, deletedAt: null },
+    });
+    if (!current) throw new NotFoundException('Documento contratual não encontrado.');
+    return this.prisma.$transaction(async (tx) => {
+      const archived = await tx.contractDossierAttachment.update({
+        where: { id: attachmentId },
+        data: { deletedAt: new Date() },
+      });
+      await this.audit(tx, tenantId, actorUserId, AuditAction.DELETE,
+        'ContractDossierAttachment', attachmentId, {
+          contractId,
+          archived: true,
+          originalName: current.originalName,
+        });
+      return archived;
+    });
+  }
+
   private async recomputeFinancials(tx: Prisma.TransactionClient, tenantId: string, contractId: string) {
     const contract = await tx.contract.findFirstOrThrow({ where: { id: contractId, tenantId, deletedAt: null }, select: { originalValue: true, endDate: true } });
-    const [amendments, adjustments] = await Promise.all([
+    const [amendments, adjustments, apostilles] = await Promise.all([
       tx.contractAmendment.findMany({ where: { tenantId, contractId, status: 'ACTIVE', canceledAt: null }, select: { valueChange: true, endDateAfter: true } }),
       tx.contractAdjustment.findMany({ where: { tenantId, contractId, status: 'ACTIVE', canceledAt: null }, select: { amount: true } }),
+      tx.contractApostille.findMany({ where: { tenantId, contractId, status: 'ACTIVE', deletedAt: null }, select: { valueChange: true } }),
     ]);
-    const currentValue = [...amendments.map((item) => item.valueChange), ...adjustments.map((item) => item.amount)]
+    const currentValue = [...amendments.map((item) => item.valueChange), ...adjustments.map((item) => item.amount),
+      ...apostilles.map((item) => item.valueChange)]
       .reduce<Prisma.Decimal>((total, value) => value ? total.plus(value) : total,
         new Prisma.Decimal(contract.originalValue));
     const endDate = amendments.reduce((latest, item) => item.endDateAfter && item.endDateAfter > latest ? item.endDateAfter : latest, contract.endDate);
@@ -363,5 +1011,64 @@ export class ContractsService {
         'Gestor ou fiscal não possui papel gerencial ativo na organização.',
       );
     }
+  }
+
+  private async ensureInspectorBelongsToTenant(tenantId: string, inspectorProfileId?: string) {
+    if (!inspectorProfileId) return;
+    const inspector = await this.prisma.inspectorProfile.findFirst({
+      where: { id: inspectorProfileId, tenantId, status: 'ACTIVE', deletedAt: null },
+      select: { id: true },
+    });
+    if (!inspector) throw new BadRequestException('Fiscal não pertence à organização ou está inativo.');
+  }
+
+  private async ensureDossierEntity(
+    tenantId: string,
+    contractId: string,
+    entityType: ContractDossierAttachmentEntity,
+    entityId?: string,
+  ) {
+    if (entityType === ContractDossierAttachmentEntity.CONTRACT) return;
+    if (!entityId) throw new BadRequestException('Informe o registro ao qual o documento pertence.');
+    const base = { id: entityId, tenantId, contractId, deletedAt: null };
+    let exists = false;
+    if (entityType === ContractDossierAttachmentEntity.GUARANTEE) {
+      exists = Boolean(await this.prisma.contractGuarantee.findFirst({ where: base, select: { id: true } }));
+    } else if (entityType === ContractDossierAttachmentEntity.APOSTILLE) {
+      exists = Boolean(await this.prisma.contractApostille.findFirst({ where: base, select: { id: true } }));
+    } else if (entityType === ContractDossierAttachmentEntity.RECEIPT) {
+      exists = Boolean(await this.prisma.contractReceipt.findFirst({ where: base, select: { id: true } }));
+    } else if (entityType === ContractDossierAttachmentEntity.CONSTRUCTION_DIARY) {
+      exists = Boolean(await this.prisma.constructionDiary.findFirst({ where: base, select: { id: true } }));
+    } else if (entityType === ContractDossierAttachmentEntity.COMMUNICATION_CLAIM) {
+      exists = Boolean(await this.prisma.contractCommunicationClaim.findFirst({ where: base, select: { id: true } }));
+    }
+    if (!exists) throw new BadRequestException('O registro vinculado ao documento não pertence ao contrato.');
+  }
+
+  private resolveInsideRoot(root: string, relativePath: string) {
+    const absolutePath = path.resolve(root, relativePath);
+    const relative = path.relative(root, absolutePath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      throw new BadRequestException('Caminho de arquivo inválido.');
+    }
+    return absolutePath;
+  }
+
+  private hasExpectedSignature(buffer: Buffer, mimeType: string) {
+    if (mimeType === 'application/pdf') return buffer.subarray(0, 5).toString('ascii') === '%PDF-';
+    if (mimeType === 'image/jpeg') {
+      return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    }
+    if (mimeType === 'image/png') {
+      return buffer.length >= 8 && buffer.subarray(0, 8).equals(
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      );
+    }
+    if (mimeType === 'image/webp') {
+      return buffer.length >= 12 && buffer.subarray(0, 4).toString('ascii') === 'RIFF'
+        && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+    }
+    return false;
   }
 }

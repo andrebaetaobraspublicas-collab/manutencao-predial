@@ -383,6 +383,26 @@ de dados não é interpretada como desempenho zero.
 As exclusões são lógicas e tenant-aware. Fatos financeiros já liquidados ou pagos dependem de
 estorno; auditoria, histórico e movimentos não são destruídos.
 
+### 7.5 Gestão e fiscalização contratual v0.16
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| GET/POST | `/inspectors` | lista e cadastra perfis de gestores e fiscais |
+| GET/PATCH/DELETE | `/inspectors/:id` | consulta, altera ou arquiva fiscal sem designação ativa |
+| POST | `/contracts/:id/inspection-team` | registra gestor/fiscal, função, portaria e período da designação |
+| POST | `/contracts/:id/guarantees` | controla modalidade, suficiência, vigência, execução e liberação da garantia |
+| POST | `/contracts/:id/apostilles` | formaliza apostilamento e recalcula o valor contratual quando financeiro |
+| POST | `/contracts/:id/receipts` | registra recebimento, vistoria, decisão, observação e pendências |
+| POST | `/contracts/:id/construction-diaries` | registra diário de obras e vínculo opcional com OS do contrato |
+| POST | `/contracts/:id/communications` | registra comunicação/pleito, instrução, prazos, pareceres e decisão |
+| DELETE | `/contracts/:id/governance/:kind/:entryId` | arquiva ato do dossiê e preserva auditoria |
+| POST | `/contracts/:id/dossier-attachments` | envia PDF ou imagem para um ato contratual |
+| GET/DELETE | `/contracts/:id/dossier-attachments/:attachmentId` | download auditado ou arquivamento do documento |
+
+Todas as rotas derivam `tenantId` da sessão. O contrato passou a separar o tipo operacional, a
+natureza jurídica (`CONTINUOUS`/`SCOPE`) e o regime de execução. O valor atual considera valor
+original, aditivos, reajustes/repactuações e apostilamentos financeiros ativos.
+
 
 | Método | Rota | Finalidade |
 |---|---|---|

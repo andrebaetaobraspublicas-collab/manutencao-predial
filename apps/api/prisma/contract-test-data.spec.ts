@@ -15,5 +15,12 @@ describe('carteira contratual fictícia', () => {
     expect(CONTRACT_TEST_DATA_EXPECTED.budgetItems).toBe(
       CONTRACT_TEST_DATA_EXPECTED.budgets * 2,
     );
+    expect(CONTRACT_TEST_DATA_EXPECTED.inspectors).toBeGreaterThanOrEqual(2);
+    expect(CONTRACT_TEST_DATA_EXPECTED.inspectionTeamAssignments).toBeGreaterThanOrEqual(5);
+    expect(CONTRACT_TEST_DATA_EXPECTED.guarantees).toBeGreaterThanOrEqual(3);
+    expect(CONTRACT_TEST_DATA_EXPECTED.apostilles).toBeGreaterThanOrEqual(4);
+    expect(CONTRACT_TEST_DATA_EXPECTED.receipts).toBeGreaterThanOrEqual(3);
+    expect(CONTRACT_TEST_DATA_EXPECTED.constructionDiaries).toBeGreaterThanOrEqual(5);
+    expect(CONTRACT_TEST_DATA_EXPECTED.communications).toBeGreaterThanOrEqual(5);
   });
 });

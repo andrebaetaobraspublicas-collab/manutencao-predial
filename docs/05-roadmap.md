@@ -186,6 +186,11 @@ documentos privados em PDF, fotografias do imóvel, histórico de vistorias, dat
 vistoria derivada, consulta dos planos vinculados e arquivamento administrativo com prévia dos
 impactos e suspensão dos planos ativos.
 
+**Gestão e fiscalização contratual v0.16.0:** o contrato passa a registrar natureza e regime de
+execução, equipe formal de gestores/fiscais, garantias, apostilamentos, recebimentos, diário de
+obras e comunicações/pleitos. Os atos possuem isolamento por organização, auditoria, anexos
+privados e dados fictícios idempotentes para homologação.
+
 O detalhamento e os critérios de aceite estão em `docs/13-plano-inicial-de-issues-codex.md`.
 
 ---

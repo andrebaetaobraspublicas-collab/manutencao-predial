@@ -26,22 +26,13 @@ jobs:
       SSH_USER: ${{ vars.HOSTINGER_SSH_USER }}
       API_DEPLOY_BRANCH: deploy-api
       APP_ROOT: /home/${{ vars.HOSTINGER_SSH_USER }}/domains/api.gestaodepredios.com.br/.builds/current/nodejs
+      DOMAIN_ROOT: /home/${{ vars.HOSTINGER_SSH_USER }}/domains/api.gestaodepredios.com.br
       PERSISTENT_UPLOAD_ROOT: /home/${{ vars.HOSTINGER_SSH_USER }}/domains/api.gestaodepredios.com.br/storage/uploads
       READY_URL: https://api.gestaodepredios.com.br/api/v1/health/ready
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Trigger isolated Hostinger API build
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          printf '%s\n' "$RELEASE_SHA" > apps/api/hostinger-release-sha.txt
-          git add -f apps/api/hostinger-release-sha.txt
-          git commit --allow-empty -m "Deploy API ${RELEASE_SHA}"
-          git push --force origin "HEAD:refs/heads/${API_DEPLOY_BRANCH}"
 
       - name: Configure pinned SSH access
         env:
@@ -58,9 +49,32 @@ jobs:
         run: |
           set -euo pipefail
           remote="${SSH_USER}@${SSH_HOST}"
-          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10)
-          ssh "${ssh_args[@]}" "$remote" \
-            "set -e; mkdir -p '$PERSISTENT_UPLOAD_ROOT'; for source in '$APP_ROOT/uploads' '$APP_ROOT/apps/api/uploads'; do if [[ -d \"\$source\" ]]; then cp -an \"\$source/.\" '$PERSISTENT_UPLOAD_ROOT/'; fi; done"
+          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=20)
+          preserved=false
+
+          for attempt in $(seq 1 8); do
+            if ssh "${ssh_args[@]}" "$remote" \
+              "set -eu; mkdir -p '$PERSISTENT_UPLOAD_ROOT'; for source in '$APP_ROOT/uploads' '$APP_ROOT/apps/api/uploads' '$DOMAIN_ROOT'/.builds/*/nodejs/uploads '$DOMAIN_ROOT'/.builds/*/nodejs/apps/api/uploads; do if test -d \"\$source\"; then cp -an \"\$source/.\" '$PERSISTENT_UPLOAD_ROOT/'; fi; done"; then
+              preserved=true
+              break
+            fi
+            sleep 10
+          done
+
+          if [[ "$preserved" != true ]]; then
+            echo 'Could not preserve private uploads after repeated SSH attempts.' >&2
+            exit 1
+          fi
+
+      - name: Trigger isolated Hostinger API build
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          printf '%s\n' "$RELEASE_SHA" > apps/api/hostinger-release-sha.txt
+          git add -f apps/api/hostinger-release-sha.txt
+          git commit --allow-empty -m "Deploy API ${RELEASE_SHA}"
+          git push --force origin "HEAD:refs/heads/${API_DEPLOY_BRANCH}"
 
       - name: Wait for Hostinger build
         run: |

@@ -12,6 +12,11 @@ describe('upload storage', () => {
     expect(sanitizeUploadOriginalName('instalaÃƒÂ§ÃƒÂµes elÃƒÂ©tricas.png')).toBe(
       'instalações elétricas.png',
     );
+    expect(
+      sanitizeUploadOriginalName(
+        'ESTUDO_TÃ\u0089CNICO_PRELIMINARâ\u0080\u0093EUCLIDES_BEZERRA_PARANÃ\u0083_ATUALIZADO.pdf',
+      ),
+    ).toBe('ESTUDO_TÉCNICO_PRELIMINAR–EUCLIDES_BEZERRA_PARANÃ_ATUALIZADO.pdf');
   });
 
   it('preserva nomes UTF-8 que já estão corretos e remove caminhos', () => {

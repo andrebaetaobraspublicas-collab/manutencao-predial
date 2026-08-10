@@ -41,6 +41,7 @@ import {
 import { KPI_LIBRARY, KPI_LIBRARY_VERSION } from '../src/modules/kpis/kpi-library';
 import { parseMySqlUrl } from '../src/prisma/database-url';
 import { provisionContractTestData } from './contract-test-data';
+import { sanitizeUploadOriginalName } from '../src/common/files/upload-storage';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL não configurada.');
@@ -69,6 +70,47 @@ const defaultSlaByPriority: Record<
   URGENT: { responseMinutes: 60, resolutionMinutes: 480 },
   CRITICAL: { responseMinutes: 15, resolutionMinutes: 240 },
 };
+
+async function repairAttachmentNames() {
+  const buildingAttachments = await prisma.buildingAttachment.findMany({
+    select: { id: true, originalName: true },
+  });
+  for (const attachment of buildingAttachments) {
+    const originalName = sanitizeUploadOriginalName(attachment.originalName);
+    if (originalName !== attachment.originalName) {
+      await prisma.buildingAttachment.update({
+        where: { id: attachment.id },
+        data: { originalName },
+      });
+    }
+  }
+
+  const workOrderAttachments = await prisma.workOrderAttachment.findMany({
+    select: { id: true, originalName: true },
+  });
+  for (const attachment of workOrderAttachments) {
+    const originalName = sanitizeUploadOriginalName(attachment.originalName);
+    if (originalName !== attachment.originalName) {
+      await prisma.workOrderAttachment.update({
+        where: { id: attachment.id },
+        data: { originalName },
+      });
+    }
+  }
+
+  const contractAttachments = await prisma.contractDossierAttachment.findMany({
+    select: { id: true, originalName: true },
+  });
+  for (const attachment of contractAttachments) {
+    const originalName = sanitizeUploadOriginalName(attachment.originalName);
+    if (originalName !== attachment.originalName) {
+      await prisma.contractDossierAttachment.update({
+        where: { id: attachment.id },
+        data: { originalName },
+      });
+    }
+  }
+}
 
 async function provisionOperationalSeed(tenantId: string, timezone: string) {
   const catalogDefinitions = [
@@ -978,6 +1020,7 @@ async function main() {
   }
   await provisionPerformanceSeed({ tenantId: tenant.id, userId: user.id, buildingId: building.id,
     supplierId: supplier.id, contractId: contract.id });
+  await repairAttachmentNames();
 
   console.log(`Seed concluído. Login: ${seedAdminEmail}`);
 }

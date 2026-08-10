@@ -243,6 +243,11 @@ Configuração da API:
 - saída: `apps/api/dist`;
 - entry file: `apps/api/dist/main.js`.
 
+No Web App gerenciado, caminhos relativos de upload são automaticamente redirecionados para
+`domains/api.gestaodepredios.com.br/storage/uploads`, fora de `.builds/current`. Antes de cada
+promoção, o workflow copia arquivos legados encontrados no build corrente para esse diretório
+persistente sem sobrescrever arquivos já preservados.
+
 Configuração do frontend:
 
 - domínio: `gestaodepredios.com.br`;

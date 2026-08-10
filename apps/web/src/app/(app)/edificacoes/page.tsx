@@ -22,7 +22,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { BuildingLocationPicker } from '@/components/building-location-picker';
 import { EmptyState } from '@/components/empty-state';
 import { LoadingPanel } from '@/components/loading';
-import { apiFetch, apiFileUrl, ApiError } from '@/lib/api';
+import { apiDownload, apiFetch, ApiError } from '@/lib/api';
 import type {
   Building,
   BuildingAttachmentKind,
@@ -373,6 +373,26 @@ export default function BuildingsPage() {
     );
   }
 
+  async function downloadAttachment(attachmentId: string, originalName: string) {
+    if (!editingId) return;
+    setBusyAction(`download-${attachmentId}`);
+    setError('');
+    try {
+      await apiDownload(
+        `/buildings/${editingId}/attachments/${attachmentId}/download`,
+        originalName,
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : 'Não foi possível baixar o arquivo.',
+      );
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function archiveBuilding(building: Building) {
     setBusyAction(`building-${building.id}`);
     setError('');
@@ -510,7 +530,7 @@ export default function BuildingsPage() {
                         <td>{attachment.uploadedBy?.name ?? '—'}</td>
                         <td>{formatDate(attachment.createdAt)}</td>
                         <td><div className="table-actions">
-                          <a className="btn btn-ghost" href={apiFileUrl(`/buildings/${editingId}/attachments/${attachment.id}/download`)}><Download size={14} /> Baixar</a>
+                          <button className="btn btn-ghost" type="button" disabled={busyAction === `download-${attachment.id}`} onClick={() => void downloadAttachment(attachment.id, attachment.originalName)}><Download size={14} /> {busyAction === `download-${attachment.id}` ? 'Baixando…' : 'Baixar'}</button>
                           {canManage ? <button className="btn btn-ghost danger-text" type="button" disabled={busyAction === `attachment-${attachment.id}`} onClick={() => void archiveAttachment(attachment.id)}><Trash2 size={14} /> Excluir</button> : null}
                         </div></td>
                       </tr>)}
@@ -529,9 +549,9 @@ export default function BuildingsPage() {
                   <div className="subcard">
                     <h3>Nova vistoria</h3>
                     <div className="form-grid">
-                      <Field col="col-6" label="Data da vistoria *"><input className="input" type="date" required max={new Date().toISOString().slice(0, 10)} value={inspectionForm.inspectionDate} onChange={(event) => setInspectionForm({ ...inspectionForm, inspectionDate: event.target.value })} /></Field>
+                      <Field col="col-6" label="Data da vistoria *"><input className="input" type="date" max={new Date().toISOString().slice(0, 10)} value={inspectionForm.inspectionDate} onChange={(event) => setInspectionForm({ ...inspectionForm, inspectionDate: event.target.value })} /></Field>
                       <Field col="col-6" label="Tipo de vistoria *"><select className="select" value={inspectionForm.type} onChange={(event) => setInspectionForm({ ...inspectionForm, type: event.target.value })}>{Object.entries(INSPECTION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
-                      <Field col="col-6" label="Responsável técnico *"><input className="input" required maxLength={180} value={inspectionForm.responsibleTechnician} onChange={(event) => setInspectionForm({ ...inspectionForm, responsibleTechnician: event.target.value })} /></Field>
+                      <Field col="col-6" label="Responsável técnico *"><input className="input" maxLength={180} value={inspectionForm.responsibleTechnician} onChange={(event) => setInspectionForm({ ...inspectionForm, responsibleTechnician: event.target.value })} /></Field>
                       <Field col="col-6" label="Equipe"><input className="input" maxLength={220} value={inspectionForm.team} onChange={(event) => setInspectionForm({ ...inspectionForm, team: event.target.value })} /></Field>
                       <Field col="col-12" label="Observações"><textarea className="textarea compact" maxLength={5000} value={inspectionForm.notes} onChange={(event) => setInspectionForm({ ...inspectionForm, notes: event.target.value })} /></Field>
                     </div>

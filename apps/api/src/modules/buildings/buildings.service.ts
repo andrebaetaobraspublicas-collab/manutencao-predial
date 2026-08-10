@@ -538,7 +538,13 @@ export class BuildingsService {
         afterData: { buildingId, originalName: attachment.originalName },
       },
     });
-    return { attachment, absolutePath };
+    return {
+      attachment: {
+        ...attachment,
+        originalName: sanitizeUploadOriginalName(attachment.originalName),
+      },
+      absolutePath,
+    };
   }
 
   async archiveAttachment(
@@ -795,8 +801,19 @@ export class BuildingsService {
     const metadata = this.readStoredGeocodingMetadata(building.metadata);
     const fallbackSource = this.inferLegacySource(building);
     const inspectionRows = (building as T & { inspections?: Array<{ inspectionDate: Date }> }).inspections;
+    const attachmentRows = (
+      building as T & { attachments?: Array<{ originalName: string }> }
+    ).attachments;
     return {
       ...building,
+      ...(attachmentRows
+        ? {
+            attachments: attachmentRows.map((attachment) => ({
+              ...attachment,
+              originalName: sanitizeUploadOriginalName(attachment.originalName),
+            })),
+          }
+        : {}),
       geocodingConfirmed: building.geocodingConfirmedAt !== null,
       geocodingSource: metadata?.source ?? fallbackSource,
       geocodingLookupId: metadata?.lookupId,

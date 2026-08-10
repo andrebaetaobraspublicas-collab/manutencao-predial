@@ -5,9 +5,12 @@ const MOJIBAKE_MARKERS = /(?:Ã.|Â.|â.|ð.|�)/u;
 
 export function sanitizeUploadOriginalName(originalName: string): string {
   const basename = path.basename(originalName.replaceAll('\\', '/'));
-  const decoded = iconv.decode(iconv.encode(basename, 'windows-1252'), 'utf8');
-  const recovered =
-    MOJIBAKE_MARKERS.test(basename) && !decoded.includes('\uFFFD') ? decoded : basename;
+  let recovered = basename;
+  for (let pass = 0; pass < 4 && MOJIBAKE_MARKERS.test(recovered); pass += 1) {
+    const decoded = iconv.decode(iconv.encode(recovered, 'windows-1252'), 'utf8');
+    if (decoded.includes('\uFFFD') || decoded === recovered) break;
+    recovered = decoded;
+  }
 
   return recovered
     .normalize('NFC')

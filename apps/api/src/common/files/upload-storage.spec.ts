@@ -9,6 +9,9 @@ describe('upload storage', () => {
     expect(sanitizeUploadOriginalName('ESTUDO_TÃ‰CNICO_PRELIMINAR.pdf')).toBe(
       'ESTUDO_TÉCNICO_PRELIMINAR.pdf',
     );
+    expect(sanitizeUploadOriginalName('instalaÃƒÂ§ÃƒÂµes elÃƒÂ©tricas.png')).toBe(
+      'instalações elétricas.png',
+    );
   });
 
   it('preserva nomes UTF-8 que já estão corretos e remove caminhos', () => {

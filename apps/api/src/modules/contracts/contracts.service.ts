@@ -15,6 +15,10 @@ import {
   UserStatus,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  resolveUploadRoot,
+  sanitizeUploadOriginalName,
+} from '../../common/files/upload-storage';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
 import {
@@ -858,7 +862,7 @@ export class ContractsService {
     if (!acceptedMimeTypes.includes(file.mimetype) || !this.hasExpectedSignature(file.buffer, file.mimetype)) {
       throw new BadRequestException('Somente PDF e imagens JPG/PNG/WebP válidos são aceitos.');
     }
-    const root = path.resolve(this.config.get<string>('UPLOAD_ROOT') ?? './uploads');
+    const root = resolveUploadRoot(this.config.get<string>('UPLOAD_ROOT'));
     const relativeDir = path.join(tenantId, 'contracts', contractId);
     const absoluteDir = this.resolveInsideRoot(root, relativeDir);
     await mkdir(absoluteDir, { recursive: true });
@@ -883,7 +887,7 @@ export class ContractsService {
           kind: kind.trim().slice(0, 80),
           storageKey,
           fileName,
-          originalName: path.basename(file.originalname).replace(/[\r\n\0]/g, '_').slice(0, 255),
+          originalName: sanitizeUploadOriginalName(file.originalname),
           mimeType: file.mimetype,
           sizeBytes: BigInt(file.size),
           sha256: createHash('sha256').update(file.buffer).digest('hex'),
@@ -915,7 +919,7 @@ export class ContractsService {
       where: { id: attachmentId, tenantId, contractId, deletedAt: null },
     });
     if (!attachment) throw new NotFoundException('Documento contratual não encontrado.');
-    const root = path.resolve(this.config.get<string>('UPLOAD_ROOT') ?? './uploads');
+    const root = resolveUploadRoot(this.config.get<string>('UPLOAD_ROOT'));
     const absolutePath = this.resolveInsideRoot(root, attachment.storageKey);
     try {
       await access(absolutePath);

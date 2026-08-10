@@ -26,6 +26,7 @@ jobs:
       SSH_USER: ${{ vars.HOSTINGER_SSH_USER }}
       API_DEPLOY_BRANCH: deploy-api
       APP_ROOT: /home/${{ vars.HOSTINGER_SSH_USER }}/domains/api.gestaodepredios.com.br/.builds/current/nodejs
+      PERSISTENT_UPLOAD_ROOT: /home/${{ vars.HOSTINGER_SSH_USER }}/domains/api.gestaodepredios.com.br/storage/uploads
       READY_URL: https://api.gestaodepredios.com.br/api/v1/health/ready
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +53,14 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+      - name: Preserve legacy private uploads
+        run: |
+          set -euo pipefail
+          remote="${SSH_USER}@${SSH_HOST}"
+          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10)
+          ssh "${ssh_args[@]}" "$remote" \
+            "set -e; mkdir -p '$PERSISTENT_UPLOAD_ROOT'; for source in '$APP_ROOT/uploads' '$APP_ROOT/apps/api/uploads'; do if [[ -d \"\$source\" ]]; then cp -an \"\$source/.\" '$PERSISTENT_UPLOAD_ROOT/'; fi; done"
 
       - name: Wait for Hostinger build
         run: |

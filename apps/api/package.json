@@ -1,6 +1,6 @@
 {
   "name": "@gestaopredios/api",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "private": true,
   "scripts": {
     "build": "nest build",
@@ -50,6 +50,7 @@
     "cookie-parser": "1.4.7",
     "dotenv": "17.4.2",
     "helmet": "8.1.0",
+    "iconv-lite": "^0.7.3",
     "mariadb": "3.5.3",
     "mime-types": "3.0.1",
     "multer": "2.2.0",

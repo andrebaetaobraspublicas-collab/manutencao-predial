@@ -21,6 +21,10 @@ import {
   type GeocodingSource,
   type VerifiedGeocodingConfirmation,
 } from '../geocoding/geocoding.service';
+import {
+  resolveUploadRoot,
+  sanitizeUploadOriginalName,
+} from '../../common/files/upload-storage';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBuildingDto } from './dto/create-building.dto';
 import { CreateBuildingInspectionDto } from './dto/create-building-inspection.dto';
@@ -436,7 +440,7 @@ export class BuildingsService {
       throw new BadRequestException('Laudos e documentos do imóvel devem ser enviados em PDF.');
     }
 
-    const root = path.resolve(this.config.get<string>('UPLOAD_ROOT') ?? './uploads');
+    const root = resolveUploadRoot(this.config.get<string>('UPLOAD_ROOT'));
     const relativeDir = path.join(tenantId, 'buildings', buildingId);
     const absoluteDir = this.resolveInsideRoot(root, relativeDir);
     await mkdir(absoluteDir, { recursive: true });
@@ -475,7 +479,7 @@ export class BuildingsService {
             kind,
             storageKey,
             fileName,
-            originalName: path.basename(file.originalname).replace(/[\r\n\0]/g, '_').slice(0, 255),
+            originalName: sanitizeUploadOriginalName(file.originalname),
             mimeType: file.mimetype,
             sizeBytes: BigInt(file.size),
             sha256: createHash('sha256').update(file.buffer).digest('hex'),
@@ -517,7 +521,7 @@ export class BuildingsService {
       },
     });
     if (!attachment) throw new NotFoundException('Anexo não encontrado.');
-    const root = path.resolve(this.config.get<string>('UPLOAD_ROOT') ?? './uploads');
+    const root = resolveUploadRoot(this.config.get<string>('UPLOAD_ROOT'));
     const absolutePath = this.resolveInsideRoot(root, attachment.storageKey);
     try {
       await access(absolutePath);

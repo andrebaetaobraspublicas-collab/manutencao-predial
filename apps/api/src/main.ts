@@ -32,6 +32,7 @@ async function bootstrap() {
     origin: origins,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    exposedHeaders: ['Content-Disposition'],
   });
 
   const swaggerConfig = new DocumentBuilder()

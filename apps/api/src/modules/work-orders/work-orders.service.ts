@@ -26,6 +26,10 @@ import {
   WorkOrderStatus,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  resolveUploadRoot,
+  sanitizeUploadOriginalName,
+} from '../../common/files/upload-storage';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { NotificationOutboxService } from '../notifications/notification-outbox.service';
 import { OperationsService } from '../operations/operations.service';
@@ -1654,7 +1658,7 @@ export class WorkOrdersService {
       throw new BadRequestException('Anexo fotográfico deve ser uma imagem.');
     }
 
-    const root = path.resolve(this.config.get<string>('UPLOAD_ROOT') ?? './uploads');
+    const root = resolveUploadRoot(this.config.get<string>('UPLOAD_ROOT'));
     const relativeDir = path.join(tenantId, 'work-orders', workOrderId);
     const absoluteDir = this.resolveInsideRoot(root, relativeDir);
 
@@ -1688,10 +1692,7 @@ export class WorkOrdersService {
             kind,
             storageKey,
             fileName,
-            originalName: path
-              .basename(file.originalname)
-              .replace(/[\r\n\0]/g, '_')
-              .slice(0, 255),
+            originalName: sanitizeUploadOriginalName(file.originalname),
             mimeType: file.mimetype,
             sizeBytes: BigInt(file.size),
             sha256: createHash('sha256').update(file.buffer).digest('hex'),
@@ -1736,7 +1737,7 @@ export class WorkOrdersService {
     });
     if (!attachment) throw new NotFoundException('Anexo não encontrado.');
 
-    const root = path.resolve(this.config.get<string>('UPLOAD_ROOT') ?? './uploads');
+    const root = resolveUploadRoot(this.config.get<string>('UPLOAD_ROOT'));
     const absolutePath = this.resolveInsideRoot(root, attachment.storageKey);
 
     try {

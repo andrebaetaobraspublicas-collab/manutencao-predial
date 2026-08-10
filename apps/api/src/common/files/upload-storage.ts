@@ -3,11 +3,22 @@ import iconv from 'iconv-lite';
 
 const MOJIBAKE_MARKERS = /(?:Ã.|Â.|â.|ð.|�)/u;
 
+function encodeLegacyFilename(value: string): Buffer {
+  return Buffer.concat(
+    Array.from(value, (character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      return codePoint >= 0x80 && codePoint <= 0x9f
+        ? Buffer.from([codePoint])
+        : iconv.encode(character, 'windows-1252');
+    }),
+  );
+}
+
 export function sanitizeUploadOriginalName(originalName: string): string {
   const basename = path.basename(originalName.replaceAll('\\', '/'));
   let recovered = basename;
   for (let pass = 0; pass < 4 && MOJIBAKE_MARKERS.test(recovered); pass += 1) {
-    const decoded = iconv.decode(iconv.encode(recovered, 'windows-1252'), 'utf8');
+    const decoded = iconv.decode(encodeLegacyFilename(recovered), 'utf8');
     if (decoded.includes('\uFFFD') || decoded === recovered) break;
     recovered = decoded;
   }

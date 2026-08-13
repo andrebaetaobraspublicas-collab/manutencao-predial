@@ -190,6 +190,25 @@ export class ContractsController {
   }
 
   @Roles(MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER, MembershipRole.CONTRACT_MANAGER)
+  @Patch(':id/governance/:kind/:entryId')
+  updateGovernanceEntry(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('kind') kind: string,
+    @Param('entryId') entryId: string,
+    @Body() data: Record<string, unknown>,
+  ) {
+    return this.service.updateGovernanceEntry(
+      user.tenantId,
+      user.userId,
+      id,
+      kind,
+      entryId,
+      data,
+    );
+  }
+
+  @Roles(MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER, MembershipRole.CONTRACT_MANAGER)
   @Delete(':id/governance/:kind/:entryId')
   archiveGovernanceEntry(
     @CurrentUser() user: AuthenticatedUser,

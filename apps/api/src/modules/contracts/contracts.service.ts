@@ -743,6 +743,203 @@ export class ContractsService {
     }
   }
 
+  async updateGovernanceEntry(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    kind: string,
+    entryId: string,
+    input: Record<string, unknown>,
+  ) {
+    await this.get(tenantId, contractId);
+    const text = (key: string) => String(input[key] ?? '').trim();
+    const optionalText = (key: string) => text(key) || null;
+    const date = (key: string) => text(key) ? new Date(text(key)) : null;
+    const number = (key: string, fallback = 0) => {
+      const parsed = Number(input[key]);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
+    const bool = (key: string) => input[key] === true || input[key] === 'true';
+
+    return this.prisma.$transaction(async (tx) => {
+      let affected = 0;
+      let entityType = '';
+      switch (kind) {
+        case 'amendments':
+          entityType = 'ContractAmendment';
+          affected = (await tx.contractAmendment.updateMany({
+            where: { id: entryId, tenantId, contractId, canceledAt: null },
+            data: {
+              number: text('number'), type: text('type') as AmendmentType,
+              description: text('description'), signedAt: date('signedAt'),
+              endDateAfter: date('endDateAfter'),
+              valueChange: input.valueChange === undefined || input.valueChange === '' ? null : number('valueChange'),
+            },
+          })).count;
+          if (affected) await this.recomputeFinancials(tx, tenantId, contractId);
+          break;
+        case 'adjustments':
+          entityType = 'ContractAdjustment';
+          affected = (await tx.contractAdjustment.updateMany({
+            where: { id: entryId, tenantId, contractId, canceledAt: null },
+            data: {
+              type: text('type') as AdjustmentType, referencePeriod: text('referencePeriod'),
+              approvalDate: date('approvalDate'),
+              percentage: input.percentage === undefined || input.percentage === '' ? null : number('percentage'),
+              amount: input.amount === undefined || input.amount === '' ? null : number('amount'),
+              indexName: optionalText('indexName'),
+            },
+          })).count;
+          if (affected) await this.recomputeFinancials(tx, tenantId, contractId);
+          break;
+        case 'subcontracts':
+          entityType = 'ContractSubcontract';
+          if (text('supplierId')) {
+            const supplier = await tx.supplier.findFirst({
+              where: { id: text('supplierId'), tenantId, deletedAt: null },
+              select: { id: true },
+            });
+            if (!supplier) throw new BadRequestException('Fornecedor da subcontratação inválido.');
+          }
+          affected = (await tx.contractSubcontract.updateMany({
+            where: { id: entryId, tenantId, contractId, canceledAt: null },
+            data: {
+              supplierId: optionalText('supplierId'), subcontractorName: text('subcontractorName'),
+              subcontractorTaxId: optionalText('subcontractorTaxId'), scope: text('scope'),
+              approvedAt: date('approvedAt'), authorizationCase: optionalText('authorizationCase'),
+              amount: input.amount === undefined || input.amount === '' ? null : number('amount'),
+            },
+          })).count;
+          break;
+        case 'penalties':
+          entityType = 'ContractPenalty';
+          affected = (await tx.contractPenalty.updateMany({
+            where: { id: entryId, tenantId, contractId, status: { not: 'CANCELED' } },
+            data: {
+              type: text('type') as never, administrativeCase: optionalText('administrativeCase'),
+              description: text('description'), appliedAt: date('appliedAt') ?? new Date(),
+              amount: input.amount === undefined || input.amount === '' ? null : number('amount'),
+            },
+          })).count;
+          break;
+        case 'inspection-team':
+          entityType = 'ContractInspectionTeamMember';
+          await this.ensureInspectorBelongsToTenant(tenantId, text('inspectorProfileId'));
+          affected = (await tx.contractInspectionTeamMember.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: {
+              inspectorProfileId: text('inspectorProfileId'), role: text('role') as never,
+              designationAct: text('designationAct'), startsAt: date('startsAt') ?? new Date(),
+              endsAt: date('endsAt'), isPrimary: bool('isPrimary'), notes: optionalText('notes'),
+            },
+          })).count;
+          break;
+        case 'guarantees':
+          entityType = 'ContractGuarantee';
+          await this.ensureInspectorBelongsToTenant(tenantId, optionalText('analystInspectorId') ?? undefined);
+          affected = (await tx.contractGuarantee.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: {
+              number: text('number'), modality: text('modality') as never,
+              guarantorName: optionalText('guarantorName'), guarantorTaxId: optionalText('guarantorTaxId'),
+              contractPercentage: number('contractPercentage'), guaranteedValue: number('guaranteedValue'),
+              minimumPercentage: number('minimumPercentage'), issuedAt: date('issuedAt'),
+              startsAt: date('startsAt') ?? new Date(), endsAt: date('endsAt') ?? new Date(),
+              status: text('status') as never, workflow: text('workflow'),
+              analystInspectorId: optionalText('analystInspectorId'), executionValue: number('executionValue'),
+              recoveredValue: number('recoveredValue'), releasedAt: date('releasedAt'),
+              coverages: optionalText('coverages'), history: optionalText('history'),
+            },
+          })).count;
+          break;
+        case 'apostilles':
+          entityType = 'ContractApostille';
+          affected = (await tx.contractApostille.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: {
+              number: text('number'), type: text('type') as never, date: date('date') ?? new Date(),
+              indexName: optionalText('indexName'),
+              percentage: input.percentage === undefined || input.percentage === '' ? null : number('percentage'),
+              valueChange: number('valueChange'), calculationMemo: optionalText('calculationMemo'),
+              justification: text('justification'),
+            },
+          })).count;
+          if (affected) await this.recomputeFinancials(tx, tenantId, contractId);
+          break;
+        case 'receipts':
+          entityType = 'ContractReceipt';
+          await this.ensureInspectorBelongsToTenant(tenantId, optionalText('responsibleInspectorId') ?? undefined);
+          affected = (await tx.contractReceipt.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: {
+              number: text('number'), type: text('type') as never, objectCategory: text('objectCategory'),
+              requestProtocol: optionalText('requestProtocol'), protocolAt: date('protocolAt'),
+              inspectionDate: date('inspectionDate'), responsibleInspectorId: optionalText('responsibleInspectorId'),
+              status: text('status') as never, provisionalRequired: bool('provisionalRequired'),
+              decision: text('decision') as never, commissionOrdinance: optionalText('commissionOrdinance'),
+              quorum: optionalText('quorum'), contractorDocuments: optionalText('contractorDocuments'),
+              inspectionsAndTests: optionalText('inspectionsAndTests'), observationStartsAt: date('observationStartsAt'),
+              observationEndsAt: date('observationEndsAt'), technicalWarrantyEndsAt: date('technicalWarrantyEndsAt'),
+              occurrences: optionalText('occurrences'), consolidatedOpinion: text('consolidatedOpinion'),
+              competentAuthority: optionalText('competentAuthority'),
+              pendingItems: input.pendingItems ? input.pendingItems as Prisma.InputJsonValue : Prisma.JsonNull,
+            },
+          })).count;
+          break;
+        case 'construction-diaries':
+          entityType = 'ConstructionDiary';
+          await this.ensureInspectorBelongsToTenant(tenantId, optionalText('responsibleInspectorId') ?? undefined);
+          affected = (await tx.constructionDiary.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: {
+              number: text('number'), workOrderId: optionalText('workOrderId'),
+              responsibleInspectorId: optionalText('responsibleInspectorId'), date: date('date') ?? new Date(),
+              openedAt: date('openedAt'), closedAt: date('closedAt'),
+              operationalSituation: text('operationalSituation'), weather: optionalText('weather'),
+              temperatureCelsius: input.temperatureCelsius === undefined || input.temperatureCelsius === '' ? null : number('temperatureCelsius'),
+              precipitationMm: input.precipitationMm === undefined || input.precipitationMm === '' ? null : number('precipitationMm'),
+              status: text('status') as never, workFront: optionalText('workFront'),
+              ownWorkforce: number('ownWorkforce'), outsourcedWorkforce: number('outsourcedWorkforce'),
+              servicesPerformed: optionalText('servicesPerformed'), servicesInProgress: optionalText('servicesInProgress'),
+              servicesCompleted: optionalText('servicesCompleted'), equipmentMobilized: optionalText('equipmentMobilized'),
+              materialsReceived: optionalText('materialsReceived'), testsAndQualityControl: optionalText('testsAndQualityControl'),
+              occurrencesAndRisks: optionalText('occurrencesAndRisks'), contractualImpact: optionalText('contractualImpact'),
+              inspectionDirections: optionalText('inspectionDirections'),
+            },
+          })).count;
+          break;
+        case 'communications':
+          entityType = 'ContractCommunicationClaim';
+          await this.ensureInspectorBelongsToTenant(tenantId, optionalText('responsibleInspectorId') ?? undefined);
+          affected = (await tx.contractCommunicationClaim.updateMany({
+            where: { id: entryId, tenantId, contractId, deletedAt: null },
+            data: {
+              number: text('number'), type: text('type'), protocolDate: date('protocolDate') ?? new Date(),
+              responsibleInspectorId: optionalText('responsibleInspectorId'), sender: text('sender'),
+              recipient: text('recipient'), priority: text('priority') as never,
+              currentStatus: text('currentStatus'), claimNature: optionalText('claimNature'),
+              workflowStage: text('workflowStage'), instructionStartsAt: date('instructionStartsAt'),
+              instructionEndsAt: date('instructionEndsAt'), standardDecisionDays: number('standardDecisionDays', 30),
+              decisionDeadline: date('decisionDeadline'), extensionApproved: bool('extensionApproved'),
+              extensionJustification: optionalText('extensionJustification'), subject: text('subject'),
+              detailedDescription: text('detailedDescription'), technicalOpinion: optionalText('technicalOpinion'),
+              inspectionOpinion: optionalText('inspectionOpinion'), legalOpinion: optionalText('legalOpinion'),
+              forwardedModule: optionalText('forwardedModule'),
+            },
+          })).count;
+          break;
+        default:
+          throw new BadRequestException('Tipo de registro contratual inválido.');
+      }
+      if (!affected) throw new NotFoundException('Registro contratual não encontrado.');
+      await this.audit(tx, tenantId, actorUserId, AuditAction.UPDATE, entityType, entryId, {
+        contractId,
+        edited: true,
+      });
+      return { id: entryId, updated: true };
+    });
+  }
+
   async archiveGovernanceEntry(
     tenantId: string,
     actorUserId: string,

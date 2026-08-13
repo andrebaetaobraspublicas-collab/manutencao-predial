@@ -1,6 +1,6 @@
 'use client';
 
-import { FileDown, Save, Trash2, Upload } from 'lucide-react';
+import { ExternalLink, FileDown, Pencil, Save, Trash2, Upload, X } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { apiFetch, apiFileUrl } from '@/lib/api';
 import { BRL, formatDate } from '@/lib/format';
@@ -53,6 +53,7 @@ export function ContractWorkspace({
   const [extensionApproved, setExtensionApproved] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [editingRow, setEditingRow] = useState<Row | null>(null);
 
   function switchTab(value: string) {
     setTab(value);
@@ -62,6 +63,7 @@ export function ContractWorkspace({
     setProvisionalRequired(true);
     setExtensionApproved(false);
     setFile(null);
+    setEditingRow(null);
   }
 
   function set(key: string, value: string) {
@@ -100,10 +102,13 @@ export function ContractWorkspace({
           description: oldForm.description, appliedAt: oldForm.appliedAt,
           amount: oldForm.amount ? Number(oldForm.amount) : undefined };
       }
-      await apiFetch(`/contracts/${contract.id}/${endpoint}`, {
-        method: 'POST', body: JSON.stringify(payload),
+      await apiFetch(editingRow
+        ? `/contracts/${contract.id}/governance/${endpoint}/${String(editingRow.id)}`
+        : `/contracts/${contract.id}/${endpoint}`, {
+        method: editingRow ? 'PATCH' : 'POST', body: JSON.stringify(payload),
       });
       setOldForm(OLD_EMPTY);
+      setEditingRow(null);
       await onRefresh();
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : 'Falha ao registrar evento contratual.');
@@ -122,11 +127,13 @@ export function ContractWorkspace({
         provisionalRequired,
         extensionApproved,
       });
-      const created = await apiFetch<{ id: string }>(`/contracts/${contract.id}/${tab}`, {
-        method: 'POST',
+      const created = await apiFetch<{ id: string }>(editingRow
+        ? `/contracts/${contract.id}/governance/${tab}/${String(editingRow.id)}`
+        : `/contracts/${contract.id}/${tab}`, {
+        method: editingRow ? 'PATCH' : 'POST',
         body: JSON.stringify(payload),
       });
-      if (file && tab !== 'inspection-team') {
+      if (file && tab !== 'inspection-team' && !editingRow) {
         const attachment = new FormData();
         attachment.append('file', file);
         attachment.append('entityType', attachmentEntity(tab));
@@ -142,6 +149,7 @@ export function ContractWorkspace({
       setIsPrimary(false);
       setProvisionalRequired(true);
       setExtensionApproved(false);
+      setEditingRow(null);
       await onRefresh();
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : 'Falha ao registrar informação contratual.');
@@ -161,18 +169,44 @@ export function ContractWorkspace({
     }
   }
 
+  function cancelEditing() {
+    setEditingRow(null);
+    setOldForm(OLD_EMPTY);
+    setForm(defaultsFor(tab));
+    setIsPrimary(false);
+    setProvisionalRequired(true);
+    setExtensionApproved(false);
+    setFile(null);
+  }
+
+  function edit(row: Row) {
+    setEditingRow(row);
+    if (['amendments', 'adjustments', 'subcontracts', 'penalties'].includes(tab)) {
+      setOldForm(oldFormFromRow(row));
+    } else {
+      setForm(governanceFormFromRow(tab, row));
+      setIsPrimary(Boolean(row.isPrimary));
+      setProvisionalRequired(row.provisionalRequired !== false);
+      setExtensionApproved(Boolean(row.extensionApproved));
+    }
+    setFile(null);
+    window.setTimeout(() => document.querySelector('.contract-record-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+  }
+
   const documents = contract.dossierAttachments ?? [];
   const workOrders = (contract.workOrders ?? []).map((entry) => entry.workOrder);
 
-  return <section className="card form-card" style={{ marginTop: 18 }}>
+  return <section className="card form-card contract-workspace" style={{ marginTop: 18 }}>
     <section className="form-section">
       <div className="form-section-header">
         <h2>Dossiê {contract.code}</h2>
         <p>Processo de origem: {contract.administrativeProcess || 'não informado'} · fornecedor: {contract.supplier.tradeName || contract.supplier.legalName}</p>
       </div>
-      <div className="actions" style={{ marginBottom: 18 }}>
+      <div className="contract-tabs" role="tablist" aria-label="Seções do dossiê contratual">
         {TABS.map(([value, label]) => <button type="button" key={value} className={`btn ${tab === value ? 'btn-primary' : 'btn-secondary'}`} onClick={() => switchTab(value)}>{label}</button>)}
       </div>
+
+      {editingRow ? <div className="contract-edit-notice"><span>Editando o registro selecionado. Revise os campos e salve as alterações.</span><button type="button" className="btn btn-ghost" onClick={cancelEditing}><X size={15} /> Cancelar edição</button></div> : null}
 
       {tab === 'summary' ? <Summary contract={contract} /> : null}
 
@@ -181,8 +215,8 @@ export function ContractWorkspace({
           { key: 'number', label: 'Número' }, { key: 'type', label: 'Tipo' },
           { key: 'description', label: 'Descrição' }, { key: 'endDateAfter', label: 'Nova vigência final' },
           { key: 'valueChange', label: 'Impacto financeiro' },
-        ]} onDelete={(row) => void archive('amendments', row)} />
-        <form className="form-grid" onSubmit={submitOldEvent}>
+        ]} onEdit={edit} onDelete={(row) => void archive('amendments', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitOldEvent}>
           <Field c="col-2" label="Número *"><input className="input" required value={oldForm.number} onChange={(e) => setOldForm({ ...oldForm, number: e.target.value })} /></Field>
           <Field c="col-3" label="Tipo"><select className="select" value={oldForm.type} onChange={(e) => setOldForm({ ...oldForm, type: e.target.value })}><option value="TERM_EXTENSION">Prorrogação de prazo</option><option value="VALUE_INCREASE">Acréscimo</option><option value="VALUE_DECREASE">Supressão</option><option value="SCOPE_CHANGE">Alteração de escopo</option><option value="OTHER">Outro</option></select></Field>
           <Field c="col-3" label="Assinatura"><input className="input" type="date" value={oldForm.signedAt} onChange={(e) => setOldForm({ ...oldForm, signedAt: e.target.value })} /></Field>
@@ -198,8 +232,8 @@ export function ContractWorkspace({
           { key: 'type', label: 'Tipo' }, { key: 'referencePeriod', label: 'Período de referência' },
           { key: 'approvalDate', label: 'Data de aprovação' }, { key: 'percentage', label: 'Percentual' },
           { key: 'amount', label: 'Impacto financeiro' },
-        ]} onDelete={(row) => void archive('adjustments', row)} />
-        <form className="form-grid" onSubmit={submitOldEvent}>
+        ]} onEdit={edit} onDelete={(row) => void archive('adjustments', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitOldEvent}>
           <Field c="col-3" label="Tipo"><select className="select" value={oldForm.type} onChange={(e) => setOldForm({ ...oldForm, type: e.target.value })}><option value="PRICE_ADJUSTMENT">Reajuste</option><option value="REPACTUATION">Repactuação</option><option value="ECONOMIC_REBALANCING">Reequilíbrio econômico</option></select></Field>
           <Field c="col-2" label="Período de referência *"><input className="input" required value={oldForm.referencePeriod} onChange={(e) => setOldForm({ ...oldForm, referencePeriod: e.target.value })} /></Field>
           <Field c="col-2" label="Aprovação *"><input className="input" required type="date" value={oldForm.approvalDate} onChange={(e) => setOldForm({ ...oldForm, approvalDate: e.target.value })} /></Field>
@@ -215,8 +249,8 @@ export function ContractWorkspace({
           { key: 'subcontractorName', label: 'Subcontratada' }, { key: 'subcontractorTaxId', label: 'CNPJ' },
           { key: 'scope', label: 'Escopo' }, { key: 'authorizationCase', label: 'Autorização/processo' },
           { key: 'amount', label: 'Valor' },
-        ]} onDelete={(row) => void archive('subcontracts', row)} />
-        <form className="form-grid" onSubmit={submitOldEvent}>
+        ]} onEdit={edit} onDelete={(row) => void archive('subcontracts', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitOldEvent}>
           <Field c="col-4" label="Empresa cadastrada"><select className="select" value={oldForm.supplierId} onChange={(e) => setOldForm({ ...oldForm, supplierId: e.target.value })}><option value="">Outra empresa</option>{suppliers.map((item) => <option key={item.id} value={item.id}>{item.tradeName || item.legalName}</option>)}</select></Field>
           <Field c="col-4" label="Nome da subcontratada *"><input className="input" required={!oldForm.supplierId} disabled={Boolean(oldForm.supplierId)} value={oldForm.subcontractorName} onChange={(e) => setOldForm({ ...oldForm, subcontractorName: e.target.value })} /></Field>
           <Field c="col-4" label="CNPJ"><input className="input" disabled={Boolean(oldForm.supplierId)} value={oldForm.subcontractorTaxId} onChange={(e) => setOldForm({ ...oldForm, subcontractorTaxId: e.target.value })} /></Field>
@@ -233,8 +267,8 @@ export function ContractWorkspace({
           { key: 'appliedAt', label: 'Data da aplicação' }, { key: 'type', label: 'Tipo' },
           { key: 'administrativeCase', label: 'Processo administrativo' },
           { key: 'description', label: 'Descrição' }, { key: 'amount', label: 'Valor' },
-        ]} onDelete={(row) => void archive('penalties', row)} />
-        <form className="form-grid" onSubmit={submitOldEvent}>
+        ]} onEdit={edit} onDelete={(row) => void archive('penalties', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitOldEvent}>
           <Field c="col-3" label="Tipo"><select className="select" value={oldForm.type} onChange={(e) => setOldForm({ ...oldForm, type: e.target.value })}><option value="WARNING">Advertência</option><option value="FINE">Multa</option><option value="TEMPORARY_SUSPENSION">Suspensão</option><option value="DEBARMENT">Impedimento</option><option value="OTHER">Outra</option></select></Field>
           <Field c="col-3" label="Data *"><input className="input" required type="date" value={oldForm.appliedAt} onChange={(e) => setOldForm({ ...oldForm, appliedAt: e.target.value })} /></Field>
           <Field c="col-3" label="Processo"><input className="input" value={oldForm.administrativeCase} onChange={(e) => setOldForm({ ...oldForm, administrativeCase: e.target.value })} /></Field>
@@ -246,12 +280,12 @@ export function ContractWorkspace({
 
       {tab === 'work-orders' ? <EventTable rows={workOrders as unknown as Row[]} columns={[
         { key: 'number', label: 'Número' }, { key: 'title', label: 'Descrição' }, { key: 'status', label: 'Situação' },
-      ]} /> : null}
+      ]} onEdit={(row) => window.location.assign(`/ordens-servico/detalhe/?id=${String(row.id)}`)} /> : null}
 
       {tab === 'commitments' ? <><EventTable rows={contract.commitments ?? []} columns={[
         { key: 'number', label: 'Número do empenho' }, { key: 'fiscalYear', label: 'Exercício' },
         { key: 'issueDate', label: 'Data de emissão' }, { key: 'originalValue', label: 'Valor original' },
-      ]} /><p className="muted">Novos empenhos e movimentos são registrados no menu Empenhos e permanecem vinculados a este contrato.</p></> : null}
+      ]} onEdit={() => window.location.assign('/empenhos/')} /><a className="btn btn-secondary" href="/empenhos/"><ExternalLink size={15} /> Abrir gestão de empenhos</a></> : null}
 
       {tab === 'inspection-team' ? <>
         <EventTable rows={contract.inspectionTeam ?? []} columns={[
@@ -259,8 +293,8 @@ export function ContractWorkspace({
           { key: 'role', label: 'Função' }, { key: 'designationAct', label: 'Portaria/ato de designação' },
           { key: 'startsAt', label: 'Início' }, { key: 'endsAt', label: 'Fim' },
           { key: 'isPrimary', label: 'Titular' },
-        ]} onDelete={(row) => void archive('inspection-team', row)} />
-        <form className="form-grid" onSubmit={submitGovernance}>
+        ]} onEdit={edit} onDelete={(row) => void archive('inspection-team', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitGovernance}>
           <Field c="col-4" label="Gestor ou fiscal *"><InspectorSelect required inspectors={inspectors} value={form.inspectorProfileId} onChange={(value) => set('inspectorProfileId', value)} /></Field>
           <Field c="col-3" label="Função na equipe *"><select className="select" value={form.role} onChange={(e) => set('role', e.target.value)}><option value="CONTRACT_MANAGER">Gestor do contrato</option><option value="SUBSTITUTE_MANAGER">Gestor substituto</option><option value="TECHNICAL_INSPECTOR">Fiscal técnico</option><option value="ADMINISTRATIVE_INSPECTOR">Fiscal administrativo</option><option value="SECTORAL_INSPECTOR">Fiscal setorial</option><option value="SUBSTITUTE_INSPECTOR">Fiscal substituto</option></select></Field>
           <Field c="col-5" label="Portaria/ato de designação *"><input className="input" required value={form.designationAct} onChange={(e) => set('designationAct', e.target.value)} /></Field>
@@ -278,8 +312,8 @@ export function ContractWorkspace({
           { key: 'guaranteedValue', label: 'Valor garantido' }, { key: 'minimumPercentage', label: 'Percentual mínimo' },
           { key: 'endsAt', label: 'Fim da vigência' }, { key: 'status', label: 'Situação' },
           { key: 'workflow', label: 'Etapa atual' },
-        ]} onDelete={(row) => void archive('guarantees', row)} />
-        <form className="form-grid" onSubmit={submitGovernance}>
+        ]} onEdit={edit} onDelete={(row) => void archive('guarantees', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitGovernance}>
           <Field c="col-3" label="Nº da garantia *"><input className="input" required value={form.number} onChange={(e) => set('number', e.target.value)} /></Field>
           <Field c="col-3" label="Modalidade *"><select className="select" value={form.modality} onChange={(e) => set('modality', e.target.value)}><option value="CASH_DEPOSIT">Caução em dinheiro</option><option value="PUBLIC_DEBT_BONDS">Caução em títulos da dívida pública</option><option value="SURETY_BOND">Seguro-garantia</option><option value="BANK_GUARANTEE">Fiança bancária</option><option value="OTHER">Outra modalidade admitida</option></select></Field>
           <Field c="col-3" label="Seguradora/instituição"><input className="input" value={form.guarantorName} onChange={(e) => set('guarantorName', e.target.value)} /></Field>
@@ -310,8 +344,8 @@ export function ContractWorkspace({
           { key: 'indexName', label: 'Índice' }, { key: 'percentage', label: 'Percentual' },
           { key: 'valueBefore', label: 'Valor anterior' }, { key: 'valueChange', label: 'Impacto' },
           { key: 'valueAfter', label: 'Valor atualizado' },
-        ]} onDelete={(row) => void archive('apostilles', row)} />
-        <form className="form-grid" onSubmit={submitGovernance}>
+        ]} onEdit={edit} onDelete={(row) => void archive('apostilles', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitGovernance}>
           <Field c="col-2" label="Número *"><input className="input" required value={form.number} onChange={(e) => set('number', e.target.value)} /></Field>
           <Field c="col-3" label="Tipo *"><select className="select" value={form.type} onChange={(e) => set('type', e.target.value)}><option value="PRICE_ADJUSTMENT">Reajustamento</option><option value="REPACTUATION">Repactuação</option><option value="MONETARY_UPDATE">Atualização monetária</option><option value="BUDGET_ALLOCATION_CHANGE">Alteração de dotação</option><option value="FUNDING_SOURCE_CHANGE">Alteração de fonte de recursos</option><option value="REGISTRATION_CORRECTION">Correção cadastral</option><option value="OTHER_LEGAL_BASIS">Outra hipótese legal</option></select></Field>
           <Field c="col-2" label="Data *"><input className="input" required type="date" value={form.date} onChange={(e) => set('date', e.target.value)} /></Field>
@@ -332,8 +366,8 @@ export function ContractWorkspace({
           { key: 'inspectionDate', label: 'Data da vistoria' },
           { key: 'responsibleInspector', label: 'Responsável', value: (row) => String((row.responsibleInspector as Row | undefined)?.name ?? '—') },
           { key: 'decision', label: 'Decisão técnica' }, { key: 'status', label: 'Situação' },
-        ]} onDelete={(row) => void archive('receipts', row)} />
-        <form className="form-grid" onSubmit={submitGovernance}>
+        ]} onEdit={edit} onDelete={(row) => void archive('receipts', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitGovernance}>
           <Field c="col-3" label="Nº do processo/termo *"><input className="input" required value={form.number} onChange={(e) => set('number', e.target.value)} /></Field>
           <Field c="col-3" label="Tipo de recebimento *"><select className="select" value={form.type} onChange={(e) => set('type', e.target.value)}><option value="PROVISIONAL">Recebimento provisório</option><option value="DEFINITIVE">Recebimento definitivo</option><option value="PARTIAL">Recebimento parcial</option><option value="BY_STAGE">Recebimento por etapa</option><option value="REJECTION">Rejeição do objeto</option></select></Field>
           <Field c="col-3" label="Categoria do objeto *"><select className="select" value={form.objectCategory} onChange={(e) => set('objectCategory', e.target.value)}><option>Obras e serviços de engenharia</option><option>Serviços continuados</option><option>Serviços não continuados</option><option>Fornecimento de bens</option><option>Soluções de tecnologia da informação</option><option>Locações</option><option>Contratos especiais</option></select></Field>
@@ -370,8 +404,8 @@ export function ContractWorkspace({
           { key: 'workOrder', label: 'Ordem de serviço', value: (row) => String((row.workOrder as Row | undefined)?.number ?? '—') },
           { key: 'responsibleInspector', label: 'Responsável', value: (row) => String((row.responsibleInspector as Row | undefined)?.name ?? '—') },
           { key: 'operationalSituation', label: 'Situação operacional' }, { key: 'status', label: 'Situação do registro' },
-        ]} onDelete={(row) => void archive('construction-diaries', row)} />
-        <form className="form-grid" onSubmit={submitGovernance}>
+        ]} onEdit={edit} onDelete={(row) => void archive('construction-diaries', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitGovernance}>
           <Field c="col-3" label="Nº do registro *"><input className="input" required value={form.number} onChange={(e) => set('number', e.target.value)} /></Field>
           <Field c="col-3" label="Ordem de serviço"><select className="select" value={form.workOrderId} onChange={(e) => set('workOrderId', e.target.value)}><option value="">Sem OS específica</option>{workOrders.map((item) => <option key={item.id} value={item.id}>{item.number} — {item.title}</option>)}</select></Field>
           <Field c="col-3" label="Data *"><input className="input" required type="date" value={form.date} onChange={(e) => set('date', e.target.value)} /></Field>
@@ -407,8 +441,8 @@ export function ContractWorkspace({
           { key: 'protocolDate', label: 'Data do protocolo' }, { key: 'subject', label: 'Assunto' },
           { key: 'responsibleInspector', label: 'Responsável', value: (row) => String((row.responsibleInspector as Row | undefined)?.name ?? '—') },
           { key: 'currentStatus', label: 'Situação atual' }, { key: 'decisionDeadline', label: 'Limite para decisão' },
-        ]} onDelete={(row) => void archive('communications', row)} />
-        <form className="form-grid" onSubmit={submitGovernance}>
+        ]} onEdit={edit} onDelete={(row) => void archive('communications', row)} />
+        <form className="form-grid contract-record-form" onSubmit={submitGovernance}>
           <Field c="col-3" label="Número sequencial *"><input className="input" required value={form.number} onChange={(e) => set('number', e.target.value)} /></Field>
           <Field c="col-4" label="Tipo *"><select className="select" value={form.type} onChange={(e) => set('type', e.target.value)}>{communicationTypeOptions()}</select></Field>
           <Field c="col-2" label="Data do protocolo *"><input className="input" required type="date" value={form.protocolDate} onChange={(e) => set('protocolDate', e.target.value)} /></Field>
@@ -442,13 +476,11 @@ export function ContractWorkspace({
 
 function Summary({ contract }: { contract: Contract }) {
   return <>
-    <div className="kpi-grid">
+    <div className="contract-summary-grid">
       <Metric label="Valor original" value={BRL.format(Number(contract.originalValue))} />
       <Metric label="Aditivos, ajustes e apostilas" value={BRL.format(Number(contract.currentValue) - Number(contract.originalValue))} />
       <Metric label="Valor atual calculado" value={BRL.format(Number(contract.currentValue))} />
       <Metric label="Fim da vigência" value={formatDate(contract.endDate)} />
-    </div>
-    <div className="form-grid" style={{ marginTop: 18 }}>
       <MetricField label="Regime de execução" value={enumLabel(contract.executionRegime)} />
       <MetricField label="Tipo de contrato" value={enumLabel(contract.nature)} />
       <MetricField label="Equipe de fiscalização" value={`${contract.inspectionTeam?.length ?? 0} designação(ões)`} />
@@ -457,8 +489,9 @@ function Summary({ contract }: { contract: Contract }) {
   </>;
 }
 
-function EventTable({ rows, columns, onDelete }: { rows: Row[]; columns: Column[]; onDelete?: (row: Row) => void }) {
-  return rows.length ? <div className="table-wrapper" style={{ marginBottom: 18 }}><table className="data-table"><thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}{onDelete ? <th>Ações</th> : null}</tr></thead><tbody>{rows.map((row, index) => <tr key={String(row.id ?? index)}>{columns.map((column) => <td key={column.key}>{column.value ? column.value(row) : formatCell(row[column.key], column.key)}</td>)}{onDelete ? <td><button type="button" className="btn btn-ghost danger-text" onClick={() => onDelete(row)}><Trash2 size={14} /> Excluir</button></td> : null}</tr>)}</tbody></table></div> : <p className="muted" style={{ marginBottom: 18 }}>Nenhum registro nesta seção.</p>;
+function EventTable({ rows, columns, onEdit, onDelete }: { rows: Row[]; columns: Column[]; onEdit?: (row: Row) => void; onDelete?: (row: Row) => void }) {
+  const hasActions = Boolean(onEdit || onDelete);
+  return rows.length ? <div className="table-wrapper" style={{ marginBottom: 18 }}><table className="data-table"><thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}{hasActions ? <th>Ações</th> : null}</tr></thead><tbody>{rows.map((row, index) => <tr key={String(row.id ?? index)}>{columns.map((column) => <td key={column.key}>{column.value ? column.value(row) : formatCell(row[column.key], column.key)}</td>)}{hasActions ? <td><div className="table-actions">{onEdit ? <button type="button" className="btn btn-ghost" onClick={() => onEdit(row)}><Pencil size={14} /> Editar</button> : null}{onDelete ? <button type="button" className="btn btn-ghost danger-text" onClick={() => onDelete(row)}><Trash2 size={14} /> Excluir</button> : null}</div></td> : null}</tr>)}</tbody></table></div> : <p className="muted" style={{ marginBottom: 18 }}>Nenhum registro nesta seção.</p>;
 }
 
 function Documents({ contractId, documents }: { contractId: string; documents: Contract['dossierAttachments'] }) {
@@ -479,7 +512,7 @@ function TextArea({ c, label, value, onChange, required = false }: { c: string; 
 }
 
 function Submit({ saving }: { saving: boolean }) {
-  return <div className="field col-2" style={{ justifyContent: 'end' }}><button className="btn btn-primary" disabled={saving}><Save size={16} /> {saving ? 'Salvando…' : 'Registrar'}</button></div>;
+  return <div className="contract-form-actions col-12"><button className="btn btn-primary" disabled={saving}><Save size={16} /> {saving ? 'Salvando…' : 'Salvar registro'}</button></div>;
 }
 
 function Field({ c, label, children }: { c: string; label: string; children: React.ReactNode }) {
@@ -487,11 +520,11 @@ function Field({ c, label, children }: { c: string; label: string; children: Rea
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return <article className="kpi-card"><span className="kpi-label">{label}</span><strong className="kpi-value" style={{ fontSize: '1.2rem' }}>{value}</strong></article>;
+  return <article className="contract-summary-card"><span>{label}</span><strong>{value}</strong></article>;
 }
 
 function MetricField({ label, value }: { label: string; value: string }) {
-  return <div className="field col-3"><label>{label}</label><strong>{value}</strong></div>;
+  return <article className="contract-summary-card secondary"><span>{label}</span><strong>{value}</strong></article>;
 }
 
 function formatCell(value: unknown, key: string) {
@@ -539,6 +572,44 @@ function enumLabel(value: unknown) {
     VALIDATED: 'Validado pela fiscalização', CONTESTED: 'Impugnado/contestado',
   };
   return labels[text] ?? text;
+}
+
+function editValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'object') return '';
+  const text = String(value);
+  return /^\d{4}-\d{2}-\d{2}T/.test(text) ? text.slice(0, 10) : text;
+}
+
+function oldFormFromRow(row: Row) {
+  return Object.keys(OLD_EMPTY).reduce((result, key) => ({
+    ...result,
+    [key]: editValue(row[key]),
+  }), { ...OLD_EMPTY });
+}
+
+function governanceFormFromRow(tab: string, row: Row) {
+  const defaults = defaultsFor(tab);
+  const result = Object.keys(defaults).reduce<Record<string, string>>((current, key) => ({
+    ...current,
+    [key]: row[key] === undefined ? defaults[key] : editValue(row[key]),
+  }), {});
+  if (tab === 'construction-diaries') {
+    result.openTime = row.openedAt ? String(row.openedAt).slice(11, 16) : '';
+    result.closeTime = row.closedAt ? String(row.closedAt).slice(11, 16) : '';
+  }
+  if (tab === 'receipts' && row.pendingItems && typeof row.pendingItems === 'object') {
+    const items = (row.pendingItems as { items?: Array<Record<string, unknown>> }).items;
+    const first = items?.[0];
+    if (first) {
+      result.pendingDescription = editValue(first.description);
+      result.pendingCriticality = editValue(first.criticality) || 'Média';
+      result.pendingDueAt = editValue(first.dueAt);
+      result.pendingResponsible = editValue(first.responsible);
+    }
+  }
+  return result;
 }
 
 function defaultsFor(tab: string): Record<string, string> {

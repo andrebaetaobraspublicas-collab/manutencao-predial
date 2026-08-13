@@ -185,14 +185,25 @@ describe('isolamento multiempresa', () => {
       .send({ number: 'TA-CRUZADO', type: 'VALUE_INCREASE', description: 'Tentativa cruzada', valueChange: 100 })
       .expect(404);
 
-    await tenantA.agent
+    const amendment = await tenantA.agent
       .post(`/api/v1/contracts/${tenantA.contractId}/amendments`)
       .send({ number: 'TA-001', type: 'VALUE_INCREASE', description: 'Acréscimo validado', valueChange: 100 })
       .expect(201);
 
+    await tenantA.agent
+      .patch(`/api/v1/contracts/${tenantB.contractId}/governance/amendments/${amendment.body.id}`)
+      .send({ number: 'TA-001', type: 'VALUE_INCREASE', description: 'Tentativa cruzada', valueChange: 150 })
+      .expect(404);
+
+    await tenantA.agent
+      .patch(`/api/v1/contracts/${tenantA.contractId}/governance/amendments/${amendment.body.id}`)
+      .send({ number: 'TA-001', type: 'VALUE_INCREASE', description: 'Acréscimo editado', valueChange: 150 })
+      .expect(200);
+
     const contract = await tenantA.agent.get(`/api/v1/contracts/${tenantA.contractId}`).expect(200);
-    expect(Number(contract.body.currentValue)).toBe(1100);
+    expect(Number(contract.body.currentValue)).toBe(1150);
     expect(contract.body.amendments).toHaveLength(1);
+    expect(contract.body.amendments[0].description).toBe('Acréscimo editado');
   });
 
   it('isola biblioteca, configuração contratual, dashboard e dados de KPIs', async () => {

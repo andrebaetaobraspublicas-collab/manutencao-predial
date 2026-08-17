@@ -129,6 +129,12 @@ builds NestJS/Next.js foram aprovados localmente. A suíte de edificações cobr
 organização na análise prévia de exclusão. A migration é aditiva e tem rollback operacional
 documentado; a aplicação em MySQL e o smoke público permanecem gates do deploy Hostinger.
 
+Na v0.17.0, o produto recebe um **Manual do Usuário interativo e integrado**, disponível a todos
+os perfis autenticados pela barra lateral. O manual possui pesquisa textual sem distinção de
+acentos, filtros por área, índice navegável, tópicos expansíveis, atalhos para os módulos, ajuste
+de tamanho do texto e progresso de leitura armazenado apenas no navegador. A entrega é somente
+de frontend e não exige migration de banco.
+
 ## 6. Validações de infraestrutura que permanecem obrigatórias
 
 Ainda **não foram afirmados como concluídos** nesta máquina, por ausência de Docker/MySQL local:

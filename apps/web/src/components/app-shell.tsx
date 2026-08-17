@@ -3,6 +3,7 @@
 import {
   BarChart3,
   BadgeCheck,
+  BookOpenText,
   Calculator,
   Bell,
   Building2,
@@ -61,6 +62,12 @@ const NAVIGATION = [
       { href: '/configuracoes-operacionais', label: 'Configuração operacional', icon: SlidersHorizontal, managerOnly: true },
       { href: '/administracao', label: 'Administração', icon: Settings, adminOnly: true },
       { href: '/conta', label: 'Minha conta', icon: UserRound },
+    ],
+  },
+  {
+    label: 'Ajuda',
+    items: [
+      { href: '/manual', label: 'Manual do Usuário', icon: BookOpenText },
     ],
   },
 ];

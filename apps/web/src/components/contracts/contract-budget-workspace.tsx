@@ -92,8 +92,15 @@ type ContractBudget = {
 };
 
 type BudgetResponse = {
-  contract: { id: string; code: string; object: string; exclusiveLaborDedication: boolean };
+  contract: { id: string; code: string; object: string; exclusiveLaborDedication: boolean; currentValue: string };
   budget: ContractBudget | null;
+  reconciliation: {
+    status: 'CONSISTENT' | 'WARNING' | 'CRITICAL';
+    criticalCount: number;
+    warningCount: number;
+    checks: Array<{ code: string; severity: 'CRITICAL' | 'WARNING'; message: string; difference?: number }>;
+    values: { storedCurrentValue: number; contractBudgetTotal: number | null; budgetVariance: number | null };
+  };
 };
 
 type ItemsResponse = {
@@ -490,6 +497,22 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
     }
   }
 
+  async function changeBudgetStatus(status: 'ACTIVE' | 'DRAFT') {
+    setBusy(true);
+    onError('');
+    try {
+      await apiFetch(`/budgets/contracts/${contractId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      await load();
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : 'Não foi possível alterar a situação da planilha.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loading) return <div className={styles.loading}>Carregando planilha orçamentária…</div>;
 
   return <div className={styles.workspace}>
@@ -499,11 +522,18 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
         <h3>{budget?.title || `Planilha orçamentária — ${data?.contract.code}`}</h3>
         <p>Fonte contratual para postos de trabalho, materiais, serviços eventuais e preços SINAPI usados pelas ordens de serviço.</p>
       </div>
-      <span className={`${styles.status} ${budget?.status === 'ACTIVE' ? styles.active : ''}`}>{budget?.status === 'ACTIVE' ? 'Ativo' : 'Em elaboração'}</span>
+      <div className={styles.heroActions}><span className={`${styles.status} ${budget?.status === 'ACTIVE' ? styles.active : ''}`}>{budget?.status === 'ACTIVE' ? 'Ativo' : 'Em elaboração'}</span>{budget ? <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => void changeBudgetStatus(budget.status === 'ACTIVE' ? 'DRAFT' : 'ACTIVE')}>{budget.status === 'ACTIVE' ? 'Reabrir para edição' : 'Ativar como oficial'}</button> : null}</div>
+    </div>
+
+    <div className={`${styles.reconciliation} ${styles[data?.reconciliation.status.toLowerCase() ?? 'warning']}`}>
+      <div><strong>{data?.reconciliation.status === 'CRITICAL' ? 'Conciliação bloqueada' : data?.reconciliation.status === 'WARNING' ? 'Conciliação pendente' : 'Planilha conciliada'}</strong><span>Valor contratual atual: {BRL.format(data?.reconciliation.values.storedCurrentValue ?? 0)} · planilha: {BRL.format(data?.reconciliation.values.contractBudgetTotal ?? 0)} · diferença: {BRL.format(data?.reconciliation.values.budgetVariance ?? 0)}</span></div>
+      {data?.reconciliation.checks.length ? <ul>{data.reconciliation.checks.map((check) => <li key={check.code}>{check.message}</li>)}</ul> : <span>A planilha fecha com o contrato e pode ser usada como referência oficial das ordens de serviço.</span>}
     </div>
 
     <div className={styles.summaryGrid}>
       <SummaryCard label="Total calculado" value={BRL.format(Number(budget?.total ?? 0))} />
+      <SummaryCard label="Valor contratual atual" value={BRL.format(data?.reconciliation.values.storedCurrentValue ?? 0)} />
+      <SummaryCard label="Diferença para o contrato" value={BRL.format(data?.reconciliation.values.budgetVariance ?? 0)} />
       <SummaryCard label="Subtotal sem BDI" value={BRL.format(Number(budget?.subtotal ?? 0))} />
       <SummaryCard label="BDI/encargos destacados" value={BRL.format(Number(budget?.bdiAmount ?? 0))} />
       <SummaryCard label="Itens de preço" value={String(budget?._count.items ?? 0)} />

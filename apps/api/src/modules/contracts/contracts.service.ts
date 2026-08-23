@@ -1175,6 +1175,10 @@ export class ContractsService {
         new Prisma.Decimal(contract.originalValue));
     const endDate = amendments.reduce((latest, item) => item.endDateAfter && item.endDateAfter > latest ? item.endDateAfter : latest, contract.endDate);
     await tx.contract.update({ where: { id: contractId }, data: { currentValue, endDate } });
+    await tx.contractBudget.updateMany({
+      where: { contractId, deletedAt: null, status: 'ACTIVE', total: { not: currentValue } },
+      data: { status: 'DRAFT' },
+    });
   }
 
   private audit(tx: Prisma.TransactionClient, tenantId: string, actorUserId: string,

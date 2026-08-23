@@ -23,6 +23,7 @@ import {
 } from './dto/contract-budgets.dto';
 import { parseContractBudgetFile } from './contract-budget-parser';
 import { parseCustomWorkbook, parseOfficialSinapiWorkbook } from './xlsx-catalog-parser';
+import { FinancialReconciliationService } from '../finance/financial-reconciliation.service';
 
 const TRANSITIONS: Record<BudgetStatus, BudgetStatus[]> = {
   DRAFT: [BudgetStatus.SUBMITTED, BudgetStatus.CANCELED],
@@ -33,7 +34,10 @@ const TRANSITIONS: Record<BudgetStatus, BudgetStatus[]> = {
 
 @Injectable()
 export class BudgetsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reconciliation: FinancialReconciliationService,
+  ) {}
 
   listCatalogs(tenantId: string) {
     return this.prisma.sinapiCatalog.findMany({ where: { tenantId }, orderBy: [{ referenceMonth: 'desc' }, { importedAt: 'desc' }] });
@@ -232,7 +236,8 @@ export class BudgetsService {
         },
       },
     });
-    return { contract, budget };
+    const reconciliation = await this.reconciliation.contract(tenantId, contractId);
+    return { contract, budget, reconciliation };
   }
 
   async searchContractBudgetItems(tenantId: string, contractId: string, query: ContractBudgetItemsQuery) {
@@ -297,6 +302,7 @@ export class BudgetsService {
           },
           update: {
             deletedAt: null,
+            status: ContractBudgetStatus.DRAFT,
             title: dto.title?.trim() || undefined,
             referenceMonth: dto.referenceMonth || undefined,
           },
@@ -410,13 +416,28 @@ export class BudgetsService {
     await this.contractSummary(tenantId, contractId);
     const budget = await this.ensureContractBudget(tenantId, actorUserId, contractId);
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM Contract WHERE id = ${contractId} AND tenantId = ${tenantId} FOR UPDATE`;
+      const lockedContract = await tx.contract.findFirstOrThrow({
+        where: { id: contractId, tenantId, deletedAt: null },
+        select: { currentValue: true },
+      });
       await tx.contractBudget.update({ where: { id: budget.id }, data: {
         title: dto.title?.trim(),
         referenceMonth: dto.referenceMonth,
-        status: dto.status,
         notes: dto.notes?.trim(),
       } });
-      return this.refreshContractBudget(tx, tenantId, actorUserId, budget.id, 'Atualização dos dados do orçamento contratual');
+      const refreshed = await this.refreshContractBudget(tx, tenantId, actorUserId, budget.id,
+        'Atualização dos dados do orçamento contratual');
+      if (dto.status === ContractBudgetStatus.ACTIVE
+        && !refreshed.total.equals(lockedContract.currentValue)) {
+        throw new BadRequestException(
+          `A planilha só pode ser ativada quando o total (${refreshed.total.toFixed(2)}) `
+          + `for igual ao valor contratual atual (${lockedContract.currentValue.toFixed(2)}).`,
+        );
+      }
+      return dto.status
+        ? tx.contractBudget.update({ where: { id: budget.id }, data: { status: dto.status } })
+        : refreshed;
     });
   }
 
@@ -578,7 +599,7 @@ export class BudgetsService {
     });
     const contractIds = links.map((link) => link.contract.id);
     const budgets = contractIds.length ? await this.prisma.contractBudget.findMany({
-      where: { tenantId, contractId: { in: contractIds }, deletedAt: null, status: { not: ContractBudgetStatus.ARCHIVED } },
+      where: { tenantId, contractId: { in: contractIds }, deletedAt: null, status: ContractBudgetStatus.ACTIVE },
       select: { id: true },
     }) : [];
     const page = query.page ?? 1;
@@ -663,7 +684,7 @@ export class BudgetsService {
         tenantId,
         id: { in: dto.items.map((item) => item.contractBudgetItemId).filter((id): id is string => Boolean(id)) },
         deletedAt: null,
-        budget: { contractId: { in: contractIds }, deletedAt: null, status: { not: ContractBudgetStatus.ARCHIVED } },
+        budget: { contractId: { in: contractIds }, deletedAt: null, status: ContractBudgetStatus.ACTIVE },
       }, include: { budget: { select: { id: true, contractId: true, version: true } } } }),
     ]);
     const finalBudgetStatuses = new Set<WorkOrderStatus>([
@@ -737,6 +758,9 @@ export class BudgetsService {
       if (current.version !== dto.version) throw new ConflictException('O orçamento foi alterado; atualize a tela.');
       if (!TRANSITIONS[current.status].includes(dto.status)) throw new BadRequestException(`Transição ${current.status} → ${dto.status} não permitida.`);
       if ((dto.status === BudgetStatus.REJECTED || dto.status === BudgetStatus.CANCELED) && !dto.note) throw new BadRequestException('Informe a justificativa.');
+      if (dto.status === BudgetStatus.APPROVED) {
+        await this.assertWorkOrderBudgetWithinContract(tx, tenantId, current);
+      }
       const now = new Date();
       const updated = await tx.workOrderBudget.update({ where: { id }, data: {
         status: dto.status, version: { increment: 1 }, decisionNote: dto.note,
@@ -787,8 +811,62 @@ export class BudgetsService {
         version: 0,
         title: 'Planilha orçamentária do contrato',
       },
-      update: { deletedAt: null },
+      update: { deletedAt: null, status: ContractBudgetStatus.DRAFT },
     });
+  }
+
+  private async assertWorkOrderBudgetWithinContract(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    current: { id: string; workOrderId: string; total: Prisma.Decimal; items: Array<{ contractBudgetItemId: string | null }> },
+  ) {
+    const link = await tx.workOrderContract.findFirst({
+      where: { workOrderId: current.workOrderId, contract: { tenantId, deletedAt: null } },
+      orderBy: { isPrimary: 'desc' },
+      select: { contractId: true, contract: { select: { code: true, currentValue: true,
+        budget: { select: { id: true, status: true, total: true } } } } },
+    });
+    if (!link) return;
+    if (current.items.some((item) => item.contractBudgetItemId)
+      && link.contract.budget?.status !== ContractBudgetStatus.ACTIVE) {
+      throw new BadRequestException('Ative e concilie a planilha orçamentária do contrato antes de aprovar esta OS.');
+    }
+    const links = await tx.workOrderContract.findMany({
+      where: { contractId: link.contractId },
+      select: { workOrderId: true },
+    });
+    const budgets = await tx.workOrderBudget.findMany({
+      where: {
+        tenantId,
+        workOrderId: { in: links.map((item) => item.workOrderId) },
+        NOT: { workOrderId: current.workOrderId },
+        status: BudgetStatus.APPROVED,
+        id: { not: current.id },
+      },
+      select: { workOrderId: true, stage: true, total: true },
+    });
+    const priority: Record<BudgetStage, number> = {
+      [BudgetStage.PLANNED]: 1,
+      [BudgetStage.APPROVED]: 2,
+      [BudgetStage.FINAL_EXECUTED]: 3,
+    };
+    const official = new Map<string, { stage: BudgetStage; total: Prisma.Decimal }>();
+    for (const budget of budgets) {
+      const existing = official.get(budget.workOrderId);
+      if (!existing || priority[budget.stage] > priority[existing.stage]) official.set(budget.workOrderId, budget);
+    }
+    const alreadyApproved = [...official.values()].reduce(
+      (total, budget) => total.plus(budget.total), new Prisma.Decimal(0),
+    );
+    const ceiling = link.contract.budget?.status === ContractBudgetStatus.ACTIVE
+      ? link.contract.budget.total : link.contract.currentValue;
+    if (alreadyApproved.plus(current.total).greaterThan(ceiling)) {
+      throw new BadRequestException(
+        `A aprovação excede o saldo orçamentário do contrato ${link.contract.code}. `
+        + `Limite: ${ceiling.toFixed(2)}; já aprovado: ${alreadyApproved.toFixed(2)}; `
+        + `novo orçamento: ${current.total.toFixed(2)}.`,
+      );
+    }
   }
 
   private async refreshContractBudget(
@@ -835,6 +913,7 @@ export class BudgetsService {
         subtotal,
         bdiAmount,
         total,
+        status: ContractBudgetStatus.DRAFT,
         version: { increment: 1 },
         ...(sourceTotal !== undefined ? { sourceTotal } : {}),
       },

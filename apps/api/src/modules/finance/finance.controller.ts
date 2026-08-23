@@ -14,6 +14,7 @@ import {
   UpdateMeasurementDto,
 } from './dto/finance.dto';
 import { FinanceService } from './finance.service';
+import { FinancialReconciliationService } from './financial-reconciliation.service';
 
 const READ = [MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGER,
   MembershipRole.CONTRACT_MANAGER, MembershipRole.CONTRACT_INSPECTOR, MembershipRole.AUDITOR];
@@ -23,7 +24,20 @@ const WRITE = [MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MANAGE
 @ApiTags('Medições e empenhos')
 @Controller('finance')
 export class FinanceController {
-  constructor(private readonly service: FinanceService) {}
+  constructor(
+    private readonly service: FinanceService,
+    private readonly reconciliation: FinancialReconciliationService,
+  ) {}
+
+  @Roles(...READ) @Get('reconciliation')
+  reconciliationPortfolio(@CurrentUser() user: AuthenticatedUser) {
+    return this.reconciliation.portfolio(user.tenantId);
+  }
+
+  @Roles(...READ) @Get('reconciliation/contracts/:id')
+  contractReconciliation(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.reconciliation.contract(user.tenantId, id);
+  }
 
   @Roles(...READ) @Get('commitments')
   commitments(@CurrentUser() user: AuthenticatedUser) { return this.service.listCommitments(user.tenantId); }

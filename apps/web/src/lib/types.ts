@@ -580,6 +580,14 @@ export type DashboardOverview = {
     unmeasuredBalance: number;
     unpaidMeasuredBalance: number;
     executionPercent: number;
+    reconciliation: {
+      totalContracts: number;
+      consistentContracts: number;
+      warningContracts: number;
+      criticalContracts: number;
+      criticalIssues: number;
+      warnings: number;
+    };
   };
   satisfaction: {
     averageScore: number | null;

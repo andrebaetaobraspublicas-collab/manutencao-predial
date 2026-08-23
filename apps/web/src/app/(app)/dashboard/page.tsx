@@ -92,6 +92,12 @@ export default function DashboardPage() {
                 <FinanceRow label="Valor pago" value={BRL.format(data.contracts.paidValue)} />
                 <FinanceRow label="Saldo ainda não medido" value={BRL.format(data.contracts.unmeasuredBalance)} />
                 <FinanceRow label="Medido e não pago" value={BRL.format(data.contracts.unpaidMeasuredBalance)} />
+                <FinanceRow
+                  label="Conciliação financeira"
+                  value={data.contracts.reconciliation.criticalIssues
+                    ? `${data.contracts.reconciliation.criticalIssues} inconsistência(s) crítica(s)`
+                    : 'Sem inconsistências críticas'}
+                />
                 <div style={{ marginTop: 15 }}>
                   <div className="finance-row"><span>Execução financeira</span><strong>{data.contracts.executionPercent.toFixed(1)}%</strong></div>
                   <div className="bar-track" style={{ marginTop: 9, height: 10 }}>

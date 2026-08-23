@@ -37,6 +37,8 @@ export class FinanceService {
     const contract = await this.prisma.contract.findFirst({ where: { id: dto.contractId, tenantId, deletedAt: null } });
     if (!contract) throw new BadRequestException('Contrato inválido para a organização.');
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM Contract WHERE id = ${dto.contractId} AND tenantId = ${tenantId} FOR UPDATE`;
+      await this.assertContractCommitmentCeiling(tx, tenantId, dto.contractId, new Prisma.Decimal(dto.originalValue));
       const commitment = await tx.commitment.create({ data: {
         tenantId, contractId: dto.contractId, createdByUserId: actorUserId,
         number: dto.number.trim().toUpperCase(), fiscalYear: dto.fiscalYear,
@@ -67,6 +69,11 @@ export class FinanceService {
       if (!contract) throw new BadRequestException('Contrato inválido para a organização.');
     }
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM Contract WHERE id = ${current.contractId} AND tenantId = ${tenantId} FOR UPDATE`;
+      if (dto.originalValue !== undefined) {
+        const increase = new Prisma.Decimal(dto.originalValue).minus(current.originalValue);
+        if (increase.greaterThan(0)) await this.assertContractCommitmentCeiling(tx, tenantId, current.contractId, increase);
+      }
       const updated = await tx.commitment.update({ where: { id }, data: {
         contractId: dto.contractId, number: dto.number?.trim().toUpperCase(), fiscalYear: dto.fiscalYear,
         issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined, originalValue: dto.originalValue, notes: dto.notes,
@@ -113,6 +120,10 @@ export class FinanceService {
       const commitment = await tx.commitment.findFirst({ where: { id, tenantId }, include: { movements: true } });
       if (!commitment) throw new NotFoundException('Empenho não encontrado.');
       if (commitment.canceledAt) throw new BadRequestException('Empenho cancelado não aceita movimentações.');
+      if (dto.type === CommitmentMovementType.REINFORCEMENT) {
+        await tx.$queryRaw`SELECT id FROM Contract WHERE id = ${commitment.contractId} AND tenantId = ${tenantId} FOR UPDATE`;
+        await this.assertContractCommitmentCeiling(tx, tenantId, commitment.contractId, new Prisma.Decimal(dto.amount));
+      }
       assertCommitmentMovementBalance(commitment.movements, dto.type, new Prisma.Decimal(dto.amount));
       const movement = await tx.commitmentMovement.create({ data: {
         tenantId, commitmentId: id, createdByUserId: actorUserId, type: dto.type,
@@ -324,5 +335,35 @@ export class FinanceService {
   private audit(tx: Prisma.TransactionClient, tenantId: string, actorUserId: string,
     action: AuditAction, entityType: string, entityId: string, afterData: Prisma.InputJsonValue) {
     return tx.auditLog.create({ data: { tenantId, actorUserId, action, entityType, entityId, afterData } });
+  }
+
+  private async assertContractCommitmentCeiling(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    contractId: string,
+    additionalAmount: Prisma.Decimal,
+  ) {
+    const [contract, commitments] = await Promise.all([
+      tx.contract.findFirst({ where: { id: contractId, tenantId, deletedAt: null }, select: { code: true, currentValue: true } }),
+      tx.commitment.findMany({
+        where: { tenantId, contractId, canceledAt: null },
+        select: { movements: { select: { type: true, amount: true } } },
+      }),
+    ]);
+    if (!contract) throw new BadRequestException('Contrato inválido para a organização.');
+    const committed = commitments.flatMap((item) => item.movements).reduce((total, movement) => {
+      if (movement.type === CommitmentMovementType.CANCELLATION) return total.minus(movement.amount);
+      if (movement.type === CommitmentMovementType.ISSUE || movement.type === CommitmentMovementType.REINFORCEMENT) {
+        return total.plus(movement.amount);
+      }
+      return total;
+    }, new Prisma.Decimal(0));
+    if (committed.plus(additionalAmount).greaterThan(contract.currentValue)) {
+      throw new BadRequestException(
+        `O empenho excede o saldo contratual de ${contract.code}. `
+        + `Valor atual: ${contract.currentValue.toFixed(2)}; já empenhado: ${committed.toFixed(2)}; `
+        + `novo valor: ${additionalAmount.toFixed(2)}.`,
+      );
+    }
   }
 }

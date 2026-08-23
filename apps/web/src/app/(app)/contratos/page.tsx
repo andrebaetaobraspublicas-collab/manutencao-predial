@@ -10,6 +10,10 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { BRL, formatDate } from '@/lib/format';
 import type { Building, Contract, InspectorProfile, Supplier } from '@/lib/types';
 
+type ReconciliationPortfolio = {
+  contracts: Array<{ contract: { id: string }; status: 'CONSISTENT' | 'WARNING' | 'CRITICAL'; criticalCount: number; warningCount: number }>;
+};
+
 const EMPTY = {
   code: '',
   supplierId: '',
@@ -35,6 +39,7 @@ export default function ContractsPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [inspectors, setInspectors] = useState<InspectorProfile[]>([]);
+  const [reconciliation, setReconciliation] = useState<Record<string, ReconciliationPortfolio['contracts'][number]>>({});
   const [detail, setDetail] = useState<Contract | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [showForm, setShowForm] = useState(false);
@@ -46,16 +51,18 @@ export default function ContractsPage() {
 
   const load = useCallback(async () => {
     try {
-      const [contracts, supplierItems, buildingItems, inspectorItems] = await Promise.all([
+      const [contracts, supplierItems, buildingItems, inspectorItems, financial] = await Promise.all([
         apiFetch<Contract[]>('/contracts'),
         apiFetch<Supplier[]>('/suppliers'),
         apiFetch<Building[]>('/buildings'),
         apiFetch<InspectorProfile[]>('/inspectors'),
+        apiFetch<ReconciliationPortfolio>('/finance/reconciliation'),
       ]);
       setItems(contracts);
       setSuppliers(supplierItems);
       setBuildings(buildingItems);
       setInspectors(inspectorItems);
+      setReconciliation(Object.fromEntries(financial.contracts.map((item) => [item.contract.id, item])));
       setForm((current) => ({
         ...current,
         supplierId: current.supplierId || supplierItems[0]?.id || '',
@@ -211,10 +218,11 @@ export default function ContractsPage() {
     </form> : null}
 
     {loading ? <LoadingPanel /> : <section className="card table-card">
-      {items.length ? <div className="table-wrapper"><table className="data-table"><thead><tr><th>Contrato / objeto</th><th>Fornecedor</th><th>Vigência</th><th>Status</th><th>Valor atual calculado</th><th>Medido</th><th>Saldo</th><th>Ações</th></tr></thead><tbody>{items.map((item) => {
+      {items.length ? <div className="table-wrapper"><table className="data-table"><thead><tr><th>Contrato / objeto</th><th>Fornecedor</th><th>Vigência</th><th>Status</th><th>Valor atual calculado</th><th>Medido</th><th>Saldo</th><th>Conciliação</th><th>Ações</th></tr></thead><tbody>{items.map((item) => {
         const balance = Number(item.currentValue) - Number(item.measuredValue);
         const days = Math.ceil((new Date(item.endDate).getTime() - referenceTime) / 86_400_000);
-        return <tr key={item.id} onClick={() => void openContract(item.id)} style={{ cursor: 'pointer' }}><td><span className="table-primary">{item.code}</span><span className="table-secondary">{item.object}</span></td><td>{item.supplier.tradeName || item.supplier.legalName}</td><td><span className="table-primary">{formatDate(item.startDate)} a {formatDate(item.endDate)}</span><span className="table-secondary">{days >= 0 ? `${days} dia(s) restantes` : `vencido há ${Math.abs(days)} dia(s)`}</span></td><td><StatusBadge value={item.status} /></td><td>{BRL.format(Number(item.currentValue))}</td><td>{BRL.format(Number(item.measuredValue))}</td><td><span className={`badge ${balance < 0 ? 'danger' : 'success'}`}>{BRL.format(balance)}</span></td><td><div className="table-actions"><button className="btn btn-ghost" type="button" onClick={(event) => { event.stopPropagation(); editContract(item); }}><Pencil size={15} /> Editar</button><button className="btn btn-ghost danger-text" type="button" onClick={(event) => { event.stopPropagation(); void archiveContract(item); }}><Trash2 size={15} /> Excluir</button></div></td></tr>;
+        const financial = reconciliation[item.id];
+        return <tr key={item.id} onClick={() => void openContract(item.id)} style={{ cursor: 'pointer' }}><td><span className="table-primary">{item.code}</span><span className="table-secondary">{item.object}</span></td><td>{item.supplier.tradeName || item.supplier.legalName}</td><td><span className="table-primary">{formatDate(item.startDate)} a {formatDate(item.endDate)}</span><span className="table-secondary">{days >= 0 ? `${days} dia(s) restantes` : `vencido há ${Math.abs(days)} dia(s)`}</span></td><td><StatusBadge value={item.status} /></td><td>{BRL.format(Number(item.currentValue))}</td><td>{BRL.format(Number(item.measuredValue))}</td><td><span className={`badge ${balance < 0 ? 'danger' : 'success'}`}>{BRL.format(balance)}</span></td><td><span className={`badge ${financial?.status === 'CRITICAL' ? 'danger' : financial?.status === 'WARNING' ? 'warning' : 'success'}`}>{financial?.status === 'CRITICAL' ? `${financial.criticalCount} crítica(s)` : financial?.status === 'WARNING' ? `${financial.warningCount} aviso(s)` : 'Conciliado'}</span></td><td><div className="table-actions"><button className="btn btn-ghost" type="button" onClick={(event) => { event.stopPropagation(); editContract(item); }}><Pencil size={15} /> Editar</button><button className="btn btn-ghost danger-text" type="button" onClick={(event) => { event.stopPropagation(); void archiveContract(item); }}><Trash2 size={15} /> Excluir</button></div></td></tr>;
       })}</tbody></table></div> : <EmptyState icon={FileText} title="Nenhum contrato cadastrado" description="Cadastre o primeiro contrato para vincular fornecedores, edificações e ordens de serviço." />}
     </section>}
 

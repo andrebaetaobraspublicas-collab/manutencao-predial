@@ -2,6 +2,11 @@ import { BadRequestException } from '@nestjs/common';
 import { SinapiItemType } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BudgetsService } from './budgets.service';
+import { FinancialReconciliationService } from '../finance/financial-reconciliation.service';
+
+const reconciliation = {
+  contract: jest.fn().mockResolvedValue({ status: 'CONSISTENT', checks: [] }),
+} as unknown as FinancialReconciliationService;
 
 describe('BudgetsService catalog search', () => {
   const catalog = {
@@ -38,7 +43,7 @@ describe('BudgetsService catalog search', () => {
         count: jest.fn().mockResolvedValue(1),
       },
     } as unknown as PrismaService;
-    return { prisma, service: new BudgetsService(prisma) };
+    return { prisma, service: new BudgetsService(prisma, reconciliation) };
   }
 
   it('aplica tenant, filtros e paginação sem misturar catálogos', async () => {
@@ -97,7 +102,7 @@ describe('BudgetsService catalog search', () => {
         .mockResolvedValueOnce([{ id: 'item-1' }])
         .mockResolvedValueOnce([{ total: 1n }]),
     } as unknown as PrismaService;
-    const service = new BudgetsService(prisma);
+    const service = new BudgetsService(prisma, reconciliation);
 
     const result = await service.searchCatalogItems('tenant-1', 'catalog-1', {
       search: 'concretagem', page: 1, pageSize: 25,
@@ -124,11 +129,12 @@ describe('BudgetsService contract budget summary', () => {
       contract: { findFirst: jest.fn().mockResolvedValue(contract) },
       contractBudget: { findFirst: jest.fn().mockResolvedValue(null) },
     } as unknown as PrismaService;
-    const service = new BudgetsService(prisma);
+    const service = new BudgetsService(prisma, reconciliation);
 
     await expect(service.getContractBudget('tenant-1', 'contract-1')).resolves.toEqual({
       contract,
       budget: null,
+      reconciliation: { status: 'CONSISTENT', checks: [] },
     });
     expect(prisma.contractBudget.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       include: expect.objectContaining({

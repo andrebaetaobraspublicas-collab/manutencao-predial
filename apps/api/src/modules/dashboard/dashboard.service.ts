@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ContractStatus, Prisma, WorkOrderStatus } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OPEN_WORK_ORDER_STATUSES } from '../work-orders/work-order-state-machine';
+import { FinancialReconciliationService } from '../finance/financial-reconciliation.service';
 
 const startOfMonthUtc = (date = new Date()) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
@@ -10,7 +11,10 @@ const subtractDays = (days: number) => new Date(Date.now() - days * 24 * 60 * 60
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reconciliation: FinancialReconciliationService,
+  ) {}
 
   async overview(tenantId: string) {
     const now = new Date();
@@ -32,6 +36,7 @@ export class DashboardService {
       expiringContracts,
       satisfaction,
       buildingsOnMap,
+      reconciliation,
     ] = await Promise.all([
       this.prisma.workOrder.count({
         where: { tenantId, deletedAt: null, status: { in: OPEN_WORK_ORDER_STATUSES } },
@@ -167,6 +172,7 @@ export class DashboardService {
           },
         },
       }),
+      this.reconciliation.portfolio(tenantId),
     ]);
 
     const supplierIds = bySupplier.flatMap((row) => (row.supplierId ? [row.supplierId] : []));
@@ -237,6 +243,7 @@ export class DashboardService {
         unmeasuredBalance: currentValue - measuredValue,
         unpaidMeasuredBalance: measuredValue - paidValue,
         executionPercent: currentValue > 0 ? (measuredValue / currentValue) * 100 : 0,
+        reconciliation: reconciliation.summary,
       },
       satisfaction: {
         averageScore: satisfaction._avg.score ?? null,

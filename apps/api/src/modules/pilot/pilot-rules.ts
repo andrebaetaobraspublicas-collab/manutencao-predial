@@ -7,6 +7,13 @@ export const PILOT_SCENARIOS = [
     href: '/edificacoes',
   },
   {
+    code: 'CONTRACT_FINANCIAL_INTEGRITY',
+    title: 'Integridade financeira dos contratos',
+    category: 'CONCILIACAO',
+    description: 'Contrato, aditivos, apostilas e planilha orçamentária fecham no mesmo limite financeiro.',
+    href: '/contratos',
+  },
+  {
     code: 'WORK_ORDER_CYCLE',
     title: 'Ciclo completo da ordem de serviço',
     category: 'OPERACAO',
@@ -17,7 +24,7 @@ export const PILOT_SCENARIOS = [
     code: 'FINANCIAL_RECONCILIATION',
     title: 'Medição e empenho conciliados',
     category: 'FINANCEIRO',
-    description: 'Empenho emitido e medição paga com rastreabilidade até as ordens de serviço.',
+    description: 'OS executadas, medições, empenhos, liquidações e pagamentos formam uma cadeia financeira íntegra.',
     href: '/medicoes',
   },
   {

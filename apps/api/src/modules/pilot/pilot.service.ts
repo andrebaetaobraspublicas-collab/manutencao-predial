@@ -26,6 +26,7 @@ import {
   type PilotScenarioCode,
   summarizePilot,
 } from './pilot-rules';
+import { FinancialReconciliationService } from '../finance/financial-reconciliation.service';
 
 type AutomaticCheck = {
   status: PilotAutomaticStatus;
@@ -43,7 +44,10 @@ type DecisionView = {
 
 @Injectable()
 export class PilotService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reconciliation: FinancialReconciliationService,
+  ) {}
 
   async overview(tenantId: string) {
     const [tenant, checks, logs, acceptanceLog] = await Promise.all([
@@ -155,7 +159,7 @@ export class PilotService {
           outcome: dto.outcome,
           note: dto.note.trim(),
           actorRole: actor.role,
-          release: '0.10.0',
+          release: '0.19.0',
           readinessSnapshot: current.summary,
           recordedAt: new Date().toISOString(),
         },
@@ -233,6 +237,7 @@ export class PilotService {
       maintenancePlans,
       generatedMaintenance,
       kpiMeasurements,
+      reconciliation,
     ] = await Promise.all([
       this.prisma.tenantMembership.findMany({
         where: { tenantId, status: MembershipStatus.ACTIVE, user: { status: 'ACTIVE', deletedAt: null } },
@@ -262,9 +267,29 @@ export class PilotService {
       this.prisma.maintenancePlan.count({ where: { tenantId, active: true, suspendedAt: null } }),
       this.prisma.maintenancePlanGeneration.count({ where: { tenantId, status: MaintenanceGenerationStatus.GENERATED, workOrderId: { not: null } } }),
       this.prisma.kpiMeasurement.count({ where: { tenantId } }),
+      this.reconciliation.portfolio(tenantId),
     ]);
 
     const roles = new Set(memberships.map((item) => item.role));
+    const contractIntegrityCodes = new Set([
+      'CURRENT_VALUE_COMPONENT_MISMATCH',
+      'CONTRACT_BUDGET_EXCEEDS_CONTRACT',
+      'ACTIVE_BUDGET_NOT_EQUAL_CONTRACT',
+      'DRAFT_BUDGET_NOT_RECONCILED',
+      'CONTRACT_BUDGET_MISSING',
+    ]);
+    const contractCriticalCodes = new Set([
+      'CURRENT_VALUE_COMPONENT_MISMATCH',
+      'CONTRACT_BUDGET_EXCEEDS_CONTRACT',
+      'ACTIVE_BUDGET_NOT_EQUAL_CONTRACT',
+    ]);
+    const contractIntegrityIssues = Object.entries(reconciliation.summary.issueCountsByCode)
+      .filter(([code]) => contractIntegrityCodes.has(code))
+      .reduce((sum, [, count]) => sum + count, 0);
+    const executionCriticalIssues = reconciliation.summary.criticalIssues
+      - Object.entries(reconciliation.summary.issueCountsByCode)
+        .filter(([code]) => contractCriticalCodes.has(code))
+        .reduce((sum, [, count]) => sum + count, 0);
     const check = (
       passed: boolean,
       message: string,
@@ -277,15 +302,26 @@ export class PilotService {
         'Requer ao menos um membro ativo, prédio, fornecedor, contrato vigente com cobertura, categoria e política de SLA.',
         { members: memberships.length, buildings, suppliers, contracts, categories, slaPolicies },
       ),
+      CONTRACT_FINANCIAL_INTEGRITY: check(
+        contractIntegrityIssues === 0,
+        'Requer valor atual recomposto, planilha contratual dentro do limite e ausência de divergências críticas.',
+        {
+          contracts: reconciliation.summary.totalContracts,
+          consistent: reconciliation.summary.consistentContracts,
+          warnings: reconciliation.summary.warningContracts,
+          critical: reconciliation.summary.criticalContracts,
+          integrityIssues: contractIntegrityIssues,
+        },
+      ),
       WORK_ORDER_CYCLE: check(
         qualifiedWorkOrders > 0,
         'Requer uma OS fechada com aceite, solução, custo final, comentário, checklist respondido e anexo privado.',
         { closedWorkOrders, fullyEvidencedWorkOrders: qualifiedWorkOrders },
       ),
       FINANCIAL_RECONCILIATION: check(
-        commitments > 0 && paidMeasurements > 0,
-        'Requer empenho ativo e medição paga contendo ao menos uma OS.',
-        { commitments, paidMeasurements },
+        commitments > 0 && paidMeasurements > 0 && executionCriticalIssues === 0,
+        'Requer empenho ativo, medição paga e conciliação sem quebra entre OS, medição, liquidação e pagamento.',
+        { commitments, paidMeasurements, executionCriticalIssues },
       ),
       BUDGET_SINAPI: check(
         sinapiCatalogs > 0 && approvedBudgets > 0,

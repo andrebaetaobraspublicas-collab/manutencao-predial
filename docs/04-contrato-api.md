@@ -447,12 +447,21 @@ Mudanças aditivas permanecem em `/api/v1`. Alterações incompatíveis exigem:
 | GET | `/budgets/contracts/:contractId/items` | pesquisa paginada dos preços do contrato |
 | POST/PATCH/DELETE | `/budgets/contracts/:contractId/items[/:itemId]` | manutenção dos materiais e serviços |
 | POST/PATCH/DELETE | `/budgets/contracts/:contractId/labor-posts[/:postId]` | manutenção dos postos e formação de preço |
-| GET | `/budgets/contracts/:contractId/imports/:importId/download` | baixa o arquivo-fonte privado com auditoria |
 | GET | `/budgets/work-orders/:workOrderId/contract-items` | preços dos contratos vinculados disponíveis para a OS |
 
 O importador limita o arquivo a 80 MB, valida assinatura e extensão, normaliza os dados em lotes e
-mantém o original fora da área pública. Arquivos PDF dependem de camada textual e produzem aviso de
+descarta o binário após o processamento. Arquivos PDF dependem de camada textual e produzem aviso de
 conferência. O tenant é obrigatório em toda leitura e escrita.
+
+## 9.2 Conciliação financeira v0.19
+
+| Método | Endpoint | Uso |
+|---|---|---|
+| GET | `/finance/reconciliation` | consolida a integridade financeira de todos os contratos do tenant |
+| GET | `/finance/reconciliation/contracts/:id` | detalha valores, saldos e inconsistências de um contrato |
+
+Os endpoints são somente leitura. Bloqueios de teto são aplicados nas rotas de ativação da planilha,
+aprovação do orçamento de OS e movimentação de empenhos.
 
 ## 10. Endpoints necessários para completar o MVP
 

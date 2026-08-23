@@ -149,6 +149,13 @@ foram removidos. A interface ganhou ações visíveis para criar itens, serviço
 editor completo da composição analítica de cada posto. Os indicadores contam somente registros
 ativos e passam a refletir imediatamente inclusões e exclusões lógicas.
 
+Na v0.19.0, contratos, instrumentos financeiros, planilhas contratuais, orçamentos de OS,
+medições, empenhos, liquidações e pagamentos passam a integrar uma única conciliação calculada.
+Planilhas divergentes permanecem corrigíveis em rascunho, mas não podem ser ativadas nem alimentar
+novas OS. Dashboard, lista de contratos e GP-044 exibem as inconsistências e bloqueiam o aceite
+enquanto existirem quebras críticas. O detalhamento está em
+`docs/28-v019-conciliacao-financeira-e-homologacao.md`.
+
 ## 6. Validações de infraestrutura que permanecem obrigatórias
 
 Ainda **não foram afirmados como concluídos** nesta máquina, por ausência de Docker/MySQL local:

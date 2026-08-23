@@ -32,8 +32,8 @@ jobs:
       HOSTINGER_STATIC_EXPORT: '1'
       RELEASE_SHA: ${{ github.sha }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with: { node-version: 24, cache: npm }
       - run: npm ci
       - name: Validate schema and clean-database migration
@@ -49,7 +49,7 @@ jobs:
           npm run test:e2e -w @gestaopredios/api
           npm run build
       - name: Archive release evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pilot-readiness-${{ github.sha }}
           path: |

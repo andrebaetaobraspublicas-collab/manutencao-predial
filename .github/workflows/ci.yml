@@ -32,8 +32,8 @@ jobs:
       SEED_ADMIN_PASSWORD: ci-demo-password-with-at-least-12-chars
       SEED_CONTRACT_TEST_DATA_ENABLED: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -69,7 +69,7 @@ jobs:
           cat artifacts/homologation-report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Publish homologation evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gp-045-homologation-${{ github.sha }}
           path: artifacts/

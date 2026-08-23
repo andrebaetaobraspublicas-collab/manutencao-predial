@@ -30,7 +30,7 @@ jobs:
       PERSISTENT_UPLOAD_ROOT: /home/${{ vars.HOSTINGER_SSH_USER }}/domains/api.gestaodepredios.com.br/storage/uploads
       READY_URL: https://api.gestaodepredios.com.br/api/v1/health/ready
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 

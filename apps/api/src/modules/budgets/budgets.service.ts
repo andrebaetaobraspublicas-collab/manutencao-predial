@@ -1,9 +1,30 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { createHash } from 'node:crypto';
-import { AuditAction, BudgetItemKind, BudgetStage, BudgetStatus, Prisma, WorkOrderStatus } from '../../generated/prisma/client';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createHash, randomUUID } from 'node:crypto';
+import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import {
+  AuditAction,
+  BudgetItemKind,
+  BudgetStage,
+  BudgetStatus,
+  ContractBudgetItemKind,
+  ContractBudgetStatus,
+  Prisma,
+  WorkOrderStatus,
+} from '../../generated/prisma/client';
 import type { SinapiCatalog } from '../../generated/prisma/client';
+import { resolveUploadRoot, sanitizeUploadOriginalName } from '../../common/files/upload-storage';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CatalogFileSource, CatalogItemSearchQuery, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
+import {
+  ContractBudgetItemsQuery,
+  ImportContractBudgetDto,
+  UpdateContractBudgetDto,
+  UpsertContractBudgetItemDto,
+  UpsertContractLaborPostDto,
+} from './dto/contract-budgets.dto';
+import { parseContractBudgetFile } from './contract-budget-parser';
 import { parseCustomWorkbook, parseOfficialSinapiWorkbook } from './xlsx-catalog-parser';
 
 const TRANSITIONS: Record<BudgetStatus, BudgetStatus[]> = {
@@ -15,7 +36,10 @@ const TRANSITIONS: Record<BudgetStatus, BudgetStatus[]> = {
 
 @Injectable()
 export class BudgetsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly config?: ConfigService,
+  ) {}
 
   listCatalogs(tenantId: string) {
     return this.prisma.sinapiCatalog.findMany({ where: { tenantId }, orderBy: [{ referenceMonth: 'desc' }, { importedAt: 'desc' }] });
@@ -52,21 +76,29 @@ export class BudgetsService {
     };
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
-    const [items, total, unitRows] = await Promise.all([
-      this.prisma.sinapiCatalogItem.findMany({
-        where,
-        orderBy: [{ type: 'asc' }, { code: 'asc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      this.prisma.sinapiCatalogItem.count({ where }),
-      this.prisma.sinapiCatalogItem.findMany({
-        where: { tenantId, catalogId: { in: catalogIds } },
-        select: { unit: true },
-        distinct: ['unit'],
-        orderBy: { unit: 'asc' },
-      }),
-    ]);
+    let items;
+    let total;
+    if (term && typeof this.prisma.$queryRaw === 'function') {
+      ({ items, total } = await this.searchCatalogTextSafely(
+        tenantId, catalogIds, query, term, page, pageSize,
+      ));
+    } else {
+      [items, total] = await Promise.all([
+        this.prisma.sinapiCatalogItem.findMany({
+          where,
+          orderBy: [{ type: 'asc' }, { code: 'asc' }],
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+        this.prisma.sinapiCatalogItem.count({ where }),
+      ]);
+    }
+    const unitRows = await this.prisma.sinapiCatalogItem.findMany({
+      where: { tenantId, catalogId: { in: catalogIds } },
+      select: { unit: true },
+      distinct: ['unit'],
+      orderBy: { unit: 'asc' },
+    });
     return {
       catalog,
       items,
@@ -186,6 +218,439 @@ export class BudgetsService {
     }
   }
 
+  async getContractBudget(tenantId: string, contractId: string) {
+    const contract = await this.contractSummary(tenantId, contractId);
+    const budget = await this.prisma.contractBudget.findFirst({
+      where: { tenantId, contractId, deletedAt: null },
+      include: {
+        laborPosts: {
+          where: { deletedAt: null },
+          orderBy: [{ code: 'asc' }, { createdAt: 'asc' }],
+          include: { components: { orderBy: { sortOrder: 'asc' } } },
+        },
+        imports: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            sheets: { orderBy: { orderIndex: 'asc' } },
+            importedBy: { select: { id: true, name: true } },
+          },
+        },
+        revisions: { orderBy: { version: 'desc' }, take: 20 },
+        _count: { select: { items: true, laborPosts: true, imports: true, revisions: true } },
+      },
+    });
+    return { contract, budget };
+  }
+
+  async searchContractBudgetItems(tenantId: string, contractId: string, query: ContractBudgetItemsQuery) {
+    await this.contractSummary(tenantId, contractId);
+    const budget = await this.prisma.contractBudget.findFirst({
+      where: { tenantId, contractId, deletedAt: null },
+      select: { id: true, title: true, status: true, version: true },
+    });
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 25;
+    if (!budget) return { budget: null, items: [], pagination: { page, pageSize, total: 0, totalPages: 1 } };
+    const search = query.search?.trim();
+    const where: Prisma.ContractBudgetItemWhereInput = {
+      tenantId,
+      budgetId: budget.id,
+      deletedAt: null,
+      ...(query.kind ? { kind: query.kind } : {}),
+      ...(search ? { OR: [{ code: { contains: search } }, { description: { contains: search } },
+        { sectionName: { contains: search } }] } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.contractBudgetItem.findMany({
+        where,
+        orderBy: [{ kind: 'asc' }, { sectionCode: 'asc' }, { code: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { catalogItem: { select: { id: true, catalogId: true, type: true } } },
+      }),
+      this.prisma.contractBudgetItem.count({ where }),
+    ]);
+    return { budget, items, pagination: { page, pageSize, total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+  }
+
+  async importContractBudget(
+    tenantId: string,
+    actorUserId: string,
+    contractId: string,
+    dto: ImportContractBudgetDto,
+    file?: Express.Multer.File,
+  ) {
+    const contract = await this.contractSummary(tenantId, contractId);
+    if (!file?.buffer?.length) throw new BadRequestException('Selecione uma planilha XLSX/XLSB ou um PDF textual.');
+    const originalName = sanitizeUploadOriginalName(file.originalname);
+    const extension = originalName.toLowerCase().split('.').pop() ?? '';
+    if (!['xlsx', 'xlsb', 'pdf'].includes(extension) || !this.hasContractBudgetSignature(file.buffer, extension)) {
+      throw new BadRequestException('O arquivo deve ser uma planilha XLSX/XLSB ou um PDF válido.');
+    }
+    const parsed = await parseContractBudgetFile(file.buffer, originalName, file.mimetype);
+    const sha256 = createHash('sha256').update(file.buffer).digest('hex');
+    const root = resolveUploadRoot(this.config?.get<string>('UPLOAD_ROOT'));
+    const relativeDir = path.join(tenantId, 'contracts', contractId, 'budgets');
+    const absoluteDir = this.resolveInsideRoot(root, relativeDir);
+    await mkdir(absoluteDir, { recursive: true });
+    const fileName = `${randomUUID()}.${extension}`;
+    const storageKey = path.join(relativeDir, fileName).replaceAll(path.sep, '/');
+    const absolutePath = path.join(absoluteDir, fileName);
+    await writeFile(absolutePath, file.buffer, { flag: 'wx' });
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const previous = await tx.contractBudget.findFirst({ where: { tenantId, contractId, deletedAt: null } });
+        const budget = await tx.contractBudget.upsert({
+          where: { contractId },
+          create: {
+            tenantId,
+            contractId,
+            createdByUserId: actorUserId,
+            version: 0,
+            title: dto.title?.trim() || `Planilha orçamentária — ${contract.code}`,
+            referenceMonth: dto.referenceMonth,
+          },
+          update: {
+            deletedAt: null,
+            title: dto.title?.trim() || undefined,
+            referenceMonth: dto.referenceMonth || undefined,
+          },
+        });
+        if (dto.replaceExisting !== false) {
+          const deletedAt = new Date();
+          await tx.contractBudgetItem.updateMany({ where: { tenantId, budgetId: budget.id, deletedAt: null }, data: { deletedAt } });
+          await tx.contractLaborPost.updateMany({ where: { tenantId, budgetId: budget.id, deletedAt: null }, data: { deletedAt } });
+        }
+        const report = {
+          warnings: parsed.warnings,
+          sourceTotal: parsed.sourceTotal ?? null,
+          sheets: parsed.sheets.length,
+          items: parsed.items.length,
+          laborPosts: parsed.laborPosts.length,
+          replacedExisting: dto.replaceExisting !== false,
+        };
+        const imported = await tx.contractBudgetImport.create({ data: {
+          tenantId,
+          budgetId: budget.id,
+          importedByUserId: actorUserId,
+          format: parsed.format,
+          originalName,
+          storageKey,
+          fileName,
+          mimeType: file.mimetype || this.contractBudgetMime(extension),
+          sizeBytes: BigInt(file.size),
+          sha256,
+          sheetCount: parsed.sheets.length,
+          importedItemCount: parsed.items.length,
+          laborPostCount: parsed.laborPosts.length,
+          ignoredSheetCount: parsed.sheets.filter((sheet) => sheet.role === 'AUXILIARY').length,
+          report: this.json(report),
+          sheets: { create: parsed.sheets.map((sheet) => ({ tenantId, ...sheet })) },
+        } });
+        for (let index = 0; index < parsed.items.length; index += 500) {
+          await tx.contractBudgetItem.createMany({ data: parsed.items.slice(index, index + 500).map((item) => ({
+            tenantId,
+            budgetId: budget.id,
+            importId: imported.id,
+            kind: item.kind,
+            source: item.source,
+            sectionCode: item.sectionCode,
+            sectionName: item.sectionName,
+            code: item.code.slice(0, 80),
+            description: item.description,
+            technicalReference: item.technicalReference,
+            unit: item.unit.slice(0, 30),
+            quantity: item.quantity,
+            laborUnitCost: item.laborUnitCost,
+            materialUnitCost: item.materialUnitCost,
+            unitCost: item.unitCost,
+            bdiPercentage: item.bdiPercentage,
+            totalCost: item.totalCost,
+            includedInTotal: item.includedInTotal,
+            sourceSheet: item.sourceSheet,
+            sourceRow: item.sourceRow,
+            sourceData: item.sourceData ? this.json(item.sourceData) : undefined,
+          })) });
+        }
+        for (const post of parsed.laborPosts) {
+          await tx.contractLaborPost.create({ data: {
+            tenantId,
+            budgetId: budget.id,
+            importId: imported.id,
+            code: post.code,
+            title: post.title,
+            unit: post.unit,
+            postQuantity: post.postQuantity,
+            employeesPerPost: post.employeesPerPost,
+            professionalQuantity: post.professionalQuantity,
+            months: post.months,
+            cbo: post.cbo,
+            collectiveAgreement: post.collectiveAgreement,
+            mteRegistration: post.mteRegistration,
+            categoryBaseDate: post.categoryBaseDate,
+            shift: post.shift,
+            baseSalary: post.baseSalary,
+            monthlyCostBeforeBdi: post.monthlyCostBeforeBdi,
+            bdiAmount: post.bdiAmount,
+            monthlyCost: post.monthlyCost,
+            annualCost: post.annualCost,
+            includedInTotal: post.includedInTotal,
+            sourceSheet: post.sourceSheet,
+            sourceData: post.sourceData ? this.json(post.sourceData) : undefined,
+            components: { create: post.components.map((component) => ({
+              tenantId,
+              ...component,
+              sourceData: component.sourceData ? this.json(component.sourceData) : undefined,
+            })) },
+          } });
+        }
+        const refreshed = await this.refreshContractBudget(tx, tenantId, actorUserId, budget.id,
+          previous ? 'Nova importação da planilha orçamentária' : 'Importação inicial da planilha orçamentária',
+          parsed.sourceTotal);
+        await this.audit(tx, tenantId, actorUserId, AuditAction.CREATE, 'ContractBudgetImport', imported.id, {
+          contractId,
+          budgetId: budget.id,
+          originalName,
+          sha256,
+          itemCount: parsed.items.length,
+          laborPostCount: parsed.laborPosts.length,
+          sheetCount: parsed.sheets.length,
+        });
+        return { contract, budget: refreshed, imported: { ...imported, sizeBytes: imported.sizeBytes.toString() }, report };
+      }, { maxWait: 30_000, timeout: 240_000 });
+    } catch (error) {
+      await unlink(absolutePath).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async updateContractBudget(tenantId: string, actorUserId: string, contractId: string,
+    dto: UpdateContractBudgetDto) {
+    await this.contractSummary(tenantId, contractId);
+    const budget = await this.ensureContractBudget(tenantId, actorUserId, contractId);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.contractBudget.update({ where: { id: budget.id }, data: {
+        title: dto.title?.trim(),
+        referenceMonth: dto.referenceMonth,
+        status: dto.status,
+        notes: dto.notes?.trim(),
+      } });
+      return this.refreshContractBudget(tx, tenantId, actorUserId, budget.id, 'Atualização dos dados do orçamento contratual');
+    });
+  }
+
+  async upsertContractBudgetItem(tenantId: string, actorUserId: string, contractId: string,
+    itemId: string | undefined, dto: UpsertContractBudgetItemDto) {
+    await this.contractSummary(tenantId, contractId);
+    const budget = await this.ensureContractBudget(tenantId, actorUserId, contractId);
+    const current = itemId ? await this.prisma.contractBudgetItem.findFirst({
+      where: { id: itemId, tenantId, budgetId: budget.id, deletedAt: null },
+    }) : null;
+    if (itemId && !current) throw new NotFoundException('Item do orçamento contratual não encontrado.');
+    const catalog = dto.catalogItemId ? await this.prisma.sinapiCatalogItem.findFirst({
+      where: { id: dto.catalogItemId, tenantId, catalog: { active: true } },
+    }) : null;
+    if (dto.catalogItemId && !catalog) throw new BadRequestException('Item SINAPI inválido para a organização.');
+    const quantity = new Prisma.Decimal(dto.quantity);
+    const unitCost = catalog?.unitCost ?? new Prisma.Decimal(dto.unitCost);
+    const bdiPercentage = new Prisma.Decimal(dto.bdiPercentage ?? 0);
+    const totalCost = quantity.times(unitCost).times(new Prisma.Decimal(1).plus(bdiPercentage.dividedBy(100))).toDecimalPlaces(2);
+    const data = {
+      catalogItemId: catalog?.id ?? null,
+      kind: catalog ? (catalog.type === 'INPUT' ? ContractBudgetItemKind.SINAPI_INPUT : ContractBudgetItemKind.SINAPI_COMPOSITION) : dto.kind,
+      source: catalog ? 'SINAPI' : 'USER',
+      sectionCode: dto.sectionCode?.trim(),
+      sectionName: dto.sectionName?.trim(),
+      code: (catalog?.code ?? dto.code.trim()).slice(0, 80),
+      description: catalog?.description ?? dto.description.trim(),
+      technicalReference: dto.technicalReference?.trim(),
+      unit: (catalog?.unit ?? dto.unit.trim()).toUpperCase().slice(0, 30),
+      quantity,
+      laborUnitCost: new Prisma.Decimal(dto.laborUnitCost ?? 0),
+      materialUnitCost: new Prisma.Decimal(dto.materialUnitCost ?? 0),
+      unitCost,
+      bdiPercentage,
+      totalCost,
+      includedInTotal: dto.includedInTotal ?? true,
+      deletedAt: null,
+    };
+    return this.prisma.$transaction(async (tx) => {
+      const item = current
+        ? await tx.contractBudgetItem.update({ where: { id: current.id }, data })
+        : await tx.contractBudgetItem.create({ data: { tenantId, budgetId: budget.id, ...data } });
+      const refreshed = await this.refreshContractBudget(tx, tenantId, actorUserId, budget.id,
+        current ? 'Edição de item do orçamento contratual' : 'Inclusão de item no orçamento contratual');
+      await this.audit(tx, tenantId, actorUserId, current ? AuditAction.UPDATE : AuditAction.CREATE,
+        'ContractBudgetItem', item.id, { contractId, budgetId: budget.id, code: item.code, totalCost: item.totalCost.toString() });
+      return { item, budget: refreshed };
+    });
+  }
+
+  async archiveContractBudgetItem(tenantId: string, actorUserId: string, contractId: string, itemId: string) {
+    await this.contractSummary(tenantId, contractId);
+    const budget = await this.prisma.contractBudget.findFirst({ where: { tenantId, contractId, deletedAt: null } });
+    if (!budget) throw new NotFoundException('Orçamento contratual não encontrado.');
+    const current = await this.prisma.contractBudgetItem.findFirst({ where: { id: itemId, tenantId, budgetId: budget.id, deletedAt: null } });
+    if (!current) throw new NotFoundException('Item do orçamento contratual não encontrado.');
+    return this.prisma.$transaction(async (tx) => {
+      await tx.contractBudgetItem.update({ where: { id: itemId }, data: { deletedAt: new Date() } });
+      const refreshed = await this.refreshContractBudget(tx, tenantId, actorUserId, budget.id, 'Exclusão de item do orçamento contratual');
+      await this.audit(tx, tenantId, actorUserId, AuditAction.DELETE, 'ContractBudgetItem', itemId,
+        { contractId, budgetId: budget.id, archived: true });
+      return { id: itemId, archived: true, budget: refreshed };
+    });
+  }
+
+  async upsertContractLaborPost(tenantId: string, actorUserId: string, contractId: string,
+    postId: string | undefined, dto: UpsertContractLaborPostDto) {
+    await this.contractSummary(tenantId, contractId);
+    const budget = await this.ensureContractBudget(tenantId, actorUserId, contractId);
+    const current = postId ? await this.prisma.contractLaborPost.findFirst({
+      where: { id: postId, tenantId, budgetId: budget.id, deletedAt: null },
+    }) : null;
+    if (postId && !current) throw new NotFoundException('Posto de trabalho não encontrado.');
+    const professionalQuantity = new Prisma.Decimal(dto.professionalQuantity ?? dto.postQuantity * dto.employeesPerPost);
+    const monthlyCost = new Prisma.Decimal(dto.monthlyCost);
+    const annualCost = dto.annualCost !== undefined
+      ? new Prisma.Decimal(dto.annualCost)
+      : monthlyCost.times(professionalQuantity).times(dto.months).toDecimalPlaces(2);
+    const data = {
+      code: dto.code.trim().toUpperCase(),
+      title: dto.title.trim(),
+      unit: dto.unit?.trim().toUpperCase() || 'POSTO',
+      postQuantity: dto.postQuantity,
+      employeesPerPost: dto.employeesPerPost,
+      professionalQuantity,
+      months: dto.months,
+      cbo: dto.cbo?.trim(),
+      collectiveAgreement: dto.collectiveAgreement?.trim(),
+      mteRegistration: dto.mteRegistration?.trim(),
+      categoryBaseDate: dto.categoryBaseDate?.trim(),
+      shift: dto.shift?.trim(),
+      baseSalary: dto.baseSalary,
+      monthlyCostBeforeBdi: dto.monthlyCostBeforeBdi,
+      bdiAmount: dto.bdiAmount ?? 0,
+      monthlyCost,
+      annualCost,
+      includedInTotal: dto.includedInTotal ?? true,
+      deletedAt: null,
+    };
+    return this.prisma.$transaction(async (tx) => {
+      let post;
+      if (current) {
+        if (dto.components !== undefined) {
+          await tx.contractLaborCostComponent.deleteMany({ where: { laborPostId: current.id } });
+        }
+        post = await tx.contractLaborPost.update({ where: { id: current.id }, data: {
+          ...data,
+          components: dto.components?.length ? { create: dto.components.map((component, index) => ({
+            tenantId,
+            ...component,
+            sortOrder: index,
+          })) } : undefined,
+        }, include: { components: { orderBy: { sortOrder: 'asc' } } } });
+      } else {
+        post = await tx.contractLaborPost.create({ data: {
+          tenantId,
+          budgetId: budget.id,
+          ...data,
+          components: dto.components?.length ? { create: dto.components.map((component, index) => ({
+            tenantId,
+            ...component,
+            sortOrder: index,
+          })) } : undefined,
+        }, include: { components: { orderBy: { sortOrder: 'asc' } } } });
+      }
+      const refreshed = await this.refreshContractBudget(tx, tenantId, actorUserId, budget.id,
+        current ? 'Edição de posto de trabalho' : 'Inclusão de posto de trabalho');
+      await this.audit(tx, tenantId, actorUserId, current ? AuditAction.UPDATE : AuditAction.CREATE,
+        'ContractLaborPost', post.id, { contractId, budgetId: budget.id, code: post.code, annualCost: post.annualCost.toString() });
+      return { post, budget: refreshed };
+    });
+  }
+
+  async archiveContractLaborPost(tenantId: string, actorUserId: string, contractId: string, postId: string) {
+    await this.contractSummary(tenantId, contractId);
+    const budget = await this.prisma.contractBudget.findFirst({ where: { tenantId, contractId, deletedAt: null } });
+    if (!budget) throw new NotFoundException('Orçamento contratual não encontrado.');
+    const current = await this.prisma.contractLaborPost.findFirst({ where: { id: postId, tenantId, budgetId: budget.id, deletedAt: null } });
+    if (!current) throw new NotFoundException('Posto de trabalho não encontrado.');
+    return this.prisma.$transaction(async (tx) => {
+      await tx.contractLaborPost.update({ where: { id: postId }, data: { deletedAt: new Date() } });
+      const refreshed = await this.refreshContractBudget(tx, tenantId, actorUserId, budget.id, 'Exclusão de posto de trabalho');
+      await this.audit(tx, tenantId, actorUserId, AuditAction.DELETE, 'ContractLaborPost', postId,
+        { contractId, budgetId: budget.id, archived: true });
+      return { id: postId, archived: true, budget: refreshed };
+    });
+  }
+
+  async resolveContractBudgetImportDownload(tenantId: string, actorUserId: string,
+    contractId: string, importId: string) {
+    await this.contractSummary(tenantId, contractId);
+    const imported = await this.prisma.contractBudgetImport.findFirst({
+      where: { id: importId, tenantId, budget: { contractId, deletedAt: null } },
+    });
+    if (!imported) throw new NotFoundException('Arquivo-fonte do orçamento não encontrado.');
+    const root = resolveUploadRoot(this.config?.get<string>('UPLOAD_ROOT'));
+    const absolutePath = this.resolveInsideRoot(root, imported.storageKey);
+    try { await access(absolutePath); } catch { throw new NotFoundException('Arquivo físico não localizado.'); }
+    await this.prisma.auditLog.create({ data: {
+      tenantId,
+      actorUserId,
+      action: AuditAction.DOWNLOAD,
+      entityType: 'ContractBudgetImport',
+      entityId: imported.id,
+      afterData: { contractId, originalName: imported.originalName },
+    } });
+    return { imported, absolutePath };
+  }
+
+  async searchWorkOrderContractItems(tenantId: string, workOrderId: string, query: ContractBudgetItemsQuery) {
+    const workOrder = await this.prisma.workOrder.findFirst({
+      where: { id: workOrderId, tenantId, deletedAt: null },
+      select: { id: true, number: true, title: true },
+    });
+    if (!workOrder) throw new NotFoundException('Ordem de serviço não encontrada.');
+    const links = await this.prisma.workOrderContract.findMany({
+      where: { workOrderId, contract: { tenantId, deletedAt: null } },
+      select: { isPrimary: true, contract: { select: { id: true, code: true, object: true } } },
+      orderBy: { isPrimary: 'desc' },
+    });
+    const contractIds = links.map((link) => link.contract.id);
+    const budgets = contractIds.length ? await this.prisma.contractBudget.findMany({
+      where: { tenantId, contractId: { in: contractIds }, deletedAt: null, status: { not: ContractBudgetStatus.ARCHIVED } },
+      select: { id: true },
+    }) : [];
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 25;
+    const search = query.search?.trim();
+    const where: Prisma.ContractBudgetItemWhereInput = {
+      tenantId,
+      budgetId: { in: budgets.map((budget) => budget.id) },
+      deletedAt: null,
+      ...(query.kind ? { kind: query.kind } : {}),
+      ...(search ? { OR: [{ code: { contains: search } }, { description: { contains: search } },
+        { sectionName: { contains: search } }] } : {}),
+    };
+    const [items, total] = budgets.length ? await Promise.all([
+      this.prisma.contractBudgetItem.findMany({
+        where,
+        orderBy: [{ kind: 'asc' }, { code: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { budget: { select: { id: true, title: true, contract: { select: { id: true, code: true } } } } },
+      }),
+      this.prisma.contractBudgetItem.count({ where }),
+    ]) : [[], 0];
+    return {
+      workOrder,
+      contracts: links,
+      items,
+      pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+    };
+  }
+
   listBudgets(tenantId: string) {
     return this.prisma.workOrderBudget.findMany({ where: { tenantId }, orderBy: { updatedAt: 'desc' },
       include: { workOrder: { select: { id: true, number: true, title: true, status: true } },
@@ -221,15 +686,27 @@ export class BudgetsService {
       throw new BadRequestException('Somente orçamentos em rascunho ou rejeitados podem ser editados.');
     }
     const [workOrder, selectedCatalog] = await Promise.all([
-      this.prisma.workOrder.findFirst({ where: { id: workOrderId, tenantId, deletedAt: null } }),
+      this.prisma.workOrder.findFirst({
+        where: { id: workOrderId, tenantId, deletedAt: null },
+        include: { contracts: { select: { contractId: true } } },
+      }),
       dto.catalogId ? this.prisma.sinapiCatalog.findFirst({ where: { id: dto.catalogId, tenantId, active: true } }) : null,
     ]);
     if (!workOrder) throw new NotFoundException('Ordem de serviço não encontrada.');
     if (dto.catalogId && !selectedCatalog) throw new BadRequestException('Catálogo SINAPI inválido para a organização.');
     const allowedCatalogIds = selectedCatalog ? await this.catalogFamilyIds(tenantId, selectedCatalog) : undefined;
-    const catalogItems = await this.prisma.sinapiCatalogItem.findMany({ where: { tenantId,
-      id: { in: dto.items.map((item) => item.catalogItemId).filter((id): id is string => Boolean(id)) },
-      ...(allowedCatalogIds ? { catalogId: { in: allowedCatalogIds } } : {}) } });
+    const contractIds = workOrder.contracts.map((link) => link.contractId);
+    const [catalogItems, contractItems] = await Promise.all([
+      this.prisma.sinapiCatalogItem.findMany({ where: { tenantId,
+        id: { in: dto.items.map((item) => item.catalogItemId).filter((id): id is string => Boolean(id)) },
+        ...(allowedCatalogIds ? { catalogId: { in: allowedCatalogIds } } : {}) } }),
+      this.prisma.contractBudgetItem.findMany({ where: {
+        tenantId,
+        id: { in: dto.items.map((item) => item.contractBudgetItemId).filter((id): id is string => Boolean(id)) },
+        deletedAt: null,
+        budget: { contractId: { in: contractIds }, deletedAt: null, status: { not: ContractBudgetStatus.ARCHIVED } },
+      }, include: { budget: { select: { id: true, contractId: true, version: true } } } }),
+    ]);
     const finalBudgetStatuses = new Set<WorkOrderStatus>([
       WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.WAITING_APPROVAL,
       WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED,
@@ -238,19 +715,33 @@ export class BudgetsService {
       throw new BadRequestException('O orçamento final executado só pode ser registrado após o início da execução.');
     }
     const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
+    const contractItemById = new Map(contractItems.map((item) => [item.id, item]));
     const items = dto.items.map((item) => {
+      if (item.catalogItemId && item.contractBudgetItemId) {
+        throw new BadRequestException('Cada item deve ter apenas uma fonte de preços.');
+      }
       const catalog = item.catalogItemId ? catalogById.get(item.catalogItemId) : undefined;
+      const contractItem = item.contractBudgetItemId ? contractItemById.get(item.contractBudgetItemId) : undefined;
       if (item.catalogItemId && !catalog) throw new BadRequestException('Item não pertence à base SINAPI e ao regime selecionados.');
-      if (!catalog && (!item.code || !item.description || !item.unit || item.unitCost === undefined)) {
+      if (item.contractBudgetItemId && !contractItem) {
+        throw new BadRequestException('Item não pertence à planilha orçamentária dos contratos vinculados à OS.');
+      }
+      if (!catalog && !contractItem && (!item.code || !item.description || !item.unit || item.unitCost === undefined)) {
         throw new BadRequestException('Item livre exige código, descrição, unidade e custo unitário.');
       }
       const quantity = new Prisma.Decimal(item.quantity);
-      const unitCost = catalog?.unitCost ?? new Prisma.Decimal(item.unitCost!);
-      return { catalogItemId: catalog?.id, kind: item.kind ?? this.kind(catalog?.type),
-        source: catalog ? 'SINAPI' : 'PROPRIO', code: catalog?.code ?? item.code!.trim().toUpperCase(),
-        description: catalog?.description ?? item.description!.trim(), unit: catalog?.unit ?? item.unit!.trim().toUpperCase(),
+      const unitCost = catalog?.unitCost ?? contractItem?.unitCost ?? new Prisma.Decimal(item.unitCost!);
+      return { catalogItemId: catalog?.id, contractBudgetItemId: contractItem?.id,
+        kind: contractItem ? this.contractKind(contractItem.kind) : (item.kind ?? this.kind(catalog?.type)),
+        source: catalog ? 'SINAPI' : contractItem ? 'CONTRATO' : 'PROPRIO',
+        code: (catalog?.code ?? contractItem?.code ?? item.code!.trim().toUpperCase()).slice(0, 40),
+        description: catalog?.description ?? contractItem?.description ?? item.description!.trim(),
+        unit: catalog?.unit ?? contractItem?.unit ?? item.unit!.trim().toUpperCase(),
         quantity, unitCost, totalCost: quantity.times(unitCost).toDecimalPlaces(2),
-        sourceData: catalog ? { catalogId: catalog.catalogId, referenceUnitCost: catalog.unitCost.toString() } : undefined };
+        sourceData: catalog ? { catalogId: catalog.catalogId, referenceUnitCost: catalog.unitCost.toString() }
+          : contractItem ? { contractId: contractItem.budget.contractId, contractBudgetId: contractItem.budgetId,
+            contractBudgetVersion: contractItem.budget.version, referenceUnitCost: contractItem.unitCost.toString() }
+          : undefined };
     });
     const subtotal = items.reduce((total, item) => total.plus(item.totalCost), new Prisma.Decimal(0));
     const bdi = new Prisma.Decimal(dto.bdiPercentage).dividedBy(100);
@@ -310,10 +801,195 @@ export class BudgetsService {
     });
   }
 
+  private async contractSummary(tenantId: string, contractId: string) {
+    const contract = await this.prisma.contract.findFirst({
+      where: { id: contractId, tenantId, deletedAt: null },
+      select: {
+        id: true,
+        code: true,
+        object: true,
+        exclusiveLaborDedication: true,
+        originalValue: true,
+        currentValue: true,
+        supplier: { select: { id: true, legalName: true, tradeName: true } },
+      },
+    });
+    if (!contract) throw new NotFoundException('Contrato não encontrado.');
+    return contract;
+  }
+
+  private async ensureContractBudget(tenantId: string, actorUserId: string, contractId: string) {
+    return this.prisma.contractBudget.upsert({
+      where: { contractId },
+      create: {
+        tenantId,
+        contractId,
+        createdByUserId: actorUserId,
+        version: 0,
+        title: 'Planilha orçamentária do contrato',
+      },
+      update: { deletedAt: null },
+    });
+  }
+
+  private async refreshContractBudget(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorUserId: string,
+    budgetId: string,
+    reason: string,
+    sourceTotal?: number,
+  ) {
+    const [items, laborPosts] = await Promise.all([
+      tx.contractBudgetItem.findMany({ where: { tenantId, budgetId, deletedAt: null, includedInTotal: true } }),
+      tx.contractLaborPost.findMany({ where: { tenantId, budgetId, deletedAt: null, includedInTotal: true } }),
+    ]);
+    let subtotal = new Prisma.Decimal(0);
+    let bdiAmount = new Prisma.Decimal(0);
+    for (const item of items) {
+      const lineTotal = item.totalCost;
+      if (item.bdiPercentage.greaterThan(0)) {
+        const base = item.quantity.times(item.unitCost).toDecimalPlaces(2);
+        subtotal = subtotal.plus(base);
+        const lineBdi = lineTotal.minus(base);
+        if (lineBdi.greaterThan(0)) bdiAmount = bdiAmount.plus(lineBdi);
+      } else {
+        subtotal = subtotal.plus(lineTotal);
+      }
+    }
+    for (const post of laborPosts) {
+      const calculatedBase = post.monthlyCostBeforeBdi.times(post.professionalQuantity).times(post.months).toDecimalPlaces(2);
+      const calculatedBdi = post.bdiAmount.times(post.professionalQuantity).times(post.months).toDecimalPlaces(2);
+      const base = calculatedBase.greaterThan(0) && calculatedBase.lessThanOrEqualTo(post.annualCost)
+        ? calculatedBase
+        : Prisma.Decimal.max(new Prisma.Decimal(0), post.annualCost.minus(calculatedBdi));
+      subtotal = subtotal.plus(base);
+      const difference = post.annualCost.minus(base);
+      if (difference.greaterThan(0)) bdiAmount = bdiAmount.plus(difference);
+    }
+    subtotal = subtotal.toDecimalPlaces(2);
+    bdiAmount = bdiAmount.toDecimalPlaces(2);
+    const total = subtotal.plus(bdiAmount).toDecimalPlaces(2);
+    const updated = await tx.contractBudget.update({
+      where: { id: budgetId },
+      data: {
+        subtotal,
+        bdiAmount,
+        total,
+        version: { increment: 1 },
+        ...(sourceTotal !== undefined ? { sourceTotal } : {}),
+      },
+    });
+    await tx.contractBudgetRevision.create({ data: {
+      tenantId,
+      budgetId,
+      createdByUserId: actorUserId,
+      version: updated.version,
+      subtotal,
+      bdiAmount,
+      total,
+      reason,
+      snapshot: {
+        itemCount: items.length,
+        laborPostCount: laborPosts.length,
+        itemKinds: items.reduce<Record<string, number>>((counts, item) => {
+          counts[item.kind] = (counts[item.kind] ?? 0) + 1;
+          return counts;
+        }, {}),
+        subtotal: subtotal.toString(),
+        bdiAmount: bdiAmount.toString(),
+        total: total.toString(),
+        sourceTotal: updated.sourceTotal?.toString() ?? null,
+      },
+    } });
+    await this.audit(tx, tenantId, actorUserId, AuditAction.UPDATE, 'ContractBudget', budgetId, {
+      reason,
+      version: updated.version,
+      subtotal: subtotal.toString(),
+      bdiAmount: bdiAmount.toString(),
+      total: total.toString(),
+    });
+    return updated;
+  }
+
+  private hasContractBudgetSignature(buffer: Buffer, extension: string) {
+    if (extension === 'pdf') return buffer.subarray(0, 4).toString('ascii') === '%PDF';
+    return buffer[0] === 0x50 && buffer[1] === 0x4b;
+  }
+
+  private contractBudgetMime(extension: string) {
+    if (extension === 'pdf') return 'application/pdf';
+    if (extension === 'xlsb') return 'application/vnd.ms-excel.sheet.binary.macroEnabled.12';
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  }
+
+  private resolveInsideRoot(root: string, relativePath: string) {
+    const normalizedRoot = path.resolve(root);
+    const candidate = path.resolve(normalizedRoot, relativePath);
+    if (candidate !== normalizedRoot && !candidate.startsWith(`${normalizedRoot}${path.sep}`)) {
+      throw new BadRequestException('Caminho de armazenamento inválido.');
+    }
+    return candidate;
+  }
+
+  private json(value: unknown): Prisma.InputJsonValue {
+    return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  }
+
   private kind(type?: string): BudgetItemKind {
     if (type === 'INPUT') return BudgetItemKind.INPUT;
     if (type === 'COMPOSITION') return BudgetItemKind.COMPOSITION;
     return BudgetItemKind.SERVICE;
+  }
+
+  private contractKind(kind: ContractBudgetItemKind): BudgetItemKind {
+    if (kind === ContractBudgetItemKind.MATERIAL || kind === ContractBudgetItemKind.SINAPI_INPUT) {
+      return BudgetItemKind.INPUT;
+    }
+    if (kind === ContractBudgetItemKind.SINAPI_COMPOSITION) return BudgetItemKind.COMPOSITION;
+    return BudgetItemKind.SERVICE;
+  }
+
+  private async searchCatalogTextSafely(
+    tenantId: string,
+    catalogIds: string[],
+    query: CatalogItemSearchQuery,
+    term: string,
+    page: number,
+    pageSize: number,
+  ) {
+    const pattern = `%${term.replace(/[\\%_]/g, (value) => `\\${value}`)}%`;
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`tenantId = ${tenantId}`,
+      Prisma.sql`catalogId IN (${Prisma.join(catalogIds)})`,
+      Prisma.sql`(code COLLATE utf8mb4_unicode_ci LIKE ${pattern} OR description COLLATE utf8mb4_unicode_ci LIKE ${pattern})`,
+    ];
+    if (query.type) conditions.push(Prisma.sql`type = ${query.type}`);
+    if (query.unit?.trim()) conditions.push(Prisma.sql`unit = ${query.unit.trim().toUpperCase()}`);
+    if (query.minCost !== undefined) conditions.push(Prisma.sql`unitCost >= ${query.minCost}`);
+    if (query.maxCost !== undefined) conditions.push(Prisma.sql`unitCost <= ${query.maxCost}`);
+    const where = Prisma.join(conditions, ' AND ');
+    const offset = (page - 1) * pageSize;
+    const [idRows, countRows] = await Promise.all([
+      this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT id
+        FROM SinapiCatalogItem
+        WHERE ${where}
+        ORDER BY type ASC, code ASC
+        LIMIT ${pageSize} OFFSET ${offset}
+      `),
+      this.prisma.$queryRaw<Array<{ total: bigint | number | string }>>(Prisma.sql`
+        SELECT COUNT(*) AS total
+        FROM SinapiCatalogItem
+        WHERE ${where}
+      `),
+    ]);
+    const byId = idRows.length
+      ? await this.prisma.sinapiCatalogItem.findMany({ where: { tenantId, id: { in: idRows.map((row) => row.id) } } })
+      : [];
+    const index = new Map(idRows.map((row, position) => [row.id, position]));
+    byId.sort((left, right) => (index.get(left.id) ?? 0) - (index.get(right.id) ?? 0));
+    return { items: byId, total: Number(countRows[0]?.total ?? 0) };
   }
 
   private async catalogFamilyIds(tenantId: string, catalog: SinapiCatalog) {

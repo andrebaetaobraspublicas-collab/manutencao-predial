@@ -157,6 +157,10 @@ describe('isolamento multiempresa', () => {
     await tenantA.agent
       .get(`/api/v1/budgets/sinapi/catalogs/${tenantB.sinapiCatalogId}/items`)
       .expect(404);
+    const textualSearch = await tenantA.agent
+      .get(`/api/v1/budgets/sinapi/catalogs/${tenantA.sinapiCatalogId}/search?search=Serviço`)
+      .expect(200);
+    expect(textualSearch.body.pagination.total).toBe(1);
     await tenantA.agent
       .get(`/api/v1/budgets/work-orders/${tenantB.workOrderId}`)
       .expect(404);
@@ -172,6 +176,44 @@ describe('isolamento multiempresa', () => {
     const budgets = await tenantA.agent.get('/api/v1/budgets').expect(200);
     expect(budgets.body).toHaveLength(1);
     expect(budgets.body[0].id).toBe(tenantA.budgetId);
+  });
+
+  it('isola a planilha orçamentária contratual e sua seleção pelas OS', async () => {
+    const created = await tenantA.agent
+      .post(`/api/v1/budgets/contracts/${tenantA.contractId}/items`)
+      .send({
+        kind: 'ON_DEMAND_SERVICE',
+        code: 'SERV-CT-001',
+        description: 'Serviço eventual previsto no contrato A',
+        unit: 'UN',
+        quantity: 10,
+        unitCost: 125,
+        includedInTotal: true,
+      })
+      .expect(201);
+
+    const available = await tenantA.agent
+      .get(`/api/v1/budgets/work-orders/${tenantA.workOrderId}/contract-items`)
+      .expect(200);
+    expect(available.body.items.some((item: { id: string }) => item.id === created.body.item.id)).toBe(true);
+
+    await tenantB.agent
+      .get(`/api/v1/budgets/contracts/${tenantA.contractId}`)
+      .expect(404);
+    await tenantB.agent
+      .post(`/api/v1/budgets/contracts/${tenantA.contractId}/items`)
+      .send({
+        kind: 'MATERIAL', code: 'CRUZADO', description: 'Tentativa cruzada',
+        unit: 'UN', quantity: 1, unitCost: 1,
+      })
+      .expect(404);
+    await tenantB.agent
+      .put(`/api/v1/budgets/work-orders/${tenantB.workOrderId}`)
+      .send({
+        bdiPercentage: 0,
+        items: [{ contractBudgetItemId: created.body.item.id, quantity: 1 }],
+      })
+      .expect(400);
   });
 
   it('isola categorias de fornecedor e eventos contratuais e deriva o valor atual', async () => {

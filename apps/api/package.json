@@ -1,6 +1,6 @@
 {
   "name": "@gestaopredios/api",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "private": true,
   "scripts": {
     "build": "nest build",
@@ -22,6 +22,7 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
+    "@e965/xlsx": "0.20.3",
     "@nestjs/cli": "11.0.24",
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.4",
@@ -31,7 +32,7 @@
     "@nestjs/passport": "11.0.5",
     "@nestjs/platform-express": "11.1.28",
     "@nestjs/schematics": "11.1.0",
-    "@nestjs/swagger": "11.4.5",
+    "@nestjs/swagger": "11.4.7",
     "@prisma/adapter-mariadb": "7.9.1",
     "@prisma/client": "7.9.1",
     "@types/compression": "1.8.1",
@@ -56,6 +57,7 @@
     "multer": "2.2.0",
     "passport": "0.7.0",
     "passport-jwt": "4.0.1",
+    "pdf-parse": "2.4.5",
     "pdfkit": "0.17.2",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",

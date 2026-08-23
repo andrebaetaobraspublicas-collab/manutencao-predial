@@ -108,6 +108,7 @@ export class CatalogItemSearchQuery {
 
 export class BudgetItemDto {
   @IsOptional() @IsUUID() catalogItemId?: string;
+  @IsOptional() @IsUUID() contractBudgetItemId?: string;
   @IsOptional() @IsEnum(BudgetItemKind) kind?: BudgetItemKind;
   @IsOptional() @IsString() @Length(1, 40) code?: string;
   @IsOptional() @IsString() @Length(2, 10000) description?: string;

@@ -347,3 +347,23 @@ exige migration nem seed adicional.
   JPG/PNG/WebP fora da pasta pública, com hash SHA-256, autoria e download autorizado por tenant.
 - O arquivamento da edificação preserva contratos, OS, ativos, documentos e vistorias. Planos
   de manutenção ativos são suspensos na mesma transação e a operação gera auditoria.
+
+## 14. Orçamento contratual e dedicação exclusiva v0.18
+
+`Contract.exclusiveLaborDedication` registra se a execução exige dedicação exclusiva de mão de obra.
+O campo é independente do tipo operacional e do regime de execução, pois influencia a composição
+de custos e a gestão dos postos, mas não substitui a classificação jurídica do contrato.
+
+O orçamento global do contrato é separado dos três estágios de orçamento de cada OS:
+
+- `ContractBudget`: cabeçalho único por contrato, versão, status e totais reconciliados;
+- `ContractBudgetImport`: arquivo-fonte privado, hash SHA-256 e relatório da importação;
+- `ContractBudgetSheet`: manifesto de todas as abas, inclusive auxiliares não transformadas em preço;
+- `ContractBudgetItem`: materiais, serviços, itens de apoio e referências SINAPI;
+- `ContractLaborPost`: posto/profissional, quantitativos, jornada e custos mensal/anual;
+- `ContractLaborCostComponent`: módulos e submódulos da formação do preço do posto;
+- `ContractBudgetRevision`: fotografia dos totais e contagens após cada alteração.
+
+`BudgetItem.contractBudgetItemId` registra a origem de um item usado na OS. O serviço valida que a
+planilha pertence a um contrato efetivamente vinculado à OS e copia o preço vigente para a revisão,
+preservando a rastreabilidade mesmo quando o contrato for atualizado depois.

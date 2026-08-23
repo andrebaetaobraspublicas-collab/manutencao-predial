@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayUnique,
+  IsBoolean,
   IsArray,
   IsDateString,
   IsEnum,
@@ -45,6 +46,11 @@ export class CreateContractDto {
   @IsOptional()
   @IsEnum(ContractNature)
   nature?: ContractNature;
+
+  @ApiPropertyOptional({ default: false, description: 'Indica dedicação exclusiva de mão de obra.' })
+  @IsOptional()
+  @IsBoolean()
+  exclusiveLaborDedication?: boolean;
 
   @ApiPropertyOptional({ enum: ContractStatus, default: ContractStatus.ACTIVE })
   @IsOptional()

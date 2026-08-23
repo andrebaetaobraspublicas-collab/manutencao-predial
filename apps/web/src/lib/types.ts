@@ -284,6 +284,7 @@ export type Contract = {
   type: string;
   executionRegime?: string | null;
   nature?: string | null;
+  exclusiveLaborDedication?: boolean;
   status: string;
   startDate: string;
   endDate: string;

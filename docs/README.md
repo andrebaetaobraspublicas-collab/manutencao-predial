@@ -27,6 +27,9 @@ Este diretório é a fonte de verdade funcional e técnica do produto. Atualize 
 21. [Governança operacional](20-v014-governanca-operacional.md)
 22. [Dossiê patrimonial e vistorias](21-v015-dossie-patrimonial.md)
 23. [Carteira contratual fictícia](22-v015-dados-ficticios-contratos.md)
+24. [Anexos de edificações](24-v0161-anexos-edificacoes.md)
+25. [Manual interativo](26-v017-manual-interativo.md)
+26. [Orçamento contratual e importação XLSB](27-v018-orcamento-contratual.md)
 
 As decisões arquiteturais permanentes ficam em [`docs/adr`](adr/).
 

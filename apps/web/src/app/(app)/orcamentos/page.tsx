@@ -76,11 +76,27 @@ type Budget = {
 };
 type Line = {
   catalogItemId?: string;
+  contractBudgetItemId?: string;
   code: string;
   description: string;
   unit: string;
   unitCost: string;
   quantity: string;
+};
+type ContractPriceItem = {
+  id: string;
+  kind: string;
+  code: string;
+  description: string;
+  unit: string;
+  unitCost: string;
+  sectionName?: string | null;
+  budget: { id: string; title?: string | null; contract: { id: string; code: string } };
+};
+type ContractItemsResponse = {
+  contracts: Array<{ isPrimary: boolean; contract: { id: string; code: string; object: string } }>;
+  items: ContractPriceItem[];
+  pagination: { page: number; pageSize: number; total: number; totalPages: number };
 };
 type Filters = {
   search: string;
@@ -140,6 +156,9 @@ export default function BudgetsPage() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [selectedItems, setSelectedItems] = useState<Record<string, CatalogItem>>({});
+  const [contractResults, setContractResults] = useState<ContractItemsResponse | null>(null);
+  const [contractSearch, setContractSearch] = useState('');
+  const [selectedContractItems, setSelectedContractItems] = useState<Record<string, ContractPriceItem>>({});
   const [detail, setDetail] = useState<CatalogItemDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -211,6 +230,17 @@ export default function BudgetsPage() {
     });
     return () => { active = false; };
   }, [form.catalogId, filters]);
+
+  useEffect(() => {
+    let active = true;
+    if (!form.workOrderId) return () => { active = false; };
+    const query = new URLSearchParams({ page: '1', pageSize: '50' });
+    if (contractSearch.trim()) query.set('search', contractSearch.trim());
+    void apiFetch<ContractItemsResponse>(`/budgets/work-orders/${form.workOrderId}/contract-items?${query}`)
+      .then((response) => { if (active) setContractResults(response); })
+      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Falha ao consultar preços do contrato.'); });
+    return () => { active = false; };
+  }, [contractSearch, form.workOrderId]);
 
   const subtotal = useMemo(
     () => form.items.reduce(
@@ -292,6 +322,33 @@ export default function BudgetsPage() {
     setSelectedItems({});
   }
 
+  function toggleContractItem(item: ContractPriceItem) {
+    setSelectedContractItems((current) => {
+      const next = { ...current };
+      if (next[item.id]) delete next[item.id]; else next[item.id] = item;
+      return next;
+    });
+  }
+
+  function addSelectedContractItems() {
+    const selected = Object.values(selectedContractItems);
+    setForm((current) => {
+      const existing = new Set(current.items.map((item) => item.contractBudgetItemId).filter(Boolean));
+      return {
+        ...current,
+        items: [...current.items, ...selected.filter((item) => !existing.has(item.id)).map((item) => ({
+          contractBudgetItemId: item.id,
+          code: item.code,
+          description: item.description,
+          unit: item.unit,
+          unitCost: item.unitCost,
+          quantity: '1',
+        }))],
+      };
+    });
+    setSelectedContractItems({});
+  }
+
   async function showDetail(item: CatalogItem) {
     if (!form.catalogId) return;
     setDetailLoading(true);
@@ -328,6 +385,8 @@ export default function BudgetsPage() {
           bdiPercentage: Number(form.bdiPercentage),
           items: form.items.map((item) => item.catalogItemId
             ? { catalogItemId: item.catalogItemId, quantity: Number(item.quantity) }
+            : item.contractBudgetItemId
+              ? { contractBudgetItemId: item.contractBudgetItemId, quantity: Number(item.quantity) }
             : {
                 code: item.code,
                 description: item.description,
@@ -595,6 +654,30 @@ export default function BudgetsPage() {
         </div>
       </section>
 
+      <section className="card" style={{ marginBottom: 18 }}>
+        <div className="card-header">
+          <div>
+            <h2>Itens da planilha orçamentária do contrato</h2>
+            <p>Use os preços previamente contratados nos orçamentos previsto, aprovado e final executado da OS.</p>
+          </div>
+          <Database size={19} />
+        </div>
+        <div className="card-body">
+          {!contractResults?.contracts.length ? <EmptyState icon={Database}
+            title="A OS não possui contrato com planilha de preços"
+            description="Vincule a OS a um contrato e cadastre sua planilha orçamentária no dossiê contratual." /> : <>
+            <div className={styles.contractPriceHeader}>
+              <div><strong>{contractResults.contracts.map((entry) => entry.contract.code).join(', ')}</strong><span>{contractResults.pagination.total.toLocaleString('pt-BR')} preço(s) disponível(is)</span></div>
+              <div className="actions"><input className="input" placeholder="Pesquisar na planilha do contrato" value={contractSearch} onChange={(event) => setContractSearch(event.target.value)} /><button className="btn btn-primary" type="button" disabled={!Object.keys(selectedContractItems).length} onClick={addSelectedContractItems}><CheckSquare size={15} />Adicionar selecionados</button></div>
+            </div>
+            <div className="table-wrapper"><table className="data-table"><thead><tr><th className={styles.checkColumn} /><th>Código</th><th>Descrição</th><th>Grupo</th><th>Unid.</th><th>Preço contratado</th></tr></thead><tbody>
+              {contractResults.items.map((item) => <tr key={item.id} className={selectedContractItems[item.id] ? styles.selectedRow : undefined}><td><input type="checkbox" checked={Boolean(selectedContractItems[item.id])} onChange={() => toggleContractItem(item)} aria-label={`Selecionar ${item.code}`} /></td><td><span className="table-primary">{item.code}</span><span className="table-secondary">{item.budget.contract.code}</span></td><td>{item.description}</td><td>{item.sectionName || '—'}</td><td>{item.unit}</td><td className={styles.money}>{BRL.format(Number(item.unitCost))}</td></tr>)}
+              {!contractResults.items.length ? <tr><td colSpan={6} className={styles.noResults}>Nenhum preço do contrato corresponde à pesquisa.</td></tr> : null}
+            </tbody></table></div>
+          </>}
+        </div>
+      </section>
+
       <form className="card form-card" style={{ marginBottom: 18 }} onSubmit={save}>
         <div className="card-header">
           <div>
@@ -610,15 +693,15 @@ export default function BudgetsPage() {
                 <thead><tr><th>Código</th><th>Descrição</th><th>Un.</th><th>Custo unitário</th><th>Quantidade</th><th>Total</th><th /></tr></thead>
                 <tbody>
                   {form.items.map((item, index) => (
-                    <tr key={`${item.catalogItemId || 'free'}-${index}`}>
-                      <td><input className="input" disabled={Boolean(item.catalogItemId)} required value={item.code}
+                    <tr key={`${item.catalogItemId || item.contractBudgetItemId || 'free'}-${index}`}>
+                      <td><input className="input" disabled={Boolean(item.catalogItemId || item.contractBudgetItemId)} required value={item.code}
                         onChange={(event) => patchLine(index, { code: event.target.value })} /></td>
-                      <td><input className="input" disabled={Boolean(item.catalogItemId)} required value={item.description}
+                      <td><input className="input" disabled={Boolean(item.catalogItemId || item.contractBudgetItemId)} required value={item.description}
                         onChange={(event) => patchLine(index, { description: event.target.value })} /></td>
-                      <td><input className="input" disabled={Boolean(item.catalogItemId)} required value={item.unit}
+                      <td><input className="input" disabled={Boolean(item.catalogItemId || item.contractBudgetItemId)} required value={item.unit}
                         onChange={(event) => patchLine(index, { unit: event.target.value })} /></td>
                       <td><input className="input" type="number" min="0" step="0.000001"
-                        disabled={Boolean(item.catalogItemId)} value={item.unitCost}
+                        disabled={Boolean(item.catalogItemId || item.contractBudgetItemId)} value={item.unitCost}
                         onChange={(event) => patchLine(index, { unitCost: event.target.value })} /></td>
                       <td><input className="input" type="number" min="0.000001" step="0.000001" value={item.quantity}
                         onChange={(event) => patchLine(index, { quantity: event.target.value })} /></td>

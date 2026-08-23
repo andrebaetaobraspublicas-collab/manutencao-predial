@@ -463,6 +463,16 @@ describe('isolamento multiempresa', () => {
       description: 'Ciclo operacional e financeiro completo para homologação.',
       supplierId: tenantA.supplierId, contractIds: [tenantA.contractId],
     }).expect(201);
+    const approvedBudget = await tenantA.agent
+      .put(`/api/v1/budgets/work-orders/${workOrder.body.id}?stage=APPROVED`)
+      .send({ bdiPercentage: 0, items: [{ kind: 'SERVICE', code: 'E2E-APROVADO-001',
+        description: 'Serviço aprovado para execução na homologação', unit: 'UN', quantity: 1, unitCost: 100 }] })
+      .expect(200);
+    const approvedSubmitted = await tenantA.agent
+      .post(`/api/v1/budgets/${approvedBudget.body.id}/transitions`)
+      .send({ status: 'SUBMITTED', version: approvedBudget.body.version }).expect(201);
+    await tenantA.agent.post(`/api/v1/budgets/${approvedBudget.body.id}/transitions`)
+      .send({ status: 'APPROVED', version: approvedSubmitted.body.version }).expect(201);
     await tenantA.agent.post(`/api/v1/work-orders/${workOrder.body.id}/transitions`)
       .send({ toStatus: 'IN_PROGRESS' }).expect(201);
     const budget = await tenantA.agent

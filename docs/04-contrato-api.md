@@ -437,6 +437,23 @@ Mudanças aditivas permanecem em `/api/v1`. Alterações incompatíveis exigem:
 - migração do frontend e consumidores;
 - teste de contrato.
 
+## 9.1 Orçamento contratual v0.18
+
+| Método | Endpoint | Uso |
+|---|---|---|
+| GET | `/budgets/contracts/:contractId` | resumo, postos, importações, manifesto de abas e revisões |
+| PATCH | `/budgets/contracts/:contractId` | título, competência, observações e status |
+| POST | `/budgets/contracts/:contractId/import` | importa XLSX, XLSB ou PDF textual (multipart) |
+| GET | `/budgets/contracts/:contractId/items` | pesquisa paginada dos preços do contrato |
+| POST/PATCH/DELETE | `/budgets/contracts/:contractId/items[/:itemId]` | manutenção dos materiais e serviços |
+| POST/PATCH/DELETE | `/budgets/contracts/:contractId/labor-posts[/:postId]` | manutenção dos postos e formação de preço |
+| GET | `/budgets/contracts/:contractId/imports/:importId/download` | baixa o arquivo-fonte privado com auditoria |
+| GET | `/budgets/work-orders/:workOrderId/contract-items` | preços dos contratos vinculados disponíveis para a OS |
+
+O importador limita o arquivo a 80 MB, valida assinatura e extensão, normaliza os dados em lotes e
+mantém o original fora da área pública. Arquivos PDF dependem de camada textual e produzem aviso de
+conferência. O tenant é obrigatório em toda leitura e escrita.
+
 ## 10. Endpoints necessários para completar o MVP
 
 - transferência formal de propriedade da organização;

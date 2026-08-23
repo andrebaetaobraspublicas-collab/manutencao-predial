@@ -17,6 +17,7 @@ const EMPTY = {
   type: 'INTEGRATED_MAINTENANCE',
   executionRegime: 'GLOBAL_PRICE',
   nature: 'CONTINUOUS',
+  exclusiveLaborDedication: false,
   status: 'ACTIVE',
   startDate: '',
   endDate: '',
@@ -129,6 +130,7 @@ export default function ContractsPage() {
       type: item.type,
       executionRegime: item.executionRegime ?? 'GLOBAL_PRICE',
       nature: item.nature ?? 'CONTINUOUS',
+      exclusiveLaborDedication: item.exclusiveLaborDedication ?? false,
       status: item.status,
       startDate: item.startDate.slice(0, 10),
       endDate: item.endDate.slice(0, 10),
@@ -191,8 +193,9 @@ export default function ContractsPage() {
           <Field c="col-4" label="Processo licitatório/contratação de origem"><input className="input" value={form.administrativeProcess} onChange={(e) => setForm({ ...form, administrativeProcess: e.target.value })} /></Field>
           <Field c="col-12" label="Objeto *"><textarea className="textarea" required value={form.object} onChange={(e) => setForm({ ...form, object: e.target.value })} /></Field>
           <Field c="col-3" label="Tipo operacional *"><select className="select" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}><option value="PREVENTIVE_MAINTENANCE">Manutenção preventiva</option><option value="CORRECTIVE_MAINTENANCE">Manutenção corretiva</option><option value="INTEGRATED_MAINTENANCE">Manutenção integrada</option><option value="OUTSOURCED_LABOR">Mão de obra terceirizada</option><option value="SUPPLY">Fornecimento</option><option value="OTHER">Outro</option></select></Field>
-          <Field c="col-4" label="Regime de execução contratual *"><select className="select" value={form.executionRegime} onChange={(e) => setForm({ ...form, executionRegime: e.target.value })}><option value="UNIT_PRICE">Empreitada por preço unitário</option><option value="GLOBAL_PRICE">Empreitada por preço global</option><option value="TASK">Tarefa</option><option value="INTEGRAL">Empreitada integral</option><option value="INTEGRATED">Contratação integrada</option><option value="SEMI_INTEGRATED">Contratação semi-integrada</option><option value="SUPPLY_AND_ASSOCIATED_SERVICE">Fornecimento e prestação de serviço associado</option></select></Field>
-          <Field c="col-3" label="Tipo de contrato *"><select className="select" value={form.nature} onChange={(e) => setForm({ ...form, nature: e.target.value })}><option value="CONTINUOUS">Contrato continuado</option><option value="SCOPE">Contrato de escopo</option></select></Field>
+          <Field c="col-3" label="Regime de execução contratual *"><select className="select" value={form.executionRegime} onChange={(e) => setForm({ ...form, executionRegime: e.target.value })}><option value="UNIT_PRICE">Empreitada por preço unitário</option><option value="GLOBAL_PRICE">Empreitada por preço global</option><option value="TASK">Tarefa</option><option value="INTEGRAL">Empreitada integral</option><option value="INTEGRATED">Contratação integrada</option><option value="SEMI_INTEGRATED">Contratação semi-integrada</option><option value="SUPPLY_AND_ASSOCIATED_SERVICE">Fornecimento e prestação de serviço associado</option></select></Field>
+          <Field c="col-2" label="Tipo de contrato *"><select className="select" value={form.nature} onChange={(e) => setForm({ ...form, nature: e.target.value })}><option value="CONTINUOUS">Contrato continuado</option><option value="SCOPE">Contrato de escopo</option></select></Field>
+          <Field c="col-2" label="Dedicação exclusiva de mão de obra *"><select className="select" value={form.exclusiveLaborDedication ? 'true' : 'false'} onChange={(e) => setForm({ ...form, exclusiveLaborDedication: e.target.value === 'true' })}><option value="false">Não</option><option value="true">Sim</option></select></Field>
           <Field c="col-2" label="Status"><select className="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}><option value="DRAFT">Rascunho</option><option value="ACTIVE">Ativo</option><option value="SUSPENDED">Suspenso</option><option value="EXPIRING">A vencer</option><option value="EXPIRED">Vencido</option><option value="CLOSED">Encerrado</option></select></Field>
           <Field c="col-3" label="Início da vigência *"><input className="input" required type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></Field>
           <Field c="col-3" label="Fim da vigência *"><input className="input" required type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></Field>

@@ -298,6 +298,11 @@ export async function provisionContractTestData(prisma: PrismaClient, input: {
     });
   }
 
+  await prisma.contract.updateMany({
+    where: { tenantId, code: 'CT-2026/001', deletedAt: null },
+    data: { exclusiveLaborDedication: true },
+  });
+
   const contracts = await prisma.contract.findMany({
     where: { tenantId, code: { in: Object.keys(COMMITMENT_BY_CONTRACT) }, deletedAt: null },
     include: { buildings: true },

@@ -315,6 +315,29 @@ enum BudgetItemKind {
   OTHER
 }
 
+enum ContractBudgetStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum ContractBudgetItemKind {
+  SUPPORT_SERVICE
+  LABOR_POST
+  MATERIAL
+  ON_DEMAND_SERVICE
+  SINAPI_INPUT
+  SINAPI_COMPOSITION
+  OTHER
+}
+
+enum ContractBudgetSourceFormat {
+  XLSX
+  XLSB
+  PDF
+  MANUAL
+}
+
 enum SinapiItemType {
   INPUT
   COMPOSITION
@@ -566,6 +589,13 @@ model Tenant {
   workOrderBudgets           WorkOrderBudget[]
   budgetItems                BudgetItem[]
   budgetRevisions            BudgetRevision[]
+  contractBudgets            ContractBudget[]
+  contractBudgetImports      ContractBudgetImport[]
+  contractBudgetSheets       ContractBudgetSheet[]
+  contractBudgetItems        ContractBudgetItem[]
+  contractLaborPosts         ContractLaborPost[]
+  contractLaborComponents    ContractLaborCostComponent[]
+  contractBudgetRevisions    ContractBudgetRevision[]
   sinapiCatalogs             SinapiCatalog[]
   sinapiCatalogItems         SinapiCatalogItem[]
   measurements               Measurement[]
@@ -648,6 +678,9 @@ model User {
   submittedBudgets              WorkOrderBudget[]              @relation("BudgetSubmitter")
   approvedBudgets               WorkOrderBudget[]              @relation("BudgetApprover")
   budgetRevisions               BudgetRevision[]               @relation("BudgetRevisionCreator")
+  createdContractBudgets        ContractBudget[]               @relation("ContractBudgetCreator")
+  importedContractBudgets       ContractBudgetImport[]         @relation("ContractBudgetImporter")
+  contractBudgetRevisions       ContractBudgetRevision[]       @relation("ContractBudgetRevisionCreator")
   importedSinapiCatalogs        SinapiCatalog[]                @relation("SinapiImporter")
   assignedMaintenancePlans      MaintenancePlan[]              @relation("MaintenancePlanAssignee")
   registeredPenalties           ContractPenalty[]              @relation("PenaltyRegistrar")
@@ -918,57 +951,59 @@ model SupplierConsortiumMember {
 }
 
 model Contract {
-  id                    String                         @id @default(uuid()) @db.Char(36)
-  tenantId              String                         @db.Char(36)
-  supplierId            String                         @db.Char(36)
-  code                  String                         @db.VarChar(80)
-  administrativeProcess String?                        @db.VarChar(120)
-  object                String                         @db.Text
-  type                  ContractType
-  executionRegime       ContractExecutionRegime?       @default(GLOBAL_PRICE)
-  nature                ContractNature?                @default(CONTINUOUS)
-  status                ContractStatus                 @default(DRAFT)
-  managerUserId         String?                        @db.Char(36)
-  inspectorUserId       String?                        @db.Char(36)
-  startDate             DateTime
-  endDate               DateTime
-  signatureDate         DateTime?
-  originalValue         Decimal                        @db.Decimal(16, 2)
-  currentValue          Decimal                        @db.Decimal(16, 2)
-  measuredValue         Decimal                        @default(0) @db.Decimal(16, 2)
-  paidValue             Decimal                        @default(0) @db.Decimal(16, 2)
-  adjustmentBaseDate    DateTime?
-  adjustmentIndex       String?                        @db.VarChar(80)
-  notes                 String?                        @db.Text
-  createdAt             DateTime                       @default(now())
-  updatedAt             DateTime                       @updatedAt
-  deletedAt             DateTime?
-  tenant                Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  supplier              Supplier                       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  manager               User?                          @relation("ContractManager", fields: [managerUserId], references: [id], onDelete: SetNull)
-  inspector             User?                          @relation("ContractInspector", fields: [inspectorUserId], references: [id], onDelete: SetNull)
-  buildings             ContractBuilding[]
-  workOrders            WorkOrderContract[]
-  amendments            ContractAmendment[]
-  adjustments           ContractAdjustment[]
-  subcontractors        ContractSubcontract[]
-  penalties             ContractPenalty[]
-  inspectionTeam        ContractInspectionTeamMember[]
-  guarantees            ContractGuarantee[]
-  apostilles            ContractApostille[]
-  receipts              ContractReceipt[]
-  constructionDiaries   ConstructionDiary[]
-  communications        ContractCommunicationClaim[]
-  dossierAttachments    ContractDossierAttachment[]
-  commitments           Commitment[]
-  measurements          Measurement[]
-  maintenancePlans      MaintenancePlan[]
-  kpiMeasurements       KpiMeasurement[]
-  kpiConfigurations     ContractKpi[]
-  kpiDataPoints         KpiDataPoint[]
-  kpiAdjustments        KpiFinancialAdjustment[]
-  kpiAlerts             KpiAlert[]
-  slaPolicies           SlaPolicy[]
+  id                       String                         @id @default(uuid()) @db.Char(36)
+  tenantId                 String                         @db.Char(36)
+  supplierId               String                         @db.Char(36)
+  code                     String                         @db.VarChar(80)
+  administrativeProcess    String?                        @db.VarChar(120)
+  object                   String                         @db.Text
+  type                     ContractType
+  executionRegime          ContractExecutionRegime?       @default(GLOBAL_PRICE)
+  nature                   ContractNature?                @default(CONTINUOUS)
+  exclusiveLaborDedication Boolean                        @default(false)
+  status                   ContractStatus                 @default(DRAFT)
+  managerUserId            String?                        @db.Char(36)
+  inspectorUserId          String?                        @db.Char(36)
+  startDate                DateTime
+  endDate                  DateTime
+  signatureDate            DateTime?
+  originalValue            Decimal                        @db.Decimal(16, 2)
+  currentValue             Decimal                        @db.Decimal(16, 2)
+  measuredValue            Decimal                        @default(0) @db.Decimal(16, 2)
+  paidValue                Decimal                        @default(0) @db.Decimal(16, 2)
+  adjustmentBaseDate       DateTime?
+  adjustmentIndex          String?                        @db.VarChar(80)
+  notes                    String?                        @db.Text
+  createdAt                DateTime                       @default(now())
+  updatedAt                DateTime                       @updatedAt
+  deletedAt                DateTime?
+  tenant                   Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  supplier                 Supplier                       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  manager                  User?                          @relation("ContractManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  inspector                User?                          @relation("ContractInspector", fields: [inspectorUserId], references: [id], onDelete: SetNull)
+  buildings                ContractBuilding[]
+  workOrders               WorkOrderContract[]
+  amendments               ContractAmendment[]
+  adjustments              ContractAdjustment[]
+  subcontractors           ContractSubcontract[]
+  penalties                ContractPenalty[]
+  inspectionTeam           ContractInspectionTeamMember[]
+  guarantees               ContractGuarantee[]
+  apostilles               ContractApostille[]
+  receipts                 ContractReceipt[]
+  constructionDiaries      ConstructionDiary[]
+  communications           ContractCommunicationClaim[]
+  dossierAttachments       ContractDossierAttachment[]
+  commitments              Commitment[]
+  measurements             Measurement[]
+  maintenancePlans         MaintenancePlan[]
+  kpiMeasurements          KpiMeasurement[]
+  kpiConfigurations        ContractKpi[]
+  kpiDataPoints            KpiDataPoint[]
+  kpiAdjustments           KpiFinancialAdjustment[]
+  kpiAlerts                KpiAlert[]
+  slaPolicies              SlaPolicy[]
+  budget                   ContractBudget?
 
   @@unique([tenantId, code])
   @@index([tenantId, status, endDate, deletedAt])
@@ -985,6 +1020,200 @@ model ContractBuilding {
 
   @@unique([contractId, buildingId])
   @@index([buildingId])
+}
+
+model ContractBudget {
+  id              String                   @id @default(uuid()) @db.Char(36)
+  tenantId        String                   @db.Char(36)
+  contractId      String                   @unique @db.Char(36)
+  createdByUserId String?                  @db.Char(36)
+  status          ContractBudgetStatus     @default(DRAFT)
+  version         Int                      @default(1)
+  title           String?                  @db.VarChar(180)
+  referenceMonth  String?                  @db.VarChar(7)
+  subtotal        Decimal                  @default(0) @db.Decimal(18, 2)
+  bdiAmount       Decimal                  @default(0) @db.Decimal(18, 2)
+  total           Decimal                  @default(0) @db.Decimal(18, 2)
+  sourceTotal     Decimal?                 @db.Decimal(18, 2)
+  notes           String?                  @db.Text
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  deletedAt       DateTime?
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  contract        Contract                 @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  createdBy       User?                    @relation("ContractBudgetCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  imports         ContractBudgetImport[]
+  items           ContractBudgetItem[]
+  laborPosts      ContractLaborPost[]
+  revisions       ContractBudgetRevision[]
+
+  @@index([tenantId, status, deletedAt])
+}
+
+model ContractBudgetImport {
+  id                String                     @id @default(uuid()) @db.Char(36)
+  tenantId          String                     @db.Char(36)
+  budgetId          String                     @db.Char(36)
+  importedByUserId  String?                    @db.Char(36)
+  format            ContractBudgetSourceFormat
+  originalName      String                     @db.VarChar(255)
+  storageKey        String                     @unique @db.VarChar(500)
+  fileName          String                     @db.VarChar(255)
+  mimeType          String                     @db.VarChar(120)
+  sizeBytes         BigInt
+  sha256            String                     @db.Char(64)
+  sheetCount        Int                        @default(0)
+  importedItemCount Int                        @default(0)
+  laborPostCount    Int                        @default(0)
+  ignoredSheetCount Int                        @default(0)
+  report            Json?
+  createdAt         DateTime                   @default(now())
+  tenant            Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  budget            ContractBudget             @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  importedBy        User?                      @relation("ContractBudgetImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  sheets            ContractBudgetSheet[]
+  items             ContractBudgetItem[]
+  laborPosts        ContractLaborPost[]
+
+  @@index([tenantId, budgetId, createdAt])
+  @@index([tenantId, sha256])
+}
+
+model ContractBudgetSheet {
+  id           String               @id @default(uuid()) @db.Char(36)
+  tenantId     String               @db.Char(36)
+  importId     String               @db.Char(36)
+  name         String               @db.VarChar(160)
+  orderIndex   Int
+  rowCount     Int                  @default(0)
+  columnCount  Int                  @default(0)
+  role         String               @default("AUXILIARY") @db.VarChar(40)
+  importedRows Int                  @default(0)
+  ignoredRows  Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  import       ContractBudgetImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@unique([importId, name])
+  @@index([tenantId, role])
+}
+
+model ContractBudgetItem {
+  id                 String                 @id @default(uuid()) @db.Char(36)
+  tenantId           String                 @db.Char(36)
+  budgetId           String                 @db.Char(36)
+  importId           String?                @db.Char(36)
+  catalogItemId      String?                @db.Char(36)
+  kind               ContractBudgetItemKind @default(OTHER)
+  source             String                 @default("USER") @db.VarChar(40)
+  sectionCode        String?                @db.VarChar(40)
+  sectionName        String?                @db.VarChar(180)
+  code               String                 @db.VarChar(80)
+  description        String                 @db.Text
+  technicalReference String?                @db.VarChar(255)
+  unit               String                 @db.VarChar(30)
+  quantity           Decimal                @default(1) @db.Decimal(18, 6)
+  laborUnitCost      Decimal                @default(0) @db.Decimal(18, 6)
+  materialUnitCost   Decimal                @default(0) @db.Decimal(18, 6)
+  unitCost           Decimal                @default(0) @db.Decimal(18, 6)
+  bdiPercentage      Decimal                @default(0) @db.Decimal(9, 6)
+  totalCost          Decimal                @default(0) @db.Decimal(18, 2)
+  includedInTotal    Boolean                @default(true)
+  sourceSheet        String?                @db.VarChar(160)
+  sourceRow          Int?
+  sourceData         Json?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  deletedAt          DateTime?
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  budget             ContractBudget         @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  import             ContractBudgetImport?  @relation(fields: [importId], references: [id], onDelete: SetNull)
+  catalogItem        SinapiCatalogItem?     @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  workOrderItems     BudgetItem[]
+
+  @@index([tenantId, budgetId, kind, deletedAt])
+  @@index([tenantId, code])
+  @@index([tenantId, catalogItemId])
+  @@index([importId, sourceSheet, sourceRow])
+}
+
+model ContractLaborPost {
+  id                   String                       @id @default(uuid()) @db.Char(36)
+  tenantId             String                       @db.Char(36)
+  budgetId             String                       @db.Char(36)
+  importId             String?                      @db.Char(36)
+  code                 String                       @db.VarChar(80)
+  title                String                       @db.VarChar(255)
+  unit                 String                       @default("POSTO") @db.VarChar(30)
+  postQuantity         Decimal                      @default(1) @db.Decimal(12, 4)
+  employeesPerPost     Decimal                      @default(1) @db.Decimal(12, 4)
+  professionalQuantity Decimal                      @default(1) @db.Decimal(12, 4)
+  months               Decimal                      @default(12) @db.Decimal(12, 4)
+  cbo                  String?                      @db.VarChar(40)
+  collectiveAgreement  String?                      @db.VarChar(180)
+  mteRegistration      String?                      @db.VarChar(80)
+  categoryBaseDate     String?                      @db.VarChar(60)
+  shift                String?                      @db.VarChar(80)
+  baseSalary           Decimal                      @default(0) @db.Decimal(18, 2)
+  monthlyCostBeforeBdi Decimal                      @default(0) @db.Decimal(18, 2)
+  bdiAmount            Decimal                      @default(0) @db.Decimal(18, 2)
+  monthlyCost          Decimal                      @default(0) @db.Decimal(18, 2)
+  annualCost           Decimal                      @default(0) @db.Decimal(18, 2)
+  includedInTotal      Boolean                      @default(true)
+  sourceSheet          String?                      @db.VarChar(160)
+  sourceData           Json?
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  deletedAt            DateTime?
+  tenant               Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  budget               ContractBudget               @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  import               ContractBudgetImport?        @relation(fields: [importId], references: [id], onDelete: SetNull)
+  components           ContractLaborCostComponent[]
+
+  @@index([tenantId, budgetId, deletedAt])
+  @@index([importId, sourceSheet])
+}
+
+model ContractLaborCostComponent {
+  id          String            @id @default(uuid()) @db.Char(36)
+  tenantId    String            @db.Char(36)
+  laborPostId String            @db.Char(36)
+  module      String?           @db.VarChar(120)
+  submodule   String?           @db.VarChar(120)
+  code        String?           @db.VarChar(40)
+  description String            @db.Text
+  percentage  Decimal?          @db.Decimal(12, 8)
+  amount      Decimal           @default(0) @db.Decimal(18, 2)
+  basis       String?           @db.VarChar(255)
+  sourceRow   Int?
+  sortOrder   Int               @default(0)
+  sourceData  Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  laborPost   ContractLaborPost @relation(fields: [laborPostId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, laborPostId, sortOrder])
+}
+
+model ContractBudgetRevision {
+  id              String         @id @default(uuid()) @db.Char(36)
+  tenantId        String         @db.Char(36)
+  budgetId        String         @db.Char(36)
+  createdByUserId String?        @db.Char(36)
+  version         Int
+  subtotal        Decimal        @db.Decimal(18, 2)
+  bdiAmount       Decimal        @db.Decimal(18, 2)
+  total           Decimal        @db.Decimal(18, 2)
+  reason          String?        @db.Text
+  snapshot        Json
+  createdAt       DateTime       @default(now())
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  budget          ContractBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  createdBy       User?          @relation("ContractBudgetRevisionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([budgetId, version])
+  @@index([tenantId, createdAt])
 }
 
 model ContractAmendment {
@@ -1613,28 +1842,31 @@ model WorkOrderBudget {
 }
 
 model BudgetItem {
-  id            String             @id @default(uuid()) @db.Char(36)
-  tenantId      String             @db.Char(36)
-  budgetId      String             @db.Char(36)
-  catalogItemId String?            @db.Char(36)
-  kind          BudgetItemKind     @default(SERVICE)
-  source        String             @default("SINAPI") @db.VarChar(30)
-  code          String             @db.VarChar(40)
-  description   String             @db.Text
-  unit          String             @db.VarChar(20)
-  quantity      Decimal            @db.Decimal(18, 6)
-  unitCost      Decimal            @db.Decimal(16, 6)
-  totalCost     Decimal            @db.Decimal(16, 2)
-  sourceData    Json?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  budget        WorkOrderBudget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  catalogItem   SinapiCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  id                   String              @id @default(uuid()) @db.Char(36)
+  tenantId             String              @db.Char(36)
+  budgetId             String              @db.Char(36)
+  catalogItemId        String?             @db.Char(36)
+  contractBudgetItemId String?             @db.Char(36)
+  kind                 BudgetItemKind      @default(SERVICE)
+  source               String              @default("SINAPI") @db.VarChar(30)
+  code                 String              @db.VarChar(40)
+  description          String              @db.Text
+  unit                 String              @db.VarChar(20)
+  quantity             Decimal             @db.Decimal(18, 6)
+  unitCost             Decimal             @db.Decimal(16, 6)
+  totalCost            Decimal             @db.Decimal(16, 2)
+  sourceData           Json?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  budget               WorkOrderBudget     @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  catalogItem          SinapiCatalogItem?  @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  contractBudgetItem   ContractBudgetItem? @relation(fields: [contractBudgetItemId], references: [id], onDelete: SetNull)
 
   @@index([budgetId])
   @@index([source, code])
   @@index([tenantId, catalogItemId])
+  @@index([tenantId, contractBudgetItemId])
 }
 
 model BudgetRevision {
@@ -1682,19 +1914,20 @@ model SinapiCatalog {
 }
 
 model SinapiCatalogItem {
-  id              String         @id @default(uuid()) @db.Char(36)
-  tenantId        String         @db.Char(36)
-  catalogId       String         @db.Char(36)
-  type            SinapiItemType
-  code            String         @db.VarChar(40)
-  description     String         @db.Text
-  unit            String         @db.VarChar(20)
-  unitCost        Decimal        @db.Decimal(16, 6)
-  compositionData Json?
-  createdAt       DateTime       @default(now())
-  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  catalog         SinapiCatalog  @relation(fields: [catalogId], references: [id], onDelete: Cascade)
-  budgetItems     BudgetItem[]
+  id                  String               @id @default(uuid()) @db.Char(36)
+  tenantId            String               @db.Char(36)
+  catalogId           String               @db.Char(36)
+  type                SinapiItemType
+  code                String               @db.VarChar(40)
+  description         String               @db.Text
+  unit                String               @db.VarChar(20)
+  unitCost            Decimal              @db.Decimal(16, 6)
+  compositionData     Json?
+  createdAt           DateTime             @default(now())
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  catalog             SinapiCatalog        @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  budgetItems         BudgetItem[]
+  contractBudgetItems ContractBudgetItem[]
 
   @@unique([catalogId, type, code])
   @@index([tenantId, type, code])

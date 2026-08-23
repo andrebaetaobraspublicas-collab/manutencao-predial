@@ -81,4 +81,30 @@ describe('BudgetsService catalog search', () => {
       pageSize: 25,
     })).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('usa consulta textual parametrizada no MySQL sem perder paginação ou tenant', async () => {
+    const prisma = {
+      sinapiCatalog: {
+        findFirst: jest.fn().mockResolvedValue(catalog),
+        findMany: jest.fn().mockResolvedValue([{ id: 'catalog-1' }]),
+      },
+      sinapiCatalogItem: {
+        findMany: jest.fn()
+          .mockResolvedValueOnce([item])
+          .mockResolvedValueOnce([{ unit: 'M2' }]),
+      },
+      $queryRaw: jest.fn()
+        .mockResolvedValueOnce([{ id: 'item-1' }])
+        .mockResolvedValueOnce([{ total: 1n }]),
+    } as unknown as PrismaService;
+    const service = new BudgetsService(prisma);
+
+    const result = await service.searchCatalogItems('tenant-1', 'catalog-1', {
+      search: 'concretagem', page: 1, pageSize: 25,
+    });
+
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(result.items).toEqual([item]);
+    expect(result.pagination.total).toBe(1);
+  });
 });

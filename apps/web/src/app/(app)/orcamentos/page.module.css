@@ -110,6 +110,28 @@
   line-height: 1.5;
 }
 
+.contractPriceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.contractPriceHeader > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.contractPriceHeader span {
+  color: var(--text-soft);
+  font-size: 0.76rem;
+}
+
+.contractPriceHeader input {
+  min-width: 300px;
+}
+
 .modalBackdrop {
   position: fixed;
   inset: 0;
@@ -197,6 +219,7 @@
 
   .filterActions,
   .catalogSummary,
+  .contractPriceHeader,
   .budgetFooter,
   .totals,
   .pagination {
@@ -205,6 +228,7 @@
   }
 
   .catalogSummary,
+  .contractPriceHeader,
   .budgetFooter,
   .pagination {
     display: flex;

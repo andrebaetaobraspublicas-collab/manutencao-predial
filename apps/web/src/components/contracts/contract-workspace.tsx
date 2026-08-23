@@ -5,6 +5,7 @@ import { FormEvent, useState } from 'react';
 import { apiFetch, apiFileUrl } from '@/lib/api';
 import { BRL, formatDate } from '@/lib/format';
 import type { Contract, InspectorProfile, Supplier } from '@/lib/types';
+import { ContractBudgetWorkspace } from './contract-budget-workspace';
 
 type Row = Record<string, unknown>;
 type Column = { key: string; label: string; value?: (row: Row) => React.ReactNode };
@@ -18,6 +19,7 @@ const OLD_EMPTY = {
 
 const TABS = [
   ['summary', 'Resumo'],
+  ['budget', 'Planilha orçamentária'],
   ['amendments', 'Prazo e aditivos'],
   ['subcontracts', 'Subcontratações'],
   ['penalties', 'Sanções'],
@@ -209,6 +211,7 @@ export function ContractWorkspace({
       {editingRow ? <div className="contract-edit-notice"><span>Editando o registro selecionado. Revise os campos e salve as alterações.</span><button type="button" className="btn btn-ghost" onClick={cancelEditing}><X size={15} /> Cancelar edição</button></div> : null}
 
       {tab === 'summary' ? <Summary contract={contract} /> : null}
+      {tab === 'budget' ? <ContractBudgetWorkspace contractId={contract.id} onError={onError} /> : null}
 
       {tab === 'amendments' ? <>
         <EventTable rows={contract.amendments ?? []} columns={[
@@ -483,6 +486,7 @@ function Summary({ contract }: { contract: Contract }) {
       <Metric label="Fim da vigência" value={formatDate(contract.endDate)} />
       <MetricField label="Regime de execução" value={enumLabel(contract.executionRegime)} />
       <MetricField label="Tipo de contrato" value={enumLabel(contract.nature)} />
+      <MetricField label="Dedicação exclusiva de mão de obra" value={contract.exclusiveLaborDedication ? 'Sim' : 'Não'} />
       <MetricField label="Equipe de fiscalização" value={`${contract.inspectionTeam?.length ?? 0} designação(ões)`} />
       <MetricField label="Garantias" value={`${contract.guarantees?.length ?? 0} registro(s)`} />
     </div>

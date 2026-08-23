@@ -1,6 +1,8 @@
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -11,6 +13,7 @@ type TestAgent = ReturnType<typeof request.agent>;
 
 type TenantFixture = {
   agent: TestAgent;
+  tenantSlug: string;
   buildingId: string;
   supplierId: string;
   contractId: string;
@@ -42,6 +45,8 @@ describe('isolamento multiempresa', () => {
     const { AppModule } = await import('../src/app.module');
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
+    app.use(helmet());
+    app.use(compression());
     app.use(cookieParser());
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(
@@ -61,6 +66,26 @@ describe('isolamento multiempresa', () => {
   afterAll(async () => {
     await app?.close();
     if (uploadRoot) await rm(uploadRoot, { force: true, recursive: true });
+  });
+
+  it('expõe saúde, aplica cabeçalhos de segurança e rejeita entradas inválidas', async () => {
+    const health = await request(app.getHttpServer()).get('/api/v1/health/ready').expect(200);
+    expect(health.body.readiness).toBe('ready');
+    expect(health.headers['x-content-type-options']).toBe('nosniff');
+    expect(health.headers['content-security-policy']).toContain("default-src 'self'");
+
+    await request(app.getHttpServer()).get('/api/v1/contracts').expect(401);
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'inexistente@example.test', password: 'senha-incorreta' })
+      .expect(401);
+    await tenantA.agent
+      .post('/api/v1/buildings')
+      .send({
+        code: 'INVALIDO', name: 'Entrada inválida', addressLine1: 'Rua A', city: 'Brasília',
+        state: 'DF', postalCode: '70000-000', campoNaoPermitido: 'não deve passar',
+      })
+      .expect(400);
   });
 
   it('não lista nem consulta recursos de outra organização', async () => {
@@ -121,6 +146,33 @@ describe('isolamento multiempresa', () => {
     await tenantA.agent
       .post(`/api/v1/members/${tenantB.membershipId}/revoke-sessions`)
       .expect(404);
+  });
+
+  it('permite ao administrador criar, suspender, reativar e trocar a senha de usuários', async () => {
+    const unique = randomUUID();
+    const email = `operador-${unique}@example.test`;
+    const initialPassword = `Inicial-${unique}-Aa1!`;
+    const newPassword = `Alterada-${unique}-Bb2!`;
+    const created = await tenantA.agent.post('/api/v1/members').send({
+      name: 'Operador E2E', email, password: initialPassword, role: 'OPERATOR',
+    }).expect(201);
+    const memberAgent = request.agent(app.getHttpServer());
+    await memberAgent.post('/api/v1/auth/login').send({
+      tenantSlug: tenantA.tenantSlug, email, password: initialPassword,
+    }).expect(200);
+    await memberAgent.get('/api/v1/members/directory').expect(200);
+
+    await tenantA.agent.patch(`/api/v1/members/${created.body.id}`).send({ status: 'SUSPENDED' }).expect(200);
+    await memberAgent.get('/api/v1/members/directory').expect(401);
+    await tenantA.agent.patch(`/api/v1/members/${created.body.id}`).send({ status: 'ACTIVE' }).expect(200);
+    await tenantA.agent.post(`/api/v1/members/${created.body.id}/password`)
+      .send({ newPassword }).expect(201);
+    await request(app.getHttpServer()).post('/api/v1/auth/login').send({
+      tenantSlug: tenantA.tenantSlug, email, password: initialPassword,
+    }).expect(401);
+    await request(app.getHttpServer()).post('/api/v1/auth/login').send({
+      tenantSlug: tenantA.tenantSlug, email, password: newPassword,
+    }).expect(200);
   });
 
   it('isola catálogos, comentários e fluxos robustos da OS', async () => {
@@ -253,6 +305,223 @@ describe('isolamento multiempresa', () => {
     expect(contract.body.amendments[0].description).toBe('Acréscimo editado');
   });
 
+  it('cadastra, edita e exclui todo o dossiê de fiscalização contratual', async () => {
+    const inspector = await tenantA.agent.post('/api/v1/inspectors').send({
+      name: 'Fiscal E2E', registrationNumber: `MAT-${randomUUID().slice(0, 8)}`,
+      jobTitle: 'Engenheiro civil', specialty: 'Edificações', availableHours: 40, maxProcesses: 8,
+    }).expect(201);
+
+    const entries = [
+      {
+        kind: 'adjustments', endpoint: 'adjustments', payload: {
+          type: 'PRICE_ADJUSTMENT', referencePeriod: '2026-08', approvalDate: '2026-08-10',
+          percentage: 1, amount: 10, indexName: 'IPCA',
+        }, edit: { type: 'PRICE_ADJUSTMENT', referencePeriod: '2026-08', approvalDate: '2026-08-11',
+          percentage: 1.1, amount: 11, indexName: 'IPCA' },
+      },
+      {
+        kind: 'subcontracts', endpoint: 'subcontracts', payload: {
+          subcontractorName: 'Subcontratada E2E', subcontractorTaxId: '12345678000199',
+          scope: 'Execução especializada de testes automatizados.', amount: 25,
+          approvedAt: '2026-08-10', authorizationCase: 'AUT-E2E-001',
+        }, edit: { subcontractorName: 'Subcontratada E2E Editada', subcontractorTaxId: '12345678000199',
+          scope: 'Escopo especializado editado.', amount: 30, approvedAt: '2026-08-11', authorizationCase: 'AUT-E2E-002' },
+      },
+      {
+        kind: 'penalties', endpoint: 'penalties', payload: {
+          type: 'WARNING', administrativeCase: 'PROC-E2E-001',
+          description: 'Advertência fictícia de homologação.', amount: 0, appliedAt: '2026-08-10',
+        }, edit: { type: 'FINE', administrativeCase: 'PROC-E2E-001',
+          description: 'Sanção fictícia editada.', amount: 1, appliedAt: '2026-08-11' },
+      },
+      {
+        kind: 'guarantees', endpoint: 'guarantees', payload: {
+          number: `GAR-${randomUUID().slice(0, 8)}`, modality: 'SURETY_BOND', guarantorName: 'Seguradora E2E',
+          contractPercentage: 5, minimumPercentage: 5, startsAt: '2026-01-01', endsAt: '2027-01-01',
+          status: 'PRESENTED', workflow: 'Análise inicial', coverages: 'Execução contratual',
+        }, edit: null as Record<string, unknown> | null,
+      },
+      {
+        kind: 'apostilles', endpoint: 'apostilles', payload: {
+          number: `AP-${randomUUID().slice(0, 8)}`, type: 'PRICE_ADJUSTMENT', date: '2026-08-10',
+          indexName: 'IPCA', percentage: 1, valueChange: 10,
+          justification: 'Apostilamento fictício para homologação automatizada.',
+        }, edit: null as Record<string, unknown> | null,
+      },
+      {
+        kind: 'receipts', endpoint: 'receipts', payload: {
+          number: `REC-${randomUUID().slice(0, 8)}`, type: 'PROVISIONAL', objectCategory: 'Serviços de engenharia',
+          status: 'REQUESTED', provisionalRequired: true, decision: 'APPROVE',
+          consolidatedOpinion: 'Recebimento provisório apto para homologação.',
+        }, edit: null as Record<string, unknown> | null,
+      },
+      {
+        kind: 'construction-diaries', endpoint: 'construction-diaries', payload: {
+          number: `DO-${randomUUID().slice(0, 8)}`, workOrderId: tenantA.workOrderId, date: '2026-08-10',
+          operationalSituation: 'Execução normal', weather: 'Ensolarado', status: 'OPEN',
+          ownWorkforce: 2, outsourcedWorkforce: 1, servicesPerformed: 'Inspeção automatizada.',
+        }, edit: null as Record<string, unknown> | null,
+      },
+      {
+        kind: 'communications', endpoint: 'communications', payload: {
+          number: `COM-${randomUUID().slice(0, 8)}`, type: 'SOLICITACAO_ESCLARECIMENTO', protocolDate: '2026-08-10',
+          sender: 'Contratada', recipient: 'Fiscalização', priority: 'NORMAL', currentStatus: 'Protocolado',
+          workflowStage: 'Protocolo', subject: 'Comunicação fictícia',
+          detailedDescription: 'Registro para homologação automatizada do fluxo de comunicações.',
+        }, edit: null as Record<string, unknown> | null,
+      },
+    ];
+
+    const teamPayload = {
+      inspectorProfileId: inspector.body.id, role: 'TECHNICAL_INSPECTOR', designationAct: 'Portaria E2E 001',
+      startsAt: '2026-01-01', isPrimary: true, notes: 'Equipe de homologação.',
+    };
+    const team = await tenantA.agent
+      .post(`/api/v1/contracts/${tenantA.contractId}/inspection-team`).send(teamPayload).expect(201);
+    await tenantA.agent
+      .patch(`/api/v1/contracts/${tenantA.contractId}/governance/inspection-team/${team.body.id}`)
+      .send({ ...teamPayload, designationAct: 'Portaria E2E 002' }).expect(200);
+
+    for (const entry of entries) {
+      const created = await tenantA.agent
+        .post(`/api/v1/contracts/${tenantA.contractId}/${entry.endpoint}`).send(entry.payload).expect(201);
+      const editPayload: Record<string, unknown> = entry.edit ?? { ...entry.payload };
+      if (entry.kind === 'guarantees') editPayload.workflow = 'Aprovada na homologação';
+      if (entry.kind === 'apostilles') editPayload.justification = 'Justificativa editada pela homologação automatizada.';
+      if (entry.kind === 'receipts') editPayload.consolidatedOpinion = 'Parecer consolidado editado.';
+      if (entry.kind === 'construction-diaries') editPayload.operationalSituation = 'Execução revisada';
+      if (entry.kind === 'communications') editPayload.subject = 'Comunicação fictícia editada';
+      await tenantA.agent
+        .patch(`/api/v1/contracts/${tenantA.contractId}/governance/${entry.kind}/${created.body.id}`)
+        .send(editPayload).expect(200);
+      await tenantA.agent
+        .delete(`/api/v1/contracts/${tenantA.contractId}/governance/${entry.kind}/${created.body.id}`)
+        .expect(200);
+    }
+
+    await tenantA.agent
+      .delete(`/api/v1/contracts/${tenantA.contractId}/governance/inspection-team/${team.body.id}`).expect(200);
+    await tenantA.agent.delete(`/api/v1/inspectors/${inspector.body.id}`).expect(200);
+  });
+
+  it('preserva nomes UTF-8 e entrega anexos privados íntegros', async () => {
+    const inspection = await tenantA.agent
+      .post(`/api/v1/buildings/${tenantA.buildingId}/inspections`)
+      .send({ inspectionDate: '2026-08-12', type: 'PREVENTIVE',
+        responsibleTechnician: 'Eng. João da Conceição', team: 'Manutenção predial' })
+      .expect(201);
+    const bytes = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF', 'utf8');
+    const uploaded = await tenantA.agent
+      .post(`/api/v1/buildings/${tenantA.buildingId}/attachments`)
+      .field('kind', 'INSPECTION_REPORT').field('inspectionId', inspection.body.id)
+      .attach('file', bytes, { filename: 'Laudo técnico – inspeção.pdf', contentType: 'application/pdf' })
+      .expect(201);
+    expect(uploaded.body.originalName).toBe('Laudo técnico – inspeção.pdf');
+
+    const downloaded = await tenantA.agent
+      .get(`/api/v1/buildings/${tenantA.buildingId}/attachments/${uploaded.body.id}/download`).expect(200);
+    expect(downloaded.headers['content-type']).toContain('application/pdf');
+    expect(downloaded.headers['content-disposition']).toContain("filename*=UTF-8''");
+    expect(Buffer.compare(downloaded.body, bytes)).toBe(0);
+
+    await tenantA.agent
+      .delete(`/api/v1/buildings/${tenantA.buildingId}/attachments/${uploaded.body.id}`).expect(200);
+    await tenantA.agent
+      .delete(`/api/v1/buildings/${tenantA.buildingId}/inspections/${inspection.body.id}`).expect(200);
+  });
+
+  it('impede estouro e transferência indevida de empenhos sob concorrência', async () => {
+    const target = await tenantA.agent.post('/api/v1/contracts').send({
+      code: `CT-TARGET-${randomUUID().slice(0, 8)}`, supplierId: tenantA.supplierId,
+      object: 'Contrato alvo do teste de transferência de empenho.', type: 'INTEGRATED_MAINTENANCE',
+      startDate: '2026-01-01', endDate: '2027-01-01', originalValue: 500,
+    }).expect(201);
+    await tenantA.agent.post('/api/v1/finance/commitments').send({
+      contractId: target.body.id, number: `EMP-TARGET-${randomUUID().slice(0, 8)}`,
+      fiscalYear: 2026, issueDate: '2026-08-12', originalValue: 400,
+    }).expect(201);
+    await tenantA.agent.patch(`/api/v1/finance/commitments/${tenantA.commitmentId}`)
+      .send({ contractId: target.body.id }).expect(400);
+
+    const concurrentContract = await tenantA.agent.post('/api/v1/contracts').send({
+      code: `CT-CONC-${randomUUID().slice(0, 8)}`, supplierId: tenantA.supplierId,
+      object: 'Contrato para teste de concorrência financeira.', type: 'INTEGRATED_MAINTENANCE',
+      startDate: '2026-01-01', endDate: '2027-01-01', originalValue: 1000,
+    }).expect(201);
+    const attempts = await Promise.all([
+      tenantA.agent.post('/api/v1/finance/commitments').send({ contractId: concurrentContract.body.id,
+        number: `EMP-C1-${randomUUID().slice(0, 8)}`, fiscalYear: 2026, issueDate: '2026-08-12', originalValue: 600 }),
+      tenantA.agent.post('/api/v1/finance/commitments').send({ contractId: concurrentContract.body.id,
+        number: `EMP-C2-${randomUUID().slice(0, 8)}`, fiscalYear: 2026, issueDate: '2026-08-12', originalValue: 600 }),
+    ]);
+    expect(attempts.map((item) => item.status).sort()).toEqual([201, 400]);
+  });
+
+  it('executa OS, orçamento final, medição, liquidação e pagamento de ponta a ponta', async () => {
+    const workOrder = await tenantA.agent.post('/api/v1/work-orders').send({
+      buildingId: tenantA.buildingId, title: 'OS financeira completa E2E',
+      description: 'Ciclo operacional e financeiro completo para homologação.',
+      supplierId: tenantA.supplierId, contractIds: [tenantA.contractId],
+    }).expect(201);
+    const budget = await tenantA.agent
+      .put(`/api/v1/budgets/work-orders/${workOrder.body.id}?stage=FINAL_EXECUTED`)
+      .send({ bdiPercentage: 0, items: [{ kind: 'SERVICE', code: 'E2E-001',
+        description: 'Serviço executado na homologação', unit: 'UN', quantity: 1, unitCost: 100 }] })
+      .expect(200);
+    const submitted = await tenantA.agent.post(`/api/v1/budgets/${budget.body.id}/transitions`)
+      .send({ status: 'SUBMITTED', version: budget.body.version }).expect(201);
+    await tenantA.agent.post(`/api/v1/budgets/${budget.body.id}/transitions`)
+      .send({ status: 'APPROVED', version: submitted.body.version }).expect(201);
+    await tenantA.agent.post(`/api/v1/work-orders/${workOrder.body.id}/transitions`)
+      .send({ toStatus: 'IN_PROGRESS' }).expect(201);
+    await tenantA.agent.post(`/api/v1/work-orders/${workOrder.body.id}/transitions`)
+      .send({ toStatus: 'COMPLETED', solution: 'Serviço concluído e conferido automaticamente.' }).expect(201);
+    await tenantA.agent.post(`/api/v1/work-orders/${workOrder.body.id}/close`)
+      .send({ finalCost: 100, measurementEligible: true, acceptanceNote: 'Aceite automatizado.' }).expect(201);
+
+    const measurement = await tenantA.agent.post('/api/v1/finance/measurements').send({
+      contractId: tenantA.contractId, commitmentId: tenantA.commitmentId,
+      number: `MED-${randomUUID().slice(0, 8)}`, referenceMonth: '2026-08',
+      items: [{ workOrderId: workOrder.body.id, amount: 100 }],
+    }).expect(201);
+    let version = measurement.body.version;
+    for (const status of ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'LIQUIDATED', 'PAID']) {
+      const transitioned = await tenantA.agent
+        .post(`/api/v1/finance/measurements/${measurement.body.id}/transitions`)
+        .send({ status, version }).expect(201);
+      version = transitioned.body.version;
+    }
+    const reconciliation = await tenantA.agent
+      .get(`/api/v1/finance/reconciliation/contracts/${tenantA.contractId}`).expect(200);
+    expect(Number(reconciliation.body.totals.measured)).toBeGreaterThanOrEqual(100);
+    expect(Number(reconciliation.body.totals.paid)).toBeGreaterThanOrEqual(100);
+  });
+
+  it('gera manutenção recorrente de forma idempotente', async () => {
+    await tenantA.agent.patch(`/api/v1/maintenance/plans/${tenantA.maintenancePlanId}`)
+      .send({ nextDueAt: new Date(Date.now() + 86_400_000).toISOString(), generationHorizonDays: 30 }).expect(200);
+    const first = await tenantA.agent.post('/api/v1/maintenance/generate?horizonDays=30').expect(201);
+    const second = await tenantA.agent.post('/api/v1/maintenance/generate?horizonDays=30').expect(201);
+    expect(first.body.generated).toBeGreaterThanOrEqual(1);
+    expect(second.body.generated).toBe(0);
+    expect(second.body.failed).toBe(0);
+  });
+
+  it('emite relatórios PDF e CSV coerentes com os módulos operacionais', async () => {
+    const pdf = await tenantA.agent.get('/api/v1/reports/work-orders/backlog.pdf').expect(200);
+    expect(pdf.headers['content-type']).toContain('application/pdf');
+    expect(Buffer.from(pdf.body).subarray(0, 4).toString()).toBe('%PDF');
+    const csv = await tenantA.agent.get('/api/v1/reports/work-orders/backlog.csv').expect(200);
+    expect(csv.headers['content-type']).toContain('text/csv');
+    expect(csv.text || Buffer.from(csv.body).toString('utf8')).toContain('Número');
+    const mirror = await tenantA.agent
+      .get(`/api/v1/reports/contracts/${tenantA.contractId}/mirror.pdf`).expect(200);
+    expect(Buffer.from(mirror.body).subarray(0, 4).toString()).toBe('%PDF');
+    const financial = await tenantA.agent
+      .get(`/api/v1/reports/contracts/${tenantA.contractId}/financial.csv`).expect(200);
+    expect(financial.text || Buffer.from(financial.body).toString('utf8')).toContain('Empenho');
+  });
+
   it('isola biblioteca, configuração contratual, dashboard e dados de KPIs', async () => {
     const definitions = await tenantA.agent.get('/api/v1/kpis/definitions').expect(200);
     expect(definitions.body.some((item: { id: string }) => item.id === tenantB.kpiDefinitionId)).toBe(false);
@@ -323,13 +592,14 @@ async function createTenantFixture(
   label: string,
 ): Promise<TenantFixture> {
   const unique = randomUUID();
+  const tenantSlug = `e2e-${label}-${unique}`;
   const agent = request.agent(app.getHttpServer());
 
   await agent
     .post('/api/v1/auth/register-tenant')
     .send({
       tenantName: `Organização E2E ${label.toUpperCase()}`,
-      tenantSlug: `e2e-${label}-${unique}`,
+      tenantSlug,
       ownerName: `Responsável ${label.toUpperCase()}`,
       email: `e2e-${label}-${unique}@example.test`,
       password: `Teste-${unique}-Aa1!`,
@@ -452,6 +722,7 @@ async function createTenantFixture(
 
   return {
     agent,
+    tenantSlug,
     buildingId: building.body.id,
     supplierId: supplier.body.id,
     contractId: contract.body.id,

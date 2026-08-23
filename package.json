@@ -1,6 +1,6 @@
 {
   "name": "gestao-de-predios",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "private": true,
   "description": "Monorepo inicial do SaaS Gestão de Prédios",
   "workspaces": [
@@ -28,7 +28,8 @@
     "db:deploy": "npm run prisma:deploy -w @gestaopredios/api",
     "db:seed": "npm run prisma:seed -w @gestaopredios/api",
     "db:studio": "npm run prisma:studio -w @gestaopredios/api",
-    "smoke:production": "node scripts/smoke-production.mjs"
+    "smoke:production": "node scripts/smoke-production.mjs",
+    "test:homologation": "npm run test:e2e -w @gestaopredios/api -- --runInBand"
   },
   "overrides": {
     "ajv@>=8": "8.20.0",

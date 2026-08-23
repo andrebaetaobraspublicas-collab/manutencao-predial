@@ -69,10 +69,19 @@ export class FinanceService {
       if (!contract) throw new BadRequestException('Contrato inválido para a organização.');
     }
     return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM Contract WHERE id = ${current.contractId} AND tenantId = ${tenantId} FOR UPDATE`;
-      if (dto.originalValue !== undefined) {
-        const increase = new Prisma.Decimal(dto.originalValue).minus(current.originalValue);
-        if (increase.greaterThan(0)) await this.assertContractCommitmentCeiling(tx, tenantId, current.contractId, increase);
+      const targetContractId = dto.contractId ?? current.contractId;
+      const contractIdsToLock = [...new Set([current.contractId, targetContractId])].sort();
+      for (const contractId of contractIdsToLock) {
+        await tx.$queryRaw`SELECT id FROM Contract WHERE id = ${contractId} AND tenantId = ${tenantId} FOR UPDATE`;
+      }
+      const proposedOriginalValue = new Prisma.Decimal(dto.originalValue ?? current.originalValue);
+      if (targetContractId !== current.contractId) {
+        await this.assertContractCommitmentCeiling(tx, tenantId, targetContractId, proposedOriginalValue);
+      } else {
+        const increase = proposedOriginalValue.minus(current.originalValue);
+        if (increase.greaterThan(0)) {
+          await this.assertContractCommitmentCeiling(tx, tenantId, targetContractId, increase);
+        }
       }
       const updated = await tx.commitment.update({ where: { id }, data: {
         contractId: dto.contractId, number: dto.number?.trim().toUpperCase(), fiscalYear: dto.fiscalYear,

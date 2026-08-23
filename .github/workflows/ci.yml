@@ -49,11 +49,28 @@ jobs:
         run: |
           npm run prisma:seed -w @gestaopredios/api
           npm run prisma:seed -w @gestaopredios/api
+      - name: Dependency security gate
+        run: |
+          mkdir -p artifacts
+          npm audit --omit=dev --json > artifacts/dependency-audit.json || true
+          node scripts/validate-dependency-audit.mjs artifacts/dependency-audit.json
       - name: Lint
         run: npm run lint
       - name: Unit tests
-        run: npm test
-      - name: Multi-tenant integration tests
-        run: npm run test:e2e -w @gestaopredios/api
+        run: npm run test -w @gestaopredios/api -- --runInBand --json --outputFile=../../artifacts/unit-tests.json
+      - name: Homologation integration and volume tests
+        run: npm run test:e2e -w @gestaopredios/api -- --runInBand --json --outputFile=../../artifacts/e2e-tests.json
       - name: Build
         run: npm run build
+      - name: Render homologation report
+        if: always()
+        run: |
+          node scripts/render-homologation-report.mjs artifacts
+          cat artifacts/homologation-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish homologation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gp-045-homologation-${{ github.sha }}
+          path: artifacts/
+          retention-days: 30

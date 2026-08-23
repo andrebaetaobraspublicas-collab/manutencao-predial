@@ -187,10 +187,15 @@ describe('isolamento multiempresa', () => {
         description: 'Serviço eventual previsto no contrato A',
         unit: 'UN',
         quantity: 10,
-        unitCost: 125,
+        unitCost: 100,
         includedInTotal: true,
       })
       .expect(201);
+
+    await tenantA.agent
+      .patch(`/api/v1/budgets/contracts/${tenantA.contractId}`)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
 
     const available = await tenantA.agent
       .get(`/api/v1/budgets/work-orders/${tenantA.workOrderId}/contract-items`)

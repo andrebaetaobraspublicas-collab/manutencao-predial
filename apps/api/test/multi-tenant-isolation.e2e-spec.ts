@@ -77,7 +77,7 @@ describe('isolamento multiempresa', () => {
     await request(app.getHttpServer()).get('/api/v1/contracts').expect(401);
     await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'inexistente@example.test', password: 'senha-incorreta' })
+      .send({ tenantSlug: tenantA.tenantSlug, email: 'inexistente@example.test', password: 'senha-incorreta' })
       .expect(401);
     await tenantA.agent
       .post('/api/v1/buildings')
@@ -463,6 +463,8 @@ describe('isolamento multiempresa', () => {
       description: 'Ciclo operacional e financeiro completo para homologação.',
       supplierId: tenantA.supplierId, contractIds: [tenantA.contractId],
     }).expect(201);
+    await tenantA.agent.post(`/api/v1/work-orders/${workOrder.body.id}/transitions`)
+      .send({ toStatus: 'IN_PROGRESS' }).expect(201);
     const budget = await tenantA.agent
       .put(`/api/v1/budgets/work-orders/${workOrder.body.id}?stage=FINAL_EXECUTED`)
       .send({ bdiPercentage: 0, items: [{ kind: 'SERVICE', code: 'E2E-001',
@@ -472,8 +474,6 @@ describe('isolamento multiempresa', () => {
       .send({ status: 'SUBMITTED', version: budget.body.version }).expect(201);
     await tenantA.agent.post(`/api/v1/budgets/${budget.body.id}/transitions`)
       .send({ status: 'APPROVED', version: submitted.body.version }).expect(201);
-    await tenantA.agent.post(`/api/v1/work-orders/${workOrder.body.id}/transitions`)
-      .send({ toStatus: 'IN_PROGRESS' }).expect(201);
     await tenantA.agent.post(`/api/v1/work-orders/${workOrder.body.id}/transitions`)
       .send({ toStatus: 'COMPLETED', solution: 'Serviço concluído e conferido automaticamente.' }).expect(201);
     await tenantA.agent.post(`/api/v1/work-orders/${workOrder.body.id}/close`)

@@ -14,8 +14,8 @@ uma fonte de preços controlada para as OS vinculadas.
 - cadastro e edição de postos, quantitativos, profissionais, jornada, salário, módulos de custo,
   BDI e valor anual;
 - importação de `.xlsx`, `.xlsb` e PDF textual;
-- manifesto de todas as abas importadas e relatório de itens reconhecidos;
-- download autenticado do arquivo original e auditoria do acesso;
+- processamento do arquivo apenas em memória, sem retenção do binário importado;
+- inclusão, edição e exclusão dos componentes analíticos de cada posto;
 - cópia rastreável de preços do contrato para o orçamento da OS.
 
 ## Importação do exemplo fornecido
@@ -25,7 +25,8 @@ leitura reconheceu 92 abas, 15.233 itens, 17 postos de trabalho e 1.003 componen
 abas auxiliares permanecem registradas no manifesto mesmo quando não geram uma linha de preço.
 
 O arquivo original não deve ser commitado. A carga em produção é feita pelo endpoint autenticado,
-que armazena o documento no volume privado persistente da API, calcula SHA-256 e cria uma revisão.
+que valida a assinatura, calcula SHA-256 para auditoria, processa o conteúdo em memória e descarta
+o binário ao terminar. As linhas normalizadas, as contagens e a revisão permanecem no banco.
 
 ## Regras de integração com a OS
 
@@ -38,17 +39,17 @@ que armazena o documento no volume privado persistente da API, calcula SHA-256 e
 ## Segurança e integridade
 
 - consulta sempre limitada por `tenantId`;
-- arquivos fora do frontend e da árvore pública;
-- caminho resolvido dentro de `UPLOAD_ROOT`;
+- nenhum binário de importação preservado pelo módulo;
 - assinatura ZIP/PDF validada antes do processamento;
 - exclusão lógica de itens e postos;
 - valores calculados com `Prisma.Decimal`;
-- auditoria de importação, edição, exclusão e download.
+- auditoria de importação, edição e exclusão.
 
 ## Migração e rollback
 
-Aplicar `20260823190000_contract_budgets` antes de iniciar a API. A migração é aditiva: cria as
+Aplicar `20260823190000_contract_budgets` e
+`20260823220000_discard_contract_budget_source_files` antes de iniciar a API. A primeira migração cria as
 tabelas do orçamento, adiciona `Contract.exclusiveLaborDedication` e a referência opcional em
-`BudgetItem`. O código antigo ignora essas colunas, permitindo rollback do runtime. A remoção física
-das tabelas não faz parte do rollback operacional; qualquer reversão destrutiva exige exportação do
-banco e do volume privado.
+`BudgetItem`; a segunda torna opcionais os campos legados de armazenamento do arquivo. A remoção
+física das tabelas não faz parte do rollback operacional; qualquer reversão destrutiva exige
+exportação prévia do banco.

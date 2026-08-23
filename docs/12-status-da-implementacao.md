@@ -136,12 +136,18 @@ de tamanho do texto e progresso de leitura armazenado apenas no navegador. A ent
 de frontend e não exige migration de banco.
 
 Na v0.18.0, o contrato passa a informar dedicação exclusiva de mão de obra e recebe uma planilha
-orçamentária global, separada dos orçamentos de OS. A importação XLSX/XLSB/PDF preserva o original
-em armazenamento privado, registra todas as abas e normaliza materiais, serviços, postos e sua
-composição analítica. A OS pode selecionar preços dos contratos a ela vinculados. A busca textual
+orçamentária global, separada dos orçamentos de OS. A importação XLSX/XLSB/PDF normaliza materiais,
+serviços, postos e sua composição analítica. A OS pode selecionar preços dos contratos a ela
+vinculados. A busca textual
 SINAPI passou a usar consulta SQL parametrizada compatível com a collation do MySQL. O parser foi
 validado no anexo real com 92 abas, 15.233 itens, 17 postos e 1.003 componentes; o documento do
 usuário não é versionado no GitHub.
+
+Na v0.18.1, o binário usado na importação do orçamento contratual passa a ser processado somente
+em memória e descartado após a normalização. A consulta de arquivos/abas e o download do original
+foram removidos. A interface ganhou ações visíveis para criar itens, serviços e postos, além de um
+editor completo da composição analítica de cada posto. Os indicadores contam somente registros
+ativos e passam a refletir imediatamente inclusões e exclusões lógicas.
 
 ## 6. Validações de infraestrutura que permanecem obrigatórias
 

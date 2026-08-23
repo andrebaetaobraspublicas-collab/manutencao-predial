@@ -4,8 +4,7 @@ import {
   BriefcaseBusiness,
   ChevronDown,
   ChevronUp,
-  Download,
-  FileSpreadsheet,
+  CircleHelp,
   PackageSearch,
   Pencil,
   Plus,
@@ -16,8 +15,8 @@ import {
   X,
 } from 'lucide-react';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { apiDownload, apiFetch } from '@/lib/api';
-import { BRL, formatDateTime } from '@/lib/format';
+import { apiFetch } from '@/lib/api';
+import { BRL } from '@/lib/format';
 import styles from './contract-budget-workspace.module.css';
 
 type Kind = 'SUPPORT_SERVICE' | 'LABOR_POST' | 'MATERIAL' | 'ON_DEMAND_SERVICE'
@@ -51,6 +50,7 @@ type LaborComponent = {
   description: string;
   percentage?: string | null;
   amount: string;
+  basis?: string | null;
 };
 
 type LaborPost = {
@@ -77,19 +77,6 @@ type LaborPost = {
   components: LaborComponent[];
 };
 
-type ImportRecord = {
-  id: string;
-  originalName: string;
-  format: string;
-  sizeBytes: string;
-  sheetCount: number;
-  importedItemCount: number;
-  laborPostCount: number;
-  createdAt: string;
-  importedBy?: { id: string; name: string } | null;
-  sheets: Array<{ id: string; name: string; role: string; rowCount: number; importedRows: number }>;
-};
-
 type ContractBudget = {
   id: string;
   title?: string | null;
@@ -99,11 +86,9 @@ type ContractBudget = {
   subtotal: string;
   bdiAmount: string;
   total: string;
-  sourceTotal?: string | null;
   notes?: string | null;
   laborPosts: LaborPost[];
-  imports: ImportRecord[];
-  _count: { items: number; laborPosts: number; imports: number; revisions: number };
+  _count: { items: number; laborPosts: number; revisions: number };
 };
 
 type BudgetResponse = {
@@ -148,8 +133,22 @@ const emptyItem = {
 const emptyPost = {
   code: '', title: '', unit: 'POSTO', postQuantity: '1', employeesPerPost: '1', months: '12',
   cbo: '', collectiveAgreement: '', mteRegistration: '', categoryBaseDate: '', shift: '',
-  baseSalary: '0', monthlyCostBeforeBdi: '0', bdiAmount: '0', monthlyCost: '0', annualCost: '0',
+  baseSalary: '0', monthlyCostBeforeBdi: '0', bdiAmount: '0', monthlyCost: '0', annualCost: '',
   includedInTotal: true,
+};
+
+type LaborComponentDraft = {
+  module: string;
+  submodule: string;
+  code: string;
+  description: string;
+  percentage: string;
+  amount: string;
+  basis: string;
+};
+
+const emptyComponent: LaborComponentDraft = {
+  module: '', submodule: '', code: '', description: '', percentage: '', amount: '0', basis: '',
 };
 
 export function ContractBudgetWorkspace({ contractId, onError }: {
@@ -158,14 +157,19 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
 }) {
   const [data, setData] = useState<BudgetResponse | null>(null);
   const [items, setItems] = useState<ItemsResponse | null>(null);
-  const [section, setSection] = useState<'items' | 'posts' | 'imports' | 'sinapi'>('items');
+  const [section, setSection] = useState<'items' | 'posts' | 'sinapi'>('items');
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState('');
   const [page, setPage] = useState(1);
   const [itemForm, setItemForm] = useState(emptyItem);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [itemEditorOpen, setItemEditorOpen] = useState(false);
   const [postForm, setPostForm] = useState(emptyPost);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [postEditorOpen, setPostEditorOpen] = useState(false);
+  const [postComponents, setPostComponents] = useState<LaborComponentDraft[]>([]);
+  const [componentForm, setComponentForm] = useState<LaborComponentDraft>(emptyComponent);
+  const [editingComponentIndex, setEditingComponentIndex] = useState<number | null>(null);
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [importTitle, setImportTitle] = useState('');
@@ -205,7 +209,6 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
   useEffect(() => { void Promise.resolve().then(load); }, [load]);
 
   const budget = data?.budget;
-  const difference = budget?.sourceTotal ? Number(budget.total) - Number(budget.sourceTotal) : null;
   const totalComponents = useMemo(
     () => budget?.laborPosts.reduce((sum, post) => sum + post.components.length, 0) ?? 0,
     [budget?.laborPosts],
@@ -226,7 +229,7 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
       setFile(null);
       setImportTitle('');
       await load();
-      setSection('imports');
+      setSection('items');
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : 'Não foi possível importar a planilha.');
     } finally {
@@ -255,6 +258,7 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
       });
       setItemForm(emptyItem);
       setEditingItemId(null);
+      setItemEditorOpen(false);
       await load();
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : 'Não foi possível salvar o item.');
@@ -280,7 +284,21 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
       bdiPercentage: String(item.bdiPercentage),
       includedInTotal: item.includedInTotal,
     });
-    document.querySelector(`.${styles.itemForm}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setItemEditorOpen(true);
+    scrollToEditor(styles.itemForm);
+  }
+
+  function newItem() {
+    setEditingItemId(null);
+    setItemForm(emptyItem);
+    setItemEditorOpen(true);
+    scrollToEditor(styles.itemForm);
+  }
+
+  function cancelItemEditor() {
+    setEditingItemId(null);
+    setItemForm(emptyItem);
+    setItemEditorOpen(false);
   }
 
   async function removeItem(item: ContractBudgetItem) {
@@ -304,16 +322,29 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
           monthlyCostBeforeBdi: Number(postForm.monthlyCostBeforeBdi),
           bdiAmount: Number(postForm.bdiAmount),
           monthlyCost: Number(postForm.monthlyCost),
-          annualCost: Number(postForm.annualCost),
           cbo: postForm.cbo || undefined,
           collectiveAgreement: postForm.collectiveAgreement || undefined,
           mteRegistration: postForm.mteRegistration || undefined,
           categoryBaseDate: postForm.categoryBaseDate || undefined,
           shift: postForm.shift || undefined,
+          annualCost: postForm.annualCost.trim() ? Number(postForm.annualCost) : undefined,
+          components: postComponents.map((component) => ({
+            module: component.module.trim() || undefined,
+            submodule: component.submodule.trim() || undefined,
+            code: component.code.trim() || undefined,
+            description: component.description.trim(),
+            percentage: component.percentage.trim() ? Number(component.percentage) / 100 : undefined,
+            amount: Number(component.amount),
+            basis: component.basis.trim() || undefined,
+          })),
         }),
       });
       setPostForm(emptyPost);
       setEditingPostId(null);
+      setPostComponents([]);
+      setComponentForm(emptyComponent);
+      setEditingComponentIndex(null);
+      setPostEditorOpen(false);
       await load();
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : 'Não foi possível salvar o posto de trabalho.');
@@ -343,6 +374,62 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
       annualCost: String(post.annualCost),
       includedInTotal: post.includedInTotal,
     });
+    setPostComponents(post.components.map((component) => ({
+      module: component.module ?? '',
+      submodule: component.submodule ?? '',
+      code: component.code ?? '',
+      description: component.description,
+      percentage: component.percentage ? String(Number(component.percentage) * 100) : '',
+      amount: String(component.amount),
+      basis: component.basis ?? '',
+    })));
+    setComponentForm(emptyComponent);
+    setEditingComponentIndex(null);
+    setPostEditorOpen(true);
+    scrollToEditor(styles.postForm);
+  }
+
+  function newPost() {
+    setEditingPostId(null);
+    setPostForm(emptyPost);
+    setPostComponents([]);
+    setComponentForm(emptyComponent);
+    setEditingComponentIndex(null);
+    setPostEditorOpen(true);
+    scrollToEditor(styles.postForm);
+  }
+
+  function cancelPostEditor() {
+    setEditingPostId(null);
+    setPostForm(emptyPost);
+    setPostComponents([]);
+    setComponentForm(emptyComponent);
+    setEditingComponentIndex(null);
+    setPostEditorOpen(false);
+  }
+
+  function saveComponent() {
+    if (!componentForm.description.trim()) return;
+    setPostComponents((current) => {
+      if (editingComponentIndex === null) return [...current, componentForm];
+      return current.map((component, index) => index === editingComponentIndex ? componentForm : component);
+    });
+    setComponentForm(emptyComponent);
+    setEditingComponentIndex(null);
+  }
+
+  function editComponent(index: number) {
+    setComponentForm(postComponents[index]);
+    setEditingComponentIndex(index);
+    scrollToEditor(styles.componentEditor);
+  }
+
+  function removeComponent(index: number) {
+    setPostComponents((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    if (editingComponentIndex === index) {
+      setComponentForm(emptyComponent);
+      setEditingComponentIndex(null);
+    }
   }
 
   async function removePost(post: LaborPost) {
@@ -419,16 +506,12 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
       <SummaryCard label="Total calculado" value={BRL.format(Number(budget?.total ?? 0))} />
       <SummaryCard label="Subtotal sem BDI" value={BRL.format(Number(budget?.subtotal ?? 0))} />
       <SummaryCard label="BDI/encargos destacados" value={BRL.format(Number(budget?.bdiAmount ?? 0))} />
-      <SummaryCard label="Valor identificado na fonte" value={budget?.sourceTotal ? BRL.format(Number(budget.sourceTotal)) : 'Não identificado'} />
       <SummaryCard label="Itens de preço" value={String(budget?._count.items ?? 0)} />
-      <SummaryCard label="Postos / componentes" value={`${budget?._count.laborPosts ?? 0} / ${totalComponents}`} />
+      <SummaryCard label="Postos / componentes" value={`${budget?.laborPosts.length ?? 0} / ${totalComponents}`} />
     </div>
-    {difference !== null && Math.abs(difference) > 0.01 ? <div className={styles.reconciliation}>
-      Divergência de conferência: <strong>{BRL.format(difference)}</strong>. Itens auxiliares podem estar marcados fora da totalização; revise antes de ativar.
-    </div> : null}
 
     <form className={styles.importPanel} onSubmit={importBudget}>
-      <div className={styles.importTitle}><Upload size={20} /><div><strong>Importar planilha do contrato</strong><span>XLSX, XLSB ou PDF textual · arquivo-fonte preservado de forma privada</span></div></div>
+      <div className={styles.importTitle}><Upload size={20} /><div><strong>Importar planilha do contrato</strong><span>XLSX, XLSB ou PDF textual · o arquivo é processado e descartado; somente os dados importados permanecem no sistema</span></div></div>
       <input className="input" type="file" accept=".xlsx,.xlsb,.pdf" required onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
       <input className="input" placeholder="Título do orçamento (opcional)" value={importTitle} onChange={(event) => setImportTitle(event.target.value)} />
       <input className="input" type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} />
@@ -440,21 +523,15 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
       <Tab active={section === 'items'} onClick={() => setSection('items')} icon={<PackageSearch size={16} />} label="Itens e serviços" />
       <Tab active={section === 'posts'} onClick={() => setSection('posts')} icon={<UsersRound size={16} />} label="Postos de trabalho" />
       <Tab active={section === 'sinapi'} onClick={() => setSection('sinapi')} icon={<Search size={16} />} label="Adicionar do SINAPI" />
-      <Tab active={section === 'imports'} onClick={() => setSection('imports')} icon={<FileSpreadsheet size={16} />} label="Importações e abas" />
     </div>
 
     {section === 'items' ? <div className={styles.section}>
-      <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); setPage(1); void loadItems(); }}>
-        <input className="input" placeholder="Pesquisar código, descrição ou grupo" value={search} onChange={(event) => setSearch(event.target.value)} />
-        <select className="select" value={kind} onChange={(event) => { setKind(event.target.value); setPage(1); }}><option value="">Todas as categorias</option>{Object.entries(KIND_LABEL).filter(([value]) => value !== 'LABOR_POST').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-        <button className="btn btn-secondary"><Search size={16} /> Pesquisar</button>
-      </form>
-      <div className="table-wrapper"><table className="data-table"><thead><tr><th>Código / descrição</th><th>Categoria</th><th>Unid.</th><th>Qtd.</th><th>Preço unitário</th><th>Total</th><th>Ações</th></tr></thead><tbody>
-        {items?.items.length ? items.items.map((item) => <tr key={item.id}><td><span className="table-primary">{item.code} — {item.description}</span><span className="table-secondary">{item.sectionName || item.sourceSheet || item.source}</span></td><td>{KIND_LABEL[item.kind]}</td><td>{item.unit}</td><td>{Number(item.quantity).toLocaleString('pt-BR')}</td><td>{BRL.format(Number(item.unitCost))}</td><td>{BRL.format(Number(item.totalCost))}</td><td><div className="table-actions"><button className="btn btn-ghost" type="button" onClick={() => editItem(item)}><Pencil size={14} /> Editar</button><button className="btn btn-ghost danger-text" type="button" onClick={() => void removeItem(item)}><Trash2 size={14} /> Excluir</button></div></td></tr>) : <tr><td colSpan={7} className={styles.empty}>Nenhum item corresponde aos filtros.</td></tr>}
-      </tbody></table></div>
-      <div className={styles.pagination}><span>{items?.pagination.total ?? 0} item(ns)</span><div><button className="btn btn-secondary" type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Anterior</button><span>Página {page} de {items?.pagination.totalPages ?? 1}</span><button className="btn btn-secondary" type="button" disabled={page >= (items?.pagination.totalPages ?? 1)} onClick={() => setPage((value) => value + 1)}>Próxima</button></div></div>
-      <form className={`${styles.editor} ${styles.itemForm}`} onSubmit={saveItem}>
-        <div className={styles.editorHeader}><div><Plus size={18} /><strong>{editingItemId ? 'Editar item' : 'Adicionar item manualmente'}</strong></div>{editingItemId ? <button className="btn btn-ghost" type="button" onClick={() => { setEditingItemId(null); setItemForm(emptyItem); }}><X size={15} /> Cancelar edição</button> : null}</div>
+      <div className={styles.sectionToolbar}>
+        <div><strong>Itens, materiais e serviços eventuais</strong><span>Inclua registros manualmente ou edite os itens já cadastrados.</span></div>
+        <button className="btn btn-primary" type="button" onClick={newItem}><Plus size={16} /> Novo item ou serviço</button>
+      </div>
+      {itemEditorOpen ? <form className={`${styles.editor} ${styles.itemForm}`} onSubmit={saveItem}>
+        <div className={styles.editorHeader}><div><Plus size={18} /><strong>{editingItemId ? 'Editar item ou serviço' : 'Novo item ou serviço manual'}</strong></div><button className="btn btn-ghost" type="button" onClick={cancelItemEditor}><X size={15} /> Fechar</button></div>
         <div className="form-grid">
           <Field c="col-3" label="Categoria"><select className="select" value={itemForm.kind} onChange={(event) => setItemForm({ ...itemForm, kind: event.target.value as Kind })}>{Object.entries(KIND_LABEL).filter(([value]) => value !== 'LABOR_POST').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
           <Field c="col-2" label="Código *"><input className="input" required value={itemForm.code} onChange={(event) => setItemForm({ ...itemForm, code: event.target.value })} /></Field>
@@ -469,15 +546,25 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
           <Field c="col-4" label="Grupo/seção"><input className="input" value={itemForm.sectionName} onChange={(event) => setItemForm({ ...itemForm, sectionName: event.target.value })} /></Field>
         </div>
         <div className={styles.editorFooter}><label className={styles.checkbox}><input type="checkbox" checked={itemForm.includedInTotal} onChange={(event) => setItemForm({ ...itemForm, includedInTotal: event.target.checked })} /> Incluir na totalização</label><button className="btn btn-primary" disabled={busy}>{editingItemId ? 'Salvar alterações' : 'Adicionar item'}</button></div>
+      </form> : <div className={styles.guidance}><CircleHelp size={18} /><span>Use <strong>Novo item ou serviço</strong> para cadastrar materiais e serviços eventuais que não vieram da planilha nem do SINAPI.</span></div>}
+      <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); setPage(1); void loadItems(); }}>
+        <input className="input" placeholder="Pesquisar código, descrição ou grupo" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <select className="select" value={kind} onChange={(event) => { setKind(event.target.value); setPage(1); }}><option value="">Todas as categorias</option>{Object.entries(KIND_LABEL).filter(([value]) => value !== 'LABOR_POST').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <button className="btn btn-secondary"><Search size={16} /> Pesquisar</button>
       </form>
+      <div className="table-wrapper"><table className="data-table"><thead><tr><th>Código / descrição</th><th>Categoria</th><th>Unid.</th><th>Qtd.</th><th>Preço unitário</th><th>Total</th><th>Ações</th></tr></thead><tbody>
+        {items?.items.length ? items.items.map((item) => <tr key={item.id}><td><span className="table-primary">{item.code} — {item.description}</span><span className="table-secondary">{item.sectionName || item.sourceSheet || item.source}</span></td><td>{KIND_LABEL[item.kind]}</td><td>{item.unit}</td><td>{Number(item.quantity).toLocaleString('pt-BR')}</td><td>{BRL.format(Number(item.unitCost))}</td><td>{BRL.format(Number(item.totalCost))}</td><td><div className="table-actions"><button className="btn btn-ghost" type="button" onClick={() => editItem(item)}><Pencil size={14} /> Editar</button><button className="btn btn-ghost danger-text" type="button" onClick={() => void removeItem(item)}><Trash2 size={14} /> Excluir</button></div></td></tr>) : <tr><td colSpan={7} className={styles.empty}>Nenhum item corresponde aos filtros.</td></tr>}
+      </tbody></table></div>
+      <div className={styles.pagination}><span>{items?.pagination.total ?? 0} item(ns)</span><div><button className="btn btn-secondary" type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Anterior</button><span>Página {page} de {items?.pagination.totalPages ?? 1}</span><button className="btn btn-secondary" type="button" disabled={page >= (items?.pagination.totalPages ?? 1)} onClick={() => setPage((value) => value + 1)}>Próxima</button></div></div>
     </div> : null}
 
     {section === 'posts' ? <div className={styles.section}>
-      <div className="table-wrapper"><table className="data-table"><thead><tr><th>Posto / profissional</th><th>Qtd. postos</th><th>Profissionais</th><th>Custo mensal</th><th>Custo anual</th><th>Ações</th></tr></thead><tbody>
-        {budget?.laborPosts.length ? budget.laborPosts.map((post) => <PostRows key={post.id} post={post} expanded={expandedPost === post.id} onToggle={() => setExpandedPost((value) => value === post.id ? null : post.id)} onEdit={() => editPost(post)} onDelete={() => void removePost(post)} />) : <tr><td colSpan={6} className={styles.empty}>Nenhum posto de trabalho cadastrado.</td></tr>}
-      </tbody></table></div>
-      <form className={styles.editor} onSubmit={savePost}>
-        <div className={styles.editorHeader}><div><BriefcaseBusiness size={18} /><strong>{editingPostId ? 'Editar posto de trabalho' : 'Precificar novo posto de trabalho'}</strong></div>{editingPostId ? <button className="btn btn-ghost" type="button" onClick={() => { setEditingPostId(null); setPostForm(emptyPost); }}><X size={15} /> Cancelar edição</button> : null}</div>
+      <div className={styles.sectionToolbar}>
+        <div><strong>Postos de trabalho e composição de custos</strong><span>Cadastre o posto e detalhe salários, benefícios, encargos, insumos e demais componentes.</span></div>
+        <button className="btn btn-primary" type="button" onClick={newPost}><Plus size={16} /> Novo posto de trabalho</button>
+      </div>
+      {postEditorOpen ? <form className={`${styles.editor} ${styles.postForm}`} onSubmit={savePost}>
+        <div className={styles.editorHeader}><div><BriefcaseBusiness size={18} /><strong>{editingPostId ? 'Editar posto de trabalho' : 'Novo posto de trabalho'}</strong></div><button className="btn btn-ghost" type="button" onClick={cancelPostEditor}><X size={15} /> Fechar</button></div>
         <div className="form-grid">
           <Field c="col-2" label="Código *"><input className="input" required value={postForm.code} onChange={(event) => setPostForm({ ...postForm, code: event.target.value })} /></Field>
           <Field c="col-5" label="Posto/profissional *"><input className="input" required value={postForm.title} onChange={(event) => setPostForm({ ...postForm, title: event.target.value })} /></Field>
@@ -490,12 +577,35 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
           <Field c="col-3" label="Custo mensal sem BDI"><input className="input" type="number" min="0" step="0.01" value={postForm.monthlyCostBeforeBdi} onChange={(event) => setPostForm({ ...postForm, monthlyCostBeforeBdi: event.target.value })} /></Field>
           <Field c="col-3" label="BDI mensal"><input className="input" type="number" min="0" step="0.01" value={postForm.bdiAmount} onChange={(event) => setPostForm({ ...postForm, bdiAmount: event.target.value })} /></Field>
           <Field c="col-3" label="Custo mensal final"><input className="input" type="number" min="0" step="0.01" value={postForm.monthlyCost} onChange={(event) => setPostForm({ ...postForm, monthlyCost: event.target.value })} /></Field>
-          <Field c="col-3" label="Custo anual"><input className="input" type="number" min="0" step="0.01" value={postForm.annualCost} onChange={(event) => setPostForm({ ...postForm, annualCost: event.target.value })} /></Field>
+          <Field c="col-3" label="Custo anual (opcional)"><input className="input" type="number" min="0" step="0.01" placeholder="Calculado automaticamente" value={postForm.annualCost} onChange={(event) => setPostForm({ ...postForm, annualCost: event.target.value })} /></Field>
           <Field c="col-5" label="Convenção/acordo coletivo"><input className="input" value={postForm.collectiveAgreement} onChange={(event) => setPostForm({ ...postForm, collectiveAgreement: event.target.value })} /></Field>
           <Field c="col-4" label="Registro MTE / data-base"><input className="input" value={postForm.mteRegistration} onChange={(event) => setPostForm({ ...postForm, mteRegistration: event.target.value })} /></Field>
         </div>
-        <div className={styles.editorFooter}><label className={styles.checkbox}><input type="checkbox" checked={postForm.includedInTotal} onChange={(event) => setPostForm({ ...postForm, includedInTotal: event.target.checked })} /> Incluir na totalização</label><button className="btn btn-primary" disabled={busy}>{editingPostId ? 'Salvar alterações' : 'Cadastrar posto'}</button></div>
-      </form>
+
+        <div className={`${styles.componentEditor} ${styles.editor}`}>
+          <div className={styles.editorHeader}><div><Plus size={18} /><strong>Composição analítica do custo</strong><span className={styles.counter}>{postComponents.length} componente(s)</span></div></div>
+          <p className={styles.editorHint}>Inclua cada parcela do posto: salário, adicionais, benefícios, encargos, uniformes, equipamentos, tributos e outros custos.</p>
+          <div className="form-grid">
+            <Field c="col-3" label="Módulo"><input className="input" placeholder="Ex.: Módulo 1" value={componentForm.module} onChange={(event) => setComponentForm({ ...componentForm, module: event.target.value })} /></Field>
+            <Field c="col-3" label="Submódulo"><input className="input" placeholder="Ex.: Encargos" value={componentForm.submodule} onChange={(event) => setComponentForm({ ...componentForm, submodule: event.target.value })} /></Field>
+            <Field c="col-2" label="Código"><input className="input" value={componentForm.code} onChange={(event) => setComponentForm({ ...componentForm, code: event.target.value })} /></Field>
+            <Field c="col-4" label="Componente *"><input className="input" value={componentForm.description} onChange={(event) => setComponentForm({ ...componentForm, description: event.target.value })} /></Field>
+            <Field c="col-2" label="Percentual (%)"><input className="input" type="number" step="0.000001" value={componentForm.percentage} onChange={(event) => setComponentForm({ ...componentForm, percentage: event.target.value })} /></Field>
+            <Field c="col-2" label="Valor (R$) *"><input className="input" type="number" min="0" step="0.01" value={componentForm.amount} onChange={(event) => setComponentForm({ ...componentForm, amount: event.target.value })} /></Field>
+            <Field c="col-6" label="Base de cálculo / observação"><input className="input" value={componentForm.basis} onChange={(event) => setComponentForm({ ...componentForm, basis: event.target.value })} /></Field>
+            <div className={`field col-2 ${styles.componentAction}`}><button className="btn btn-secondary" type="button" disabled={!componentForm.description.trim()} onClick={saveComponent}>{editingComponentIndex === null ? 'Adicionar componente' : 'Atualizar componente'}</button></div>
+          </div>
+          {editingComponentIndex !== null ? <button className="btn btn-ghost" type="button" onClick={() => { setComponentForm(emptyComponent); setEditingComponentIndex(null); }}><X size={14} /> Cancelar edição do componente</button> : null}
+          <div className="table-wrapper"><table className="data-table"><thead><tr><th>Módulo</th><th>Componente</th><th>Percentual</th><th>Valor</th><th>Ações</th></tr></thead><tbody>
+            {postComponents.length ? postComponents.map((component, index) => <tr key={`${component.code}-${component.description}-${index}`}><td>{component.submodule || component.module || '—'}</td><td><span className="table-primary">{component.code ? `${component.code} — ` : ''}{component.description}</span><span className="table-secondary">{component.basis || 'Sem base de cálculo informada'}</span></td><td>{component.percentage ? `${Number(component.percentage).toLocaleString('pt-BR')}%` : '—'}</td><td>{BRL.format(Number(component.amount))}</td><td><div className="table-actions"><button className="btn btn-ghost" type="button" onClick={() => editComponent(index)}><Pencil size={14} /> Editar</button><button className="btn btn-ghost danger-text" type="button" onClick={() => removeComponent(index)}><Trash2 size={14} /> Excluir</button></div></td></tr>) : <tr><td colSpan={5} className={styles.empty}>Nenhum componente cadastrado. O posto pode ser salvo e detalhado posteriormente.</td></tr>}
+          </tbody></table></div>
+        </div>
+
+        <div className={styles.editorFooter}><label className={styles.checkbox}><input type="checkbox" checked={postForm.includedInTotal} onChange={(event) => setPostForm({ ...postForm, includedInTotal: event.target.checked })} /> Incluir na totalização</label><button className="btn btn-primary" disabled={busy}>{editingPostId ? 'Salvar posto e composição' : 'Cadastrar posto e composição'}</button></div>
+      </form> : <div className={styles.guidance}><CircleHelp size={18} /><span>Use <strong>Novo posto de trabalho</strong> para cadastrar o profissional e montar sua composição analítica de custos.</span></div>}
+      <div className="table-wrapper"><table className="data-table"><thead><tr><th>Posto / profissional</th><th>Qtd. postos</th><th>Profissionais</th><th>Custo mensal</th><th>Custo anual</th><th>Ações</th></tr></thead><tbody>
+        {budget?.laborPosts.length ? budget.laborPosts.map((post) => <PostRows key={post.id} post={post} expanded={expandedPost === post.id} onToggle={() => setExpandedPost((value) => value === post.id ? null : post.id)} onEdit={() => editPost(post)} onDelete={() => void removePost(post)} />) : <tr><td colSpan={6} className={styles.empty}>Nenhum posto de trabalho cadastrado.</td></tr>}
+      </tbody></table></div>
     </div> : null}
 
     {section === 'sinapi' ? <div className={styles.section}>
@@ -507,12 +617,6 @@ export function ContractBudgetWorkspace({ contractId, onError }: {
       <div className="table-wrapper"><table className="data-table"><thead><tr><th>Código / descrição</th><th>Tipo</th><th>Unid.</th><th>Preço</th><th>Ação</th></tr></thead><tbody>{sinapiItems.length ? sinapiItems.map((item) => <tr key={item.id}><td><span className="table-primary">{item.code}</span><span className="table-secondary">{item.description}</span></td><td>{item.type === 'INPUT' ? 'Insumo' : 'Composição'}</td><td>{item.unit}</td><td>{BRL.format(Number(item.unitCost))}</td><td><button className="btn btn-primary" type="button" disabled={busy} onClick={() => void addSinapi(item)}><Plus size={15} /> Adicionar</button></td></tr>) : <tr><td colSpan={5} className={styles.empty}>Pesquise a base para escolher composições e insumos.</td></tr>}</tbody></table></div>
     </div> : null}
 
-    {section === 'imports' ? <div className={styles.section}>
-      {budget?.imports.length ? budget.imports.map((imported) => <details className={styles.importRecord} key={imported.id}>
-        <summary><div><FileSpreadsheet size={18} /><span><strong>{imported.originalName}</strong><small>{imported.format} · {imported.importedItemCount.toLocaleString('pt-BR')} itens · {imported.laborPostCount} postos · {formatDateTime(imported.createdAt)}</small></span></div><button className="btn btn-secondary" type="button" onClick={(event) => { event.preventDefault(); void apiDownload(`/budgets/contracts/${contractId}/imports/${imported.id}/download`, imported.originalName); }}><Download size={15} /> Baixar original</button></summary>
-        <div className="table-wrapper"><table className="data-table"><thead><tr><th>Aba</th><th>Classificação</th><th>Linhas</th><th>Registros importados</th></tr></thead><tbody>{imported.sheets.map((sheet) => <tr key={sheet.id}><td>{sheet.name}</td><td>{sheet.role}</td><td>{sheet.rowCount}</td><td>{sheet.importedRows}</td></tr>)}</tbody></table></div>
-      </details>) : <div className={styles.emptyPanel}><FileSpreadsheet size={30} /><strong>Nenhuma planilha importada</strong><span>Use o formulário acima para preservar e processar o orçamento original.</span></div>}
-    </div> : null}
   </div>;
 }
 
@@ -528,11 +632,17 @@ function Field({ c, label, children }: { c: string; label: string; children: Rea
   return <div className={`field ${c}`}><label>{label}</label>{children}</div>;
 }
 
+function scrollToEditor(className: string) {
+  window.setTimeout(() => {
+    document.querySelector(`.${className}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 0);
+}
+
 function PostRows({ post, expanded, onToggle, onEdit, onDelete }: {
   post: LaborPost; expanded: boolean; onToggle(): void; onEdit(): void; onDelete(): void;
 }) {
   return <>
     <tr><td><button className={styles.postTitle} type="button" onClick={onToggle}>{expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}<span><strong>{post.code} — {post.title}</strong><small>{post.cbo || 'CBO não informado'} · {post.shift || 'jornada não informada'} · {post.components.length} componente(s)</small></span></button></td><td>{Number(post.postQuantity).toLocaleString('pt-BR')}</td><td>{Number(post.professionalQuantity).toLocaleString('pt-BR')}</td><td>{BRL.format(Number(post.monthlyCost))}</td><td>{BRL.format(Number(post.annualCost))}</td><td><div className="table-actions"><button className="btn btn-ghost" type="button" onClick={onEdit}><Pencil size={14} /> Editar</button><button className="btn btn-ghost danger-text" type="button" onClick={onDelete}><Trash2 size={14} /> Excluir</button></div></td></tr>
-    {expanded ? <tr className={styles.componentsRow}><td colSpan={6}><div className={styles.components}><strong>Composição analítica do custo</strong><table><thead><tr><th>Módulo</th><th>Componente</th><th>Percentual</th><th>Valor</th></tr></thead><tbody>{post.components.map((component) => <tr key={component.id}><td>{component.submodule || component.module || '—'}</td><td>{component.code ? `${component.code} — ` : ''}{component.description}</td><td>{component.percentage ? `${(Number(component.percentage) * 100).toLocaleString('pt-BR')}%` : '—'}</td><td>{BRL.format(Number(component.amount))}</td></tr>)}</tbody></table></div></td></tr> : null}
+    {expanded ? <tr className={styles.componentsRow}><td colSpan={6}><div className={styles.components}><div className={styles.componentsHeader}><div><strong>Composição analítica do custo</strong><span>{post.components.length} componente(s) cadastrado(s)</span></div><button className="btn btn-secondary" type="button" onClick={onEdit}><Pencil size={14} /> Editar composição</button></div><table><thead><tr><th>Módulo</th><th>Componente</th><th>Percentual</th><th>Valor</th></tr></thead><tbody>{post.components.length ? post.components.map((component) => <tr key={component.id}><td>{component.submodule || component.module || '—'}</td><td>{component.code ? `${component.code} — ` : ''}{component.description}</td><td>{component.percentage ? `${(Number(component.percentage) * 100).toLocaleString('pt-BR')}%` : '—'}</td><td>{BRL.format(Number(component.amount))}</td></tr>) : <tr><td colSpan={4} className={styles.empty}>Nenhum componente analítico cadastrado.</td></tr>}</tbody></table></div></td></tr> : null}
   </>;
 }

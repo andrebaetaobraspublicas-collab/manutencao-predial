@@ -1057,8 +1057,8 @@ model ContractBudgetImport {
   importedByUserId  String?                    @db.Char(36)
   format            ContractBudgetSourceFormat
   originalName      String                     @db.VarChar(255)
-  storageKey        String                     @unique @db.VarChar(500)
-  fileName          String                     @db.VarChar(255)
+  storageKey        String?                    @unique @db.VarChar(500)
+  fileName          String?                    @db.VarChar(255)
   mimeType          String                     @db.VarChar(120)
   sizeBytes         BigInt
   sha256            String                     @db.Char(64)

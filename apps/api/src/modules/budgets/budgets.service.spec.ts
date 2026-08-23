@@ -108,3 +108,39 @@ describe('BudgetsService catalog search', () => {
     expect(result.pagination.total).toBe(1);
   });
 });
+
+describe('BudgetsService contract budget summary', () => {
+  it('conta somente itens e postos ainda ativos', async () => {
+    const contract = {
+      id: 'contract-1',
+      code: 'CT-001',
+      object: 'Manutenção predial',
+      exclusiveLaborDedication: true,
+      originalValue: '1000',
+      currentValue: '1000',
+      supplier: null,
+    };
+    const prisma = {
+      contract: { findFirst: jest.fn().mockResolvedValue(contract) },
+      contractBudget: { findFirst: jest.fn().mockResolvedValue(null) },
+    } as unknown as PrismaService;
+    const service = new BudgetsService(prisma);
+
+    await expect(service.getContractBudget('tenant-1', 'contract-1')).resolves.toEqual({
+      contract,
+      budget: null,
+    });
+    expect(prisma.contractBudget.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      include: expect.objectContaining({
+        laborPosts: expect.objectContaining({ where: { deletedAt: null } }),
+        _count: {
+          select: {
+            items: { where: { deletedAt: null } },
+            laborPosts: { where: { deletedAt: null } },
+            revisions: true,
+          },
+        },
+      }),
+    }));
+  });
+});

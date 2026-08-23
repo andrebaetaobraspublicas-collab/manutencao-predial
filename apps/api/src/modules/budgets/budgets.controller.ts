@@ -1,8 +1,7 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import type { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
@@ -124,17 +123,6 @@ export class BudgetsController {
   deleteLaborPost(@CurrentUser() user: AuthenticatedUser, @Param('contractId') contractId: string,
     @Param('postId') postId: string) {
     return this.service.archiveContractLaborPost(user.tenantId, user.userId, contractId, postId);
-  }
-
-  @Roles(...READ) @Get('contracts/:contractId/imports/:importId/download')
-  async downloadContractBudgetImport(@CurrentUser() user: AuthenticatedUser,
-    @Param('contractId') contractId: string, @Param('importId') importId: string,
-    @Res() response: Response) {
-    const { imported, absolutePath } = await this.service.resolveContractBudgetImportDownload(
-      user.tenantId, user.userId, contractId, importId,
-    );
-    response.type(imported.mimeType);
-    response.download(absolutePath, imported.originalName);
   }
 
   @Roles(...READ) @Get('work-orders/:workOrderId')

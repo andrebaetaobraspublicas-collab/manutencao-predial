@@ -1,8 +1,5 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { createHash, randomUUID } from 'node:crypto';
-import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
-import path from 'node:path';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import {
   AuditAction,
   BudgetItemKind,
@@ -14,7 +11,7 @@ import {
   WorkOrderStatus,
 } from '../../generated/prisma/client';
 import type { SinapiCatalog } from '../../generated/prisma/client';
-import { resolveUploadRoot, sanitizeUploadOriginalName } from '../../common/files/upload-storage';
+import { sanitizeUploadOriginalName } from '../../common/files/upload-storage';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CatalogFileSource, CatalogItemSearchQuery, ImportCatalogFileDto, ImportSinapiCatalogDto, SaveBudgetDto, TransitionBudgetDto } from './dto/budgets.dto';
 import {
@@ -36,10 +33,7 @@ const TRANSITIONS: Record<BudgetStatus, BudgetStatus[]> = {
 
 @Injectable()
 export class BudgetsService {
-  constructor(
-    private readonly prisma: PrismaService,
-    @Optional() private readonly config?: ConfigService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   listCatalogs(tenantId: string) {
     return this.prisma.sinapiCatalog.findMany({ where: { tenantId }, orderBy: [{ referenceMonth: 'desc' }, { importedAt: 'desc' }] });
@@ -228,15 +222,14 @@ export class BudgetsService {
           orderBy: [{ code: 'asc' }, { createdAt: 'asc' }],
           include: { components: { orderBy: { sortOrder: 'asc' } } },
         },
-        imports: {
-          orderBy: { createdAt: 'desc' },
-          include: {
-            sheets: { orderBy: { orderIndex: 'asc' } },
-            importedBy: { select: { id: true, name: true } },
+        revisions: { orderBy: { version: 'desc' }, take: 20 },
+        _count: {
+          select: {
+            items: { where: { deletedAt: null } },
+            laborPosts: { where: { deletedAt: null } },
+            revisions: true,
           },
         },
-        revisions: { orderBy: { version: 'desc' }, take: 20 },
-        _count: { select: { items: true, laborPosts: true, imports: true, revisions: true } },
       },
     });
     return { contract, budget };
@@ -290,16 +283,7 @@ export class BudgetsService {
     }
     const parsed = await parseContractBudgetFile(file.buffer, originalName, file.mimetype);
     const sha256 = createHash('sha256').update(file.buffer).digest('hex');
-    const root = resolveUploadRoot(this.config?.get<string>('UPLOAD_ROOT'));
-    const relativeDir = path.join(tenantId, 'contracts', contractId, 'budgets');
-    const absoluteDir = this.resolveInsideRoot(root, relativeDir);
-    await mkdir(absoluteDir, { recursive: true });
-    const fileName = `${randomUUID()}.${extension}`;
-    const storageKey = path.join(relativeDir, fileName).replaceAll(path.sep, '/');
-    const absolutePath = path.join(absoluteDir, fileName);
-    await writeFile(absolutePath, file.buffer, { flag: 'wx' });
-    try {
-      return await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
         const previous = await tx.contractBudget.findFirst({ where: { tenantId, contractId, deletedAt: null } });
         const budget = await tx.contractBudget.upsert({
           where: { contractId },
@@ -336,8 +320,8 @@ export class BudgetsService {
           importedByUserId: actorUserId,
           format: parsed.format,
           originalName,
-          storageKey,
-          fileName,
+          storageKey: null,
+          fileName: null,
           mimeType: file.mimetype || this.contractBudgetMime(extension),
           sizeBytes: BigInt(file.size),
           sha256,
@@ -418,11 +402,7 @@ export class BudgetsService {
           sheetCount: parsed.sheets.length,
         });
         return { contract, budget: refreshed, imported: { ...imported, sizeBytes: imported.sizeBytes.toString() }, report };
-      }, { maxWait: 30_000, timeout: 240_000 });
-    } catch (error) {
-      await unlink(absolutePath).catch(() => undefined);
-      throw error;
-    }
+    }, { maxWait: 30_000, timeout: 240_000 });
   }
 
   async updateContractBudget(tenantId: string, actorUserId: string, contractId: string,
@@ -583,27 +563,6 @@ export class BudgetsService {
         { contractId, budgetId: budget.id, archived: true });
       return { id: postId, archived: true, budget: refreshed };
     });
-  }
-
-  async resolveContractBudgetImportDownload(tenantId: string, actorUserId: string,
-    contractId: string, importId: string) {
-    await this.contractSummary(tenantId, contractId);
-    const imported = await this.prisma.contractBudgetImport.findFirst({
-      where: { id: importId, tenantId, budget: { contractId, deletedAt: null } },
-    });
-    if (!imported) throw new NotFoundException('Arquivo-fonte do orçamento não encontrado.');
-    const root = resolveUploadRoot(this.config?.get<string>('UPLOAD_ROOT'));
-    const absolutePath = this.resolveInsideRoot(root, imported.storageKey);
-    try { await access(absolutePath); } catch { throw new NotFoundException('Arquivo físico não localizado.'); }
-    await this.prisma.auditLog.create({ data: {
-      tenantId,
-      actorUserId,
-      action: AuditAction.DOWNLOAD,
-      entityType: 'ContractBudgetImport',
-      entityId: imported.id,
-      afterData: { contractId, originalName: imported.originalName },
-    } });
-    return { imported, absolutePath };
   }
 
   async searchWorkOrderContractItems(tenantId: string, workOrderId: string, query: ContractBudgetItemsQuery) {
@@ -921,15 +880,6 @@ export class BudgetsService {
     if (extension === 'pdf') return 'application/pdf';
     if (extension === 'xlsb') return 'application/vnd.ms-excel.sheet.binary.macroEnabled.12';
     return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-  }
-
-  private resolveInsideRoot(root: string, relativePath: string) {
-    const normalizedRoot = path.resolve(root);
-    const candidate = path.resolve(normalizedRoot, relativePath);
-    if (candidate !== normalizedRoot && !candidate.startsWith(`${normalizedRoot}${path.sep}`)) {
-      throw new BadRequestException('Caminho de armazenamento inválido.');
-    }
-    return candidate;
   }
 
   private json(value: unknown): Prisma.InputJsonValue {

@@ -503,8 +503,8 @@ describe('isolamento multiempresa', () => {
     }
     const reconciliation = await tenantA.agent
       .get(`/api/v1/finance/reconciliation/contracts/${tenantA.contractId}`).expect(200);
-    expect(Number(reconciliation.body.totals.measured)).toBeGreaterThanOrEqual(100);
-    expect(Number(reconciliation.body.totals.paid)).toBeGreaterThanOrEqual(100);
+    expect(Number(reconciliation.body.values.approvedMeasurements)).toBeGreaterThanOrEqual(100);
+    expect(Number(reconciliation.body.values.paidMeasurements)).toBeGreaterThanOrEqual(100);
   });
 
   it('gera manutenção recorrente de forma idempotente', async () => {

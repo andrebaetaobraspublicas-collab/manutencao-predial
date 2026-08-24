@@ -33,6 +33,17 @@ export type FinancialReconciliationInput = {
 const money = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 const different = (left: number, right: number) => Math.abs(money(left) - money(right)) > 0.01;
 
+export function measurementNetMatchesItems(input: {
+  netAmount: number;
+  itemNetAmounts: number[];
+  performanceDeductions: number;
+  bonuses: number;
+}) {
+  const itemNetTotal = input.itemNetAmounts.reduce((total, value) => total + value, 0);
+  const expectedNet = itemNetTotal - input.performanceDeductions + input.bonuses;
+  return !different(expectedNet, input.netAmount);
+}
+
 export function buildFinancialReconciliation(input: FinancialReconciliationInput) {
   const calculatedCurrentValue = money(
     input.originalValue + input.amendmentValue + input.adjustmentValue + input.apostilleValue,

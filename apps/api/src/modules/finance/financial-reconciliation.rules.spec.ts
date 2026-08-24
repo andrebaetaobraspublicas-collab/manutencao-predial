@@ -1,4 +1,4 @@
-import { buildFinancialReconciliation } from './financial-reconciliation.rules';
+import { buildFinancialReconciliation, measurementNetMatchesItems } from './financial-reconciliation.rules';
 
 const consistent = {
   originalValue: 1_000,
@@ -54,5 +54,34 @@ describe('conciliação financeira contratual', () => {
       'PAYMENT_TRACEABILITY_MISMATCH',
       'PAID_VALUE_MISMATCH',
     ]));
+  });
+});
+
+describe('líquido da medição e ajustes gerenciais', () => {
+  it('reconcilia glosa de KPI aplicada no nível da medição', () => {
+    expect(measurementNetMatchesItems({
+      netAmount: 1559.25,
+      itemNetAmounts: [1575],
+      performanceDeductions: 15.75,
+      bonuses: 0,
+    })).toBe(true);
+  });
+
+  it('reconcilia bônus aplicado no nível da medição', () => {
+    expect(measurementNetMatchesItems({
+      netAmount: 1020,
+      itemNetAmounts: [1000],
+      performanceDeductions: 0,
+      bonuses: 20,
+    })).toBe(true);
+  });
+
+  it('mantém a divergência quando o líquido não fecha', () => {
+    expect(measurementNetMatchesItems({
+      netAmount: 990,
+      itemNetAmounts: [1000],
+      performanceDeductions: 0,
+      bonuses: 0,
+    })).toBe(false);
   });
 });

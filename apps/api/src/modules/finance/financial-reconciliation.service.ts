@@ -6,7 +6,7 @@ import {
   MeasurementStatus,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { buildFinancialReconciliation } from './financial-reconciliation.rules';
+import { buildFinancialReconciliation, measurementNetMatchesItems } from './financial-reconciliation.rules';
 
 @Injectable()
 export class FinancialReconciliationService {
@@ -57,7 +57,13 @@ export class FinancialReconciliationService {
         },
         measurements: {
           where: { status: { not: MeasurementStatus.CANCELED } },
-          select: { status: true, netAmount: true, items: { select: { netAmount: true } } },
+          select: {
+            status: true,
+            netAmount: true,
+            performanceDeductions: true,
+            bonuses: true,
+            items: { select: { netAmount: true } },
+          },
         },
         workOrders: {
           select: {
@@ -98,10 +104,12 @@ export class FinancialReconciliationService {
     const paidMeasurements = contract.measurements
       .filter((measurement) => paidStatuses.has(measurement.status))
       .reduce((total, measurement) => total + measurement.netAmount.toNumber(), 0);
-    const measurementItemsMismatchCount = contract.measurements.filter((measurement) => {
-      const itemTotal = measurement.items.reduce((total, item) => total + item.netAmount.toNumber(), 0);
-      return Math.abs(itemTotal - measurement.netAmount.toNumber()) > 0.01;
-    }).length;
+    const measurementItemsMismatchCount = contract.measurements.filter((measurement) => !measurementNetMatchesItems({
+      netAmount: measurement.netAmount.toNumber(),
+      itemNetAmounts: measurement.items.map((item) => item.netAmount.toNumber()),
+      performanceDeductions: measurement.performanceDeductions.toNumber(),
+      bonuses: measurement.bonuses.toNumber(),
+    })).length;
 
     const stagePriority: Record<BudgetStage, number> = {
       [BudgetStage.PLANNED]: 1,

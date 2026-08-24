@@ -125,7 +125,14 @@ export default function WorkOrderDetailPage() {
   const [attachmentKind, setAttachmentKind] = useState('PHOTO_BEFORE');
   const [file, setFile] = useState<File | null>(null);
   const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ title: '', description: '', locationDetail: '', priority: 'NORMAL', dueAt: '' });
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    locationDetail: '',
+    priority: 'NORMAL',
+    dueAt: '',
+    assignedToUserId: '',
+  });
 
   const load = useCallback(async () => {
     try {
@@ -142,7 +149,8 @@ export default function WorkOrderDetailPage() {
       setMeasurementEligible(data.measurementEligible ?? false);
       setAcceptanceNote(data.acceptanceNote ?? '');
       setEditForm({ title: data.title, description: data.description, locationDetail: data.locationDetail ?? '',
-        priority: data.priority, dueAt: data.dueAt?.slice(0, 16) ?? '' });
+        priority: data.priority, dueAt: data.dueAt?.slice(0, 16) ?? '',
+        assignedToUserId: data.assignedTo?.id ?? '' });
       const next = (GENERIC_TRANSITIONS[data.status as WorkOrderStatus] ?? [])[0] ?? '';
       setTransitionStatus(next);
       setError('');
@@ -181,6 +189,7 @@ export default function WorkOrderDetailPage() {
     void run('edit', async () => {
       await apiFetch(`/work-orders/${id}`, { method: 'PATCH', body: JSON.stringify({ ...editForm,
         locationDetail: editForm.locationDetail || undefined,
+        assignedToUserId: editForm.assignedToUserId || undefined,
         dueAt: editForm.dueAt ? new Date(editForm.dueAt).toISOString() : undefined }) });
       setEditing(false);
     }, 'Ordem de serviço atualizada.');
@@ -265,7 +274,7 @@ export default function WorkOrderDetailPage() {
     {error ? <div className="notice error page-notice">{error}</div> : null}
     {success ? <div className="notice success page-notice">{success}</div> : null}
 
-    {editing ? <form className="card form-card" onSubmit={saveEdit} style={{ marginBottom: 18 }}><section className="form-section"><div className="form-section-header"><h2>Editar dados da ordem</h2><p>Alterações ficam registradas na auditoria da OS.</p></div><div className="form-grid"><div className="field col-8"><label>Título</label><input className="input" required value={editForm.title} onChange={(event) => setEditForm({ ...editForm, title: event.target.value })} /></div><div className="field col-2"><label>Prioridade</label><select className="select" value={editForm.priority} onChange={(event) => setEditForm({ ...editForm, priority: event.target.value })}><option value="LOW">Baixa</option><option value="NORMAL">Normal</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option><option value="CRITICAL">Crítica</option></select></div><div className="field col-2"><label>Prazo</label><input className="input" type="datetime-local" value={editForm.dueAt} onChange={(event) => setEditForm({ ...editForm, dueAt: event.target.value })} /></div><div className="field col-4"><label>Local</label><input className="input" value={editForm.locationDetail} onChange={(event) => setEditForm({ ...editForm, locationDetail: event.target.value })} /></div><div className="field col-8"><label>Descrição</label><textarea className="textarea" required value={editForm.description} onChange={(event) => setEditForm({ ...editForm, description: event.target.value })} /></div></div></section><div className="form-footer"><button className="btn btn-secondary" type="button" onClick={() => setEditing(false)}>Cancelar</button><button className="btn btn-primary" disabled={busyAction === 'edit'}><Save size={16} /> Salvar alterações</button></div></form> : null}
+    {editing ? <form className="card form-card" onSubmit={saveEdit} style={{ marginBottom: 18 }}><section className="form-section"><div className="form-section-header"><h2>Editar dados da ordem</h2><p>Alterações ficam registradas na auditoria da OS.</p></div><div className="form-grid"><div className="field col-8"><label>Título</label><input className="input" required value={editForm.title} onChange={(event) => setEditForm({ ...editForm, title: event.target.value })} /></div><div className="field col-2"><label>Prioridade</label><select className="select" value={editForm.priority} onChange={(event) => setEditForm({ ...editForm, priority: event.target.value })}><option value="LOW">Baixa</option><option value="NORMAL">Normal</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option><option value="CRITICAL">Crítica</option></select></div><div className="field col-2"><label>Prazo</label><input className="input" type="datetime-local" value={editForm.dueAt} onChange={(event) => setEditForm({ ...editForm, dueAt: event.target.value })} /></div><div className="field col-4"><label>Responsável operacional</label><select className="select" value={editForm.assignedToUserId} onChange={(event) => setEditForm({ ...editForm, assignedToUserId: event.target.value })}><option value="">Não atribuído</option>{directory.filter((membership) => OPERATIONAL_ROLES.has(membership.role)).map((membership) => <option key={membership.user.id} value={membership.user.id}>{membership.user.name} — {membership.user.email}</option>)}</select></div><div className="field col-4"><label>Local</label><input className="input" value={editForm.locationDetail} onChange={(event) => setEditForm({ ...editForm, locationDetail: event.target.value })} /></div><div className="field col-8"><label>Descrição</label><textarea className="textarea" required value={editForm.description} onChange={(event) => setEditForm({ ...editForm, description: event.target.value })} /></div></div></section><div className="form-footer"><button className="btn btn-secondary" type="button" onClick={() => setEditing(false)}>Cancelar</button><button className="btn btn-primary" disabled={busyAction === 'edit'}><Save size={16} /> Salvar alterações</button></div></form> : null}
 
     <div className="page-tabs work-order-tabs" role="tablist" aria-label="Detalhes da ordem de serviço">
       <SectionTab active={section === 'summary'} icon={FileText} label="Resumo" onClick={() => setSection('summary')} />

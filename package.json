@@ -33,6 +33,12 @@
   },
   "overrides": {
     "ajv@>=8": "8.20.0",
+    "@prisma/adapter-mariadb@7.9.1": {
+      "mariadb": "3.5.3"
+    },
+    "@prisma/config@7.9.1": {
+      "deepmerge-ts": "8.0.2"
+    },
     "nanoid": "3.3.18",
     "postcss": "8.5.25",
     "sharp": "0.35.3"

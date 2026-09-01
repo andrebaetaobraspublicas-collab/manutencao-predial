@@ -65,7 +65,7 @@
     "stripe": "22.4.0",
     "swagger-ui-dist": "5.32.11",
     "ts-loader": "9.5.2",
-    "tsx": "4.20.3",
+    "tsx": "4.23.13",
     "typescript": "5.9.2",
     "unzipper": "0.12.5"
   },

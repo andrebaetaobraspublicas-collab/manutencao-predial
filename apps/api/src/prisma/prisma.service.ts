@@ -1,10 +1,10 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../generated/prisma/client';
 import { parseMySqlUrl } from './database-url';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService extends PrismaClient implements OnModuleDestroy {
   constructor() {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
@@ -13,10 +13,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     const adapter = new PrismaMariaDb(parseMySqlUrl(databaseUrl));
     super({ adapter });
-  }
-
-  async onModuleInit(): Promise<void> {
-    await this.$connect();
   }
 
   async onModuleDestroy(): Promise<void> {

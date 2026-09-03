@@ -33,6 +33,9 @@
   },
   "overrides": {
     "ajv@>=8": "8.20.0",
+    "fast-uri": "3.1.6",
+    "mysql2": "3.23.1",
+    "qs": "6.16.0",
     "@prisma/adapter-mariadb@7.9.1": {
       "mariadb": "3.5.3"
     },

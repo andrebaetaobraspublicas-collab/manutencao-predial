@@ -1,6 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
 import * as XLSX from '@e965/xlsx';
-import { PDFParse } from 'pdf-parse';
 import { ContractBudgetItemKind, ContractBudgetSourceFormat } from '../../generated/prisma/client';
 
 type Sheet = XLSX.WorkSheet;
@@ -173,6 +172,11 @@ function parseWorkbook(buffer: Buffer, format: ContractBudgetSourceFormat): Pars
 
 async function parsePdf(buffer: Buffer): Promise<ParsedContractBudget> {
   if (buffer.subarray(0, 4).toString('ascii') !== '%PDF') throw new BadRequestException('O arquivo enviado não é um PDF válido.');
+  // pdf-parse loads @napi-rs/canvas, whose native Tokio runtime creates one
+  // worker per visible CPU. Loading it with the API used to reserve dozens of
+  // Hostinger process slots even when no PDF was ever imported. Keep this
+  // dependency off the application startup path and load it only for PDF work.
+  const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: new Uint8Array(buffer) });
   try {
     const result = await parser.getText();

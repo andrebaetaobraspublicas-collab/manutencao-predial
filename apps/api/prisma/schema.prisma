@@ -8,6 +8,19 @@ datasource db {
   provider = "mysql"
 }
 
+enum OrcaproReferenceStatus {
+  DRAFT
+  VALIDATED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum OrcaproRegime {
+  SD
+  CD
+  SE
+}
+
 enum TenantStatus {
   TRIAL
   ACTIVE
@@ -629,6 +642,9 @@ model Tenant {
   notificationPrefs          NotificationPreference[]
   notificationOutbox         NotificationOutbox[]
   reopenings                 WorkOrderReopening[]
+  orcaproProjects            OrcaproProject[]
+  orcaproCustomCompositions  OrcaproCustomComposition[]
+  orcaproCustomInputs        OrcaproCustomInput[]
 
   @@index([status])
   @@index([deletedAt])
@@ -696,6 +712,10 @@ model User {
   notificationPreferences       NotificationPreference[]
   notificationOutbox            NotificationOutbox[]
   workOrderReopenings           WorkOrderReopening[]
+  orcaproProjects               OrcaproProject[]
+  orcaproCustomCompositions     OrcaproCustomComposition[]
+  orcaproCustomInputs           OrcaproCustomInput[]
+  orcaproAccess                 OrcaproUserAccess?
 
   @@index([status])
   @@index([deletedAt])
@@ -2682,4 +2702,241 @@ model AuditLog {
 
   @@index([tenantId, entityType, entityId, occurredAt])
   @@index([tenantId, actorUserId, occurredAt])
+}
+
+model OrcaproReference {
+  id               String                 @id @default(uuid()) @db.Char(36)
+  year             Int
+  month            Int
+  revision         Int                    @default(1)
+  label            String                 @db.VarChar(100)
+  status           OrcaproReferenceStatus  @default(DRAFT)
+  sourceChecksum   String                 @db.Char(64)
+  sourceName       String                 @db.VarChar(255)
+  importedByUserId String                 @db.Char(36)
+  metadata         Json
+  validation       Json?
+  createdAt        DateTime               @default(now())
+  validatedAt      DateTime?
+  publishedAt      DateTime?
+  archivedAt       DateTime?
+  inputVersions    OrcaproInputVersion[]
+  compositionVersions OrcaproCompositionVersion[]
+  prices           OrcaproInputPrice[]
+  projects         OrcaproProject[]
+  settings         OrcaproSettings[]
+  templates        OrcaproTemplate[]
+  imports          OrcaproImport[]
+  projectVersions  OrcaproProjectVersion[]
+  customCompositions OrcaproCustomComposition[]
+  @@unique([year, month, revision])
+  @@index([status, year, month])
+  @@index([sourceChecksum])
+}
+
+model OrcaproSettings {
+  id                 String             @id @db.VarChar(30)
+  defaultReferenceId String?            @db.Char(36)
+  defaultReference   OrcaproReference?  @relation(fields: [defaultReferenceId], references: [id], onDelete: Restrict)
+  updatedAt          DateTime           @updatedAt
+}
+
+model OrcaproInput {
+  id       String                 @id @default(uuid()) @db.Char(36)
+  code     String                 @unique @db.VarChar(40)
+  versions OrcaproInputVersion[]
+  prices   OrcaproInputPrice[]
+  analytic OrcaproAnalyticItem[]
+}
+
+model OrcaproInputVersion {
+  id          String             @id @default(uuid()) @db.Char(36)
+  referenceId String             @db.Char(36)
+  inputId     String             @db.Char(36)
+  description String             @db.Text
+  unit        String             @db.VarChar(40)
+  nature      String             @db.VarChar(100)
+  origin      String             @db.VarChar(100)
+  metadata    Json?
+  reference   OrcaproReference   @relation(fields: [referenceId], references: [id], onDelete: Restrict)
+  input       OrcaproInput       @relation(fields: [inputId], references: [id], onDelete: Restrict)
+  @@unique([referenceId, inputId])
+  @@index([referenceId, nature])
+  @@fulltext([description])
+}
+
+model OrcaproInputPrice {
+  id          String             @id @default(uuid()) @db.Char(36)
+  referenceId String             @db.Char(36)
+  inputId     String             @db.Char(36)
+  uf          String             @db.Char(2)
+  regime      OrcaproRegime
+  amount      Decimal?           @db.Decimal(18, 6)
+  source      String             @db.VarChar(100)
+  reference   OrcaproReference   @relation(fields: [referenceId], references: [id], onDelete: Restrict)
+  input       OrcaproInput       @relation(fields: [inputId], references: [id], onDelete: Restrict)
+  @@unique([referenceId, inputId, uf, regime])
+  @@index([referenceId, uf, regime])
+}
+
+model OrcaproComposition {
+  id       String                       @id @default(uuid()) @db.Char(36)
+  code     String                       @unique @db.VarChar(40)
+  versions OrcaproCompositionVersion[]
+  usedBy   OrcaproAnalyticItem[]
+  copies   OrcaproCustomComposition[]
+}
+
+model OrcaproCompositionVersion {
+  id            String                @id @default(uuid()) @db.Char(36)
+  referenceId   String                @db.Char(36)
+  compositionId String                @db.Char(36)
+  description   String                @db.Text
+  unit          String                @db.VarChar(40)
+  group         String                @db.VarChar(255)
+  metadata      Json?
+  reference     OrcaproReference      @relation(fields: [referenceId], references: [id], onDelete: Restrict)
+  composition   OrcaproComposition    @relation(fields: [compositionId], references: [id], onDelete: Restrict)
+  items         OrcaproAnalyticItem[]
+  @@unique([referenceId, compositionId])
+  @@index([referenceId, group])
+  @@fulltext([description])
+}
+
+model OrcaproAnalyticItem {
+  id                   String                      @id @default(uuid()) @db.Char(36)
+  compositionVersionId String                      @db.Char(36)
+  position             Int
+  inputId              String?                     @db.Char(36)
+  childCompositionId   String?                     @db.Char(36)
+  coefficient          Decimal                     @db.Decimal(24, 12)
+  compositionVersion   OrcaproCompositionVersion    @relation(fields: [compositionVersionId], references: [id], onDelete: Restrict)
+  input                OrcaproInput?                @relation(fields: [inputId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  childComposition     OrcaproComposition?          @relation(fields: [childCompositionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@unique([compositionVersionId, position])
+  @@index([inputId])
+  @@index([childCompositionId])
+}
+
+model OrcaproProject {
+  id               String                @id @default(uuid()) @db.Char(36)
+  tenantId         String                @db.Char(36)
+  ownerUserId      String                @db.Char(36)
+  name             String                @db.VarChar(160)
+  referenceId      String                @db.Char(36)
+  uf               String                @db.Char(2)
+  regime           OrcaproRegime
+  version          Int                   @default(1)
+  data             Json
+  templateId       String?               @db.Char(36)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  archivedAt       DateTime?
+  tenant           Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  owner            User                  @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  reference        OrcaproReference      @relation(fields: [referenceId], references: [id], onDelete: Restrict)
+  template         OrcaproTemplate?      @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  versions         OrcaproProjectVersion[]
+  @@index([tenantId, ownerUserId, archivedAt, updatedAt])
+}
+
+model OrcaproProjectVersion {
+  id            String             @id @default(uuid()) @db.Char(36)
+  projectId     String             @db.Char(36)
+  version       Int
+  referenceId   String             @db.Char(36)
+  uf            String             @db.Char(2)
+  regime        OrcaproRegime
+  name          String             @db.VarChar(160)
+  data          Json
+  engineVersion String             @db.VarChar(80)
+  createdByUserId String            @db.Char(36)
+  createdAt     DateTime           @default(now())
+  project       OrcaproProject     @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  reference     OrcaproReference   @relation(fields: [referenceId], references: [id], onDelete: Restrict)
+  @@unique([projectId, version])
+}
+
+model OrcaproTemplate {
+  id          String             @id @default(uuid()) @db.Char(36)
+  code        String             @unique @db.VarChar(80)
+  name        String             @db.VarChar(160)
+  referenceId String             @db.Char(36)
+  uf          String             @db.Char(2)
+  regime      OrcaproRegime
+  data        Json
+  version     Int                @default(1)
+  isPublic    Boolean            @default(true)
+  reference   OrcaproReference   @relation(fields: [referenceId], references: [id], onDelete: Restrict)
+  projects    OrcaproProject[]
+  createdAt   DateTime           @default(now())
+}
+
+model OrcaproCustomComposition {
+  id                  String             @id @default(uuid()) @db.Char(36)
+  tenantId            String             @db.Char(36)
+  ownerUserId         String             @db.Char(36)
+  code                String             @db.VarChar(60)
+  description         String             @db.Text
+  revision            Int                @default(1)
+  data                Json
+  originType          String             @db.VarChar(30)
+  originCode          String?            @db.VarChar(40)
+  originReferenceId   String?            @db.Char(36)
+  originCompositionId String?            @db.Char(36)
+  createdAt           DateTime           @default(now())
+  archivedAt          DateTime?
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  owner               User               @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  originReference     OrcaproReference?  @relation(fields: [originReferenceId], references: [id], onDelete: Restrict)
+  originComposition   OrcaproComposition? @relation(fields: [originCompositionId], references: [id], onDelete: Restrict)
+  @@unique([tenantId, ownerUserId, code, revision])
+  @@index([tenantId, ownerUserId, archivedAt])
+}
+
+model OrcaproCustomInput {
+  id          String             @id @default(uuid()) @db.Char(36)
+  tenantId    String             @db.Char(36)
+  ownerUserId String             @db.Char(36)
+  code        String             @db.VarChar(60)
+  revision    Int                @default(1)
+  data        Json
+  createdAt   DateTime           @default(now())
+  archivedAt  DateTime?
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  owner       User               @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  @@unique([tenantId, ownerUserId, code, revision])
+  @@index([tenantId, ownerUserId, archivedAt])
+}
+
+model OrcaproImport {
+  id              String             @id @default(uuid()) @db.Char(36)
+  referenceId     String             @db.Char(36)
+  createdByUserId String             @db.Char(36)
+  checksum        String             @db.Char(64)
+  sourceName      String             @db.VarChar(255)
+  report          Json
+  createdAt       DateTime           @default(now())
+  reference       OrcaproReference   @relation(fields: [referenceId], references: [id], onDelete: Restrict)
+  @@index([referenceId])
+}
+
+model OrcaproAudit {
+  id              String    @id @default(uuid()) @db.Char(36)
+  tenantId        String?   @db.Char(36)
+  actorUserId     String    @db.Char(36)
+  action          String    @db.VarChar(100)
+  entityId        String    @db.VarChar(100)
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  @@index([tenantId, createdAt])
+  @@index([entityId, createdAt])
+}
+
+model OrcaproUserAccess {
+  userId          String   @id @db.Char(36)
+  enabled         Boolean  @default(true)
+  updatedByUserId String   @db.Char(36)
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 }

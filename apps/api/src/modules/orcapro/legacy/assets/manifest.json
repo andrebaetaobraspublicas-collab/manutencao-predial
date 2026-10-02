@@ -1,0 +1,294 @@
+{
+  "version": "1.8.3",
+  "sourceSha256": "b0144a95f4ddd1c900196fa5aff41d085e854d3f9d833a2d565b4429f0c68a15",
+  "clockForFixtures": "2026-10-02T12:00:00-03:00",
+  "modules": [
+    {
+      "file": "000-00_core.js",
+      "name": "00_core.js",
+      "firstLine": 556,
+      "lastLine": 637,
+      "sha256": "8081f0339a4279f1db0de2be1a9a64249216a0f78c165dcf83dd9b969a708daa"
+    },
+    {
+      "file": "001-01_xlsx.js",
+      "name": "01_xlsx.js",
+      "firstLine": 638,
+      "lastLine": 937,
+      "sha256": "3372441ee594b2d86f00b7fc7d2ea30b51bbdf80f4dd03b8dd549b1a6b8d0f56"
+    },
+    {
+      "file": "002-02_sinapi.js",
+      "name": "02_sinapi.js",
+      "firstLine": 938,
+      "lastLine": 1390,
+      "sha256": "eb87302d6f71e340f239e30a78fe42892dfc10aca0dfbd3edbba4dc150795d97"
+    },
+    {
+      "file": "003-03_factors.js",
+      "name": "03_factors.js",
+      "firstLine": 1391,
+      "lastLine": 1910,
+      "sha256": "d8ded9b020abc8411f061942bab9d27047285206c3dccd123446a622a1333ff5"
+    },
+    {
+      "file": "004-04_search.js",
+      "name": "04_search.js",
+      "firstLine": 1911,
+      "lastLine": 2009,
+      "sha256": "72e6392ae0795e8648ac0cc88d68c0066fda711202b810c68dea24c431037de2"
+    },
+    {
+      "file": "005-05_store.js",
+      "name": "05_store.js",
+      "firstLine": 2010,
+      "lastLine": 2046,
+      "sha256": "362445baedd3e51b4628c5e4ea61b68db9c2c287329a3e86c9c7df03ae91e8f4"
+    },
+    {
+      "file": "006-06_productivity.js",
+      "name": "06_productivity.js",
+      "firstLine": 2047,
+      "lastLine": 2125,
+      "sha256": "1d94fa50b4077b887ec849999dfd25ff57b034ecab3ee8477fc860461250f8f2"
+    },
+    {
+      "file": "007-07_cpm.js",
+      "name": "07_cpm.js",
+      "firstLine": 2126,
+      "lastLine": 2254,
+      "sha256": "a5728ef35d9b06462b997b3d2311b32ec696ec39e55e36d22f4709e99329f3a4"
+    },
+    {
+      "file": "008-08_resources.js",
+      "name": "08_resources.js",
+      "firstLine": 2255,
+      "lastLine": 2333,
+      "sha256": "cbba4a7d02e91d4d978e16006a2129d89572453dc5a43a02a6734642d2546478"
+    },
+    {
+      "file": "009-09_engine.js",
+      "name": "09_engine.js",
+      "firstLine": 2334,
+      "lastLine": 2491,
+      "sha256": "5cf26eff89e32843a6f569c70922389120cbda51d4a3a9c9dd8eb8583a31b711"
+    },
+    {
+      "file": "010-10_ui_core.js",
+      "name": "10_ui_core.js",
+      "firstLine": 2492,
+      "lastLine": 2668,
+      "sha256": "bf8739289ed8b0bd148b559325cf0e5d16c157cc5c565d43a79f001797e610da"
+    },
+    {
+      "file": "011-11_ui_catalog.js",
+      "name": "11_ui_catalog.js",
+      "firstLine": 2669,
+      "lastLine": 2834,
+      "sha256": "f92ea9305f61697cc13568a38b2b678ef8cc3336781b383b1633ee2eca4a019f"
+    },
+    {
+      "file": "012-12_ui_comp.js",
+      "name": "12_ui_comp.js",
+      "firstLine": 2835,
+      "lastLine": 2952,
+      "sha256": "8b84f200a94bb4d9f0c760568b98ae0880b43e1ff3c1fdae491f8ade444eba5d"
+    },
+    {
+      "file": "013-13_ui_budget.js",
+      "name": "13_ui_budget.js",
+      "firstLine": 2953,
+      "lastLine": 3051,
+      "sha256": "2266133a6cce9eedd451c4ab9cdd1b5e92da6ed830707197a0a4cc7759f9dd5c"
+    },
+    {
+      "file": "014-14_ui_crews.js",
+      "name": "14_ui_crews.js",
+      "firstLine": 3052,
+      "lastLine": 3117,
+      "sha256": "db05f6a713d59292c689616d988e7680b0a7ef18855fec9a8f1900462c020e9f"
+    },
+    {
+      "file": "015-15_ui_schedule.js",
+      "name": "15_ui_schedule.js",
+      "firstLine": 3118,
+      "lastLine": 3192,
+      "sha256": "87c433239fe9189901ab3b0f2bf45491788898c706e0e73f583dcaee3e1b734a"
+    },
+    {
+      "file": "016-16_ui_resources.js",
+      "name": "16_ui_resources.js",
+      "firstLine": 3193,
+      "lastLine": 3236,
+      "sha256": "088cb0c33ca0db347cbaa6aa3956d4f2eb8508b277e975daceb40495a9b78ee2"
+    },
+    {
+      "file": "017-17_export.js",
+      "name": "17_export.js",
+      "firstLine": 3237,
+      "lastLine": 3328,
+      "sha256": "1f3d4cae597c93b5a505288569441df94e592a856e1b6afbcdc1cb0054f57ebd"
+    },
+    {
+      "file": "018-18_ui_base.js",
+      "name": "18_ui_base.js",
+      "firstLine": 3329,
+      "lastLine": 3429,
+      "sha256": "2aa3e13d34609eccecf629dbe565eb26b6be84ed52b339e02e7a8f1dfd898e0d"
+    },
+    {
+      "file": "019-19_macro.js",
+      "name": "19_macro.js",
+      "firstLine": 3430,
+      "lastLine": 3470,
+      "sha256": "cc3acde693014f7b68fb8cc6b2d78199bd9a87c0de9c349a59c363fe7f8a9ea9"
+    },
+    {
+      "file": "020-20_charts.js",
+      "name": "20_charts.js",
+      "firstLine": 3471,
+      "lastLine": 3660,
+      "sha256": "8fe3c7512951f43f21b83e2294471be1890b67b74bbc9d992bc850a01f36794a"
+    },
+    {
+      "file": "021-21_bdi_core.js",
+      "name": "21_bdi_core.js",
+      "firstLine": 3661,
+      "lastLine": 4843,
+      "sha256": "bcbf149c15c9cd1728d129466a4c376528795510ac0f92a095e48c93cc4f59b3"
+    },
+    {
+      "file": "022-22_ui_bdi.js",
+      "name": "22_ui_bdi.js",
+      "firstLine": 4844,
+      "lastLine": 5134,
+      "sha256": "f4d61828ee96a3b5d39430d9edd9342b00c83464f3a8ae8e592dcf00845e6172"
+    },
+    {
+      "file": "023-23_ui_bdi2.js",
+      "name": "23_ui_bdi2.js",
+      "firstLine": 5135,
+      "lastLine": 5403,
+      "sha256": "a5077c354a4ec02ce2b715c868dc2c46a353f0e62660e2b272432936f7cd3dd7"
+    },
+    {
+      "file": "024-24_evt_core.js",
+      "name": "24_evt_core.js",
+      "firstLine": 5404,
+      "lastLine": 5533,
+      "sha256": "994df0e69c433b2dd7d60ae44e65e70058faa5af80d4d68896de8c0138abbf4a"
+    },
+    {
+      "file": "025-25_ui_evento.js",
+      "name": "25_ui_evento.js",
+      "firstLine": 5534,
+      "lastLine": 5686,
+      "sha256": "30a2d1f341b9d69c30cb36a14faf70e4617da6e6da9d74a869345df965c9e7ea"
+    },
+    {
+      "file": "026-26_exemplo_edificio.js",
+      "name": "26_exemplo_edificio.js",
+      "firstLine": 5687,
+      "lastLine": 5872,
+      "sha256": "32d7ef917a326d4dcbeaa87b22537d2dd96c5af22e74a9a0ebf1c0ef3d5b9a5a"
+    },
+    {
+      "file": "027-28_abc_ui.js",
+      "name": "28_abc_ui.js",
+      "firstLine": 5873,
+      "lastLine": 6551,
+      "sha256": "eb47a12db906daf3f5d43d9a255a75d3510409a1b12dd895c8c96016e9b60e54"
+    },
+    {
+      "file": "028-29_iva_bridge.js",
+      "name": "29_iva_bridge.js",
+      "firstLine": 6552,
+      "lastLine": 6710,
+      "sha256": "4c1ee3869330cdf6a13b2ec463eeb18a2060222afbdd508e177235b0df783d65"
+    },
+    {
+      "file": "029-30_iva_ui.js",
+      "name": "30_iva_ui.js",
+      "firstLine": 6711,
+      "lastLine": 6964,
+      "sha256": "1d7c7722d0b56777c1aa1a900ce782886a9e371ded593c6d8381a79ad42efb26"
+    },
+    {
+      "file": "030-29_basic_diagnostics.js",
+      "name": "29_basic_diagnostics.js",
+      "firstLine": 6965,
+      "lastLine": 7227,
+      "sha256": "469cb2ef11e188f749b42cb16bc0ba571d32376adec8be1d5c2a043b5511816d"
+    },
+    {
+      "file": "031-30_catalog_core.js",
+      "name": "30_catalog_core.js",
+      "firstLine": 7228,
+      "lastLine": 7439,
+      "sha256": "7042c2b5b7870fc0e89d3f6328d1de92b1bd35485abaac036c45284398210b10"
+    },
+    {
+      "file": "032-31_catalog_ui.js",
+      "name": "31_catalog_ui.js",
+      "firstLine": 7440,
+      "lastLine": 7575,
+      "sha256": "1e0584aaf916c8fc3b8733ef882caad19bbd0aa20217bd661ea386b2f46f16f6"
+    },
+    {
+      "file": "033-32_tax_abc_core.js",
+      "name": "32_tax_abc_core.js",
+      "firstLine": 7576,
+      "lastLine": 7700,
+      "sha256": "2eef42996c1b2f4f8d1dd58fe7b345b08f4543af1a0597721ac24ff03358ed33"
+    },
+    {
+      "file": "034-33_tax_abc_ui.js",
+      "name": "33_tax_abc_ui.js",
+      "firstLine": 7701,
+      "lastLine": 7810,
+      "sha256": "e68de4311cc805e5a5053b2571c74c61a63ca9acc764e0e5559f293a4dbe1f01"
+    },
+    {
+      "file": "035-34_example_repair.js",
+      "name": "34_example_repair.js",
+      "firstLine": 7811,
+      "lastLine": 15199,
+      "sha256": "5a802666fe7b7f73bfe6c62917a46ecf7040cd028813ae18c2ffef68b22f8b37"
+    },
+    {
+      "file": "036-36_native_resources.js",
+      "name": "36_native_resources.js",
+      "firstLine": 15200,
+      "lastLine": 15240,
+      "sha256": "839758209aeb46b798ccded836258282ad62ad62b90f92aaafdd39ff9ebc5250"
+    },
+    {
+      "file": "037-37_requested_example.js",
+      "name": "37_requested_example.js",
+      "firstLine": 15241,
+      "lastLine": 15284,
+      "sha256": "c7d7851a270b9311890bc6a976cb0bbd8ebb6336d540797c34dc7180e45bb072"
+    },
+    {
+      "file": "038-37b_crew_schedule.js",
+      "name": "37b_crew_schedule.js",
+      "firstLine": 15285,
+      "lastLine": 15400,
+      "sha256": "b0fa59c3c07d10ddb517f352deaf19e25234d78f15ff46475b6210193903a75d"
+    },
+    {
+      "file": "039-38_scoped_ui.js",
+      "name": "38_scoped_ui.js",
+      "firstLine": 15401,
+      "lastLine": 15456,
+      "sha256": "3943ede351208f017cffeb93e8f769ffb43032e31a96d796eb617691aa4da43a"
+    },
+    {
+      "file": "040-99_main.js",
+      "name": "99_main.js",
+      "firstLine": 15457,
+      "lastLine": 15552,
+      "sha256": "43d2a6afbfa8944983bcbe3b0a48eba41242f710c6f170ccd6e77fbb312cfd7c"
+    }
+  ]
+}

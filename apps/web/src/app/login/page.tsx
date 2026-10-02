@@ -2,12 +2,23 @@
 
 import { Building2, Eye, EyeOff, LogIn } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormEvent, Suspense, useState } from 'react';
+import { LoadingPanel } from '@/components/loading';
 import { apiFetch, ApiError } from '@/lib/api';
 
-export default function LoginPage() {
+type LoginDestination = '/dashboard' | '/orcapro' | '/programas';
+
+function safeDestination(value: string | null): LoginDestination {
+  return value === '/orcapro' || value === '/programas' ? value : '/dashboard';
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [destination, setDestination] = useState<LoginDestination>(
+    () => safeDestination(searchParams.get('next')),
+  );
   const [tenantSlug, setTenantSlug] = useState('demonstracao');
   const [email, setEmail] = useState('admin@gestaodepredios.com.br');
   const [password, setPassword] = useState('');
@@ -24,7 +35,17 @@ export default function LoginPage() {
         method: 'POST',
         body: JSON.stringify({ tenantSlug, email, password }),
       });
-      router.replace('/dashboard');
+      setPassword('');
+      let next = destination;
+      if (destination === '/orcapro') {
+        try {
+          const access = await apiFetch<{ enabled: boolean }>('/orcapro/access');
+          if (access.enabled !== true) next = '/programas';
+        } catch {
+          next = '/programas';
+        }
+      }
+      router.replace(next);
       router.refresh();
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Não foi possível acessar o sistema.');
@@ -41,15 +62,15 @@ export default function LoginPage() {
           <div><strong>Gestão de Prédios</strong><small>gestaodepredios.com.br</small></div>
         </div>
         <div className="login-message">
-          <h1>A manutenção começa pela ordem certa.</h1>
+          <h1>Uma conta. Dois programas.</h1>
           <p>
-            Centralize demandas, backlog, contratos, fornecedores e execução financeira em uma
-            visão operacional única, rastreável e orientada por indicadores.
+            Gerencie a manutenção no Gestão de Prédios e prepare seus orçamentos de obras
+            no OrçaPro, com os acessos da sua organização.
           </p>
         </div>
         <div className="login-feature-list">
-          <span>Ordens de serviço</span><span>Backlog analítico</span><span>Contratos</span>
-          <span>Georreferenciamento</span><span>KPIs e SLAs</span><span>Auditoria</span>
+          <span>Gestão de Prédios</span><span>OrçaPro</span><span>Manutenção</span>
+          <span>Orçamentos de obras</span><span>SINAPI</span><span>Auditoria</span>
         </div>
       </section>
 
@@ -58,6 +79,20 @@ export default function LoginPage() {
           <h2>Acesse sua organização</h2>
           <p>Informe o identificador da empresa e suas credenciais pessoais.</p>
           <form className="login-form" onSubmit={handleSubmit}>
+            <div className="field">
+              <label htmlFor="program">Programa</label>
+              <select
+                className="select"
+                id="program"
+                value={destination}
+                onChange={(event) => setDestination(safeDestination(event.target.value))}
+                disabled={submitting}
+              >
+                <option value="/dashboard">Gestão de Prédios — manutenção</option>
+                <option value="/orcapro">OrçaPro — orçamentos de obras</option>
+                <option value="/programas">Escolher após entrar</option>
+              </select>
+            </div>
             <div className="field">
               <label htmlFor="tenantSlug">Organização</label>
               <input
@@ -114,5 +149,13 @@ export default function LoginPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingPanel label="Preparando acesso…" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

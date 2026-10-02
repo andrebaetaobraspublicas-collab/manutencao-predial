@@ -1,0 +1,10 @@
+{
+  "sourceSha256": "b0144a95f4ddd1c900196fa5aff41d085e854d3f9d833a2d565b4429f0c68a15",
+  "applicationVersion": "1.8.3",
+  "reference": "08/2026",
+  "emission": "11/09/2026",
+  "inputs": 6120,
+  "compositions": 10547,
+  "analyticRows": 56281,
+  "note": "Global official snapshot extracted from the supplied HTML; imported validation metadata is not a fresh validation against a downloaded CAIXA workbook."
+}

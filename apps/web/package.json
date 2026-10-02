@@ -3,6 +3,7 @@
   "version": "0.20.0",
   "private": true,
   "scripts": {
+    "prebuild": "node ../../scripts/orcapro/build-cloud-editor.mjs",
     "dev": "next dev --port 3000",
     "build": "next build",
     "hostinger:prepare": "node scripts/hostinger-prepare-standalone.mjs",
@@ -11,8 +12,8 @@
   },
   "dependencies": {
     "lucide-react": "0.545.0",
-    "maplibre-gl": "6.1.0",
-    "next": "16.2.12",
+    "maplibre-gl": "6.11.2",
+    "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -21,7 +22,7 @@
     "@types/react": "19.1.11",
     "@types/react-dom": "19.1.7",
     "eslint": "9.32.0",
-    "eslint-config-next": "16.2.12",
+    "eslint-config-next": "16.3.8",
     "typescript": "5.9.2"
   }
 }

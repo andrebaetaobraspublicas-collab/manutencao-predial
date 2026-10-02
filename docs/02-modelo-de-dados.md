@@ -367,3 +367,28 @@ O orçamento global do contrato é separado dos três estágios de orçamento de
 `BudgetItem.contractBudgetItemId` registra a origem de um item usado na OS. O serviço valida que a
 planilha pertence a um contrato efetivamente vinculado à OS e copia o preço vigente para a revisão,
 preservando a rastreabilidade mesmo quando o contrato for atualizado depois.
+
+## 15. OrçaPro — catálogo global e projetos privados
+
+ADR 0007 separa o orçamento de obras da OS de manutenção. O catálogo existente `SinapiCatalog`/`SinapiCatalogItem` permanece intacto. As migrations `20261002170000_orcapro_global_sinapi`, `20261002180000_orcapro_user_access` e `20261002183000_orcapro_private_code_length` acrescentam entidades próprias.
+
+| Entidade | Escopo e invariantes |
+| --- | --- |
+| `OrcaproReference` | Global, UNIQUE ano/mês/revisão; DRAFT/VALIDATED/PUBLISHED/ARCHIVED, checksum, metadata e validação. Publicação é imutável; correção cria revisão. |
+| `OrcaproSettings` | Ponteiro `defaultReferenceId` global aplicado apenas à criação de novos projetos. |
+| `OrcaproInput`, `OrcaproComposition` | Identidade global UUID/código textual; nenhum tenant/user ou preço atual. |
+| `OrcaproInputVersion`, `OrcaproCompositionVersion` | UNIQUE referência/identidade; descrição, unidade, classificação/grupo e FULLTEXT por referência. |
+| `OrcaproInputPrice` | UNIQUE referência/insumo/UF/regime (SD/CD/SE); DECIMAL(18,6), NULL distinto de zero. |
+| `OrcaproAnalyticItem` | Versão estrutural, posição, insumo **ou** subcomposição, DECIMAL(24,12). CHECK exclusivo do tipo e coeficiente não negativo; FKs dos filhos ON UPDATE RESTRICT compatíveis com CHECK MySQL. |
+| `OrcaproProject` | UUID, tenant/owner com FKs User/Tenant RESTRICT, referência fixa, UF/regime, documento privado, versão otimista e arquivamento. |
+| `OrcaproProjectVersion` | UNIQUE projeto/versão; snapshot privado/contexto/nome/versão do motor/autoria. Não contém catálogo oficial. |
+| `OrcaproTemplate` | Exemplos globais públicos com referência; clonagem copia somente projeto/cadastros privados e registra versão do template. |
+| `OrcaproCustomInput`, `OrcaproCustomComposition` | UNIQUE tenant/owner/código/revisão, códigos privados até 60 caracteres, revisões imutáveis. Composição guarda proveniência oficial quando verificável. |
+| `OrcaproImport`, `OrcaproAudit` | Relatório/checksum/autoria e trilha append-only das mudanças. Logs globais somente em administração explícita. |
+| `OrcaproUserAccess` | Habilitação por usuário exclusivamente OrçaPro; não altera User.status, senha ou TenantMembership.role. Administração global usa UUIDs autorizados em configuração server-side separada. |
+
+O domínio impede ciclos e referências analíticas ausentes no mesmo mês/revisão. O custo é calculado pelo contexto referência × UF × regime com escala/truncagem preservadas; não há `currentPrice`. Contextos faltantes mantêm NULL e eventual fallback SP sinalizado. Dados históricos oficiais não desaparecem: FKs RESTRICT, arquivamento e restauração de snapshots com referências arquivadas.
+
+Campos extensos BDI/IVA/EAP/cronogramas/memórias permanecem no documento privado durante a migração incremental. Todo snapshot é validado, restringe cadastros a CP-/IP-, IDs seguros, vínculos e revisões numéricas; a raiz e o contexto são canonizados no servidor. Salvar snapshot antigo não reverte biblioteca privada. Cotações/itens de outra base preservam códigos/custos/memórias, sem cadastro SINAPI artificial. Histórico com origem não verificável é marcado LEGACY_UNVERIFIED.
+
+Toda consulta operacional OrçaPro inclui tenant e proprietário autenticados; consultas globais SINAPI não recebem tenant. Imports/publicação/default/clonagem/snapshots usam transações. O contrato e evidências detalhados estão em [orcapro-api.md](orcapro-api.md).

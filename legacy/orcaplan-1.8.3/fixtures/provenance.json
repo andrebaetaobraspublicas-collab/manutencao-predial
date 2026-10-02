@@ -1,0 +1,26 @@
+{
+  "sourceSha256": "b0144a95f4ddd1c900196fa5aff41d085e854d3f9d833a2d565b4429f0c68a15",
+  "clock": "2026-10-02T12:00:00-03:00",
+  "examples": [
+    "demo",
+    "edificio"
+  ],
+  "historicalSource": {
+    "project": "edificio",
+    "originalMetadata": {
+      "nome": "Edifício residencial multifamiliar — 4 pavimentos (Curso SINAPI Avançado 2026)",
+      "local": "Brasília (DF)",
+      "uf": "DF",
+      "rg": "CD",
+      "autor": "Fulano de Tal (CREA/DF 9274)",
+      "precoBase": "SINAPI dezembro/2025",
+      "encargos": {
+        "horista": 0.8817,
+        "mensalista": 0.5239
+      },
+      "bdi": 0.26221436562208433
+    },
+    "warning": "The source includes DF December/2025 historical fixed costs. The final v1.8.3 example uses the embedded August/2026 SP CD snapshot and explicit historical/quoted supplements; it is not a certified reconstruction of the December/2025 SINAPI catalog."
+  },
+  "fixturePolicy": "Only this explicit --update-fixtures command writes the baseline. Jest only reads committed fixtures."
+}

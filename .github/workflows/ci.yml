@@ -51,6 +51,7 @@ jobs:
           npm run prisma:seed -w @gestaopredios/api
       - name: Dependency security gate
         run: |
+          node --test scripts/validate-dependency-audit.test.mjs
           mkdir -p artifacts
           npm audit --omit=dev --json > artifacts/dependency-audit.json || true
           node scripts/validate-dependency-audit.mjs artifacts/dependency-audit.json
@@ -62,6 +63,12 @@ jobs:
         run: npm run test:e2e -w @gestaopredios/api -- --runInBand --json --outputFile=../../artifacts/e2e-tests.json
       - name: Build
         run: npm run build
+      - name: Verify Hostinger static export
+        env:
+          HOSTINGER_STATIC_EXPORT: "1"
+        run: npm run build:web
+      - name: Verify preserved OrçaPro editor and cloud bridge
+        run: node --test scripts/orcapro/cloud-bridge.spec.cjs scripts/orcapro/sanitize-derived-html.spec.mjs
       - name: Render homologation report
         if: always()
         run: |

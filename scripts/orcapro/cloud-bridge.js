@@ -382,11 +382,11 @@ function installOrcaProCloud(API_BASE) {
   UI.views.budget.render = () => conflictMessage() + historicalCostsMessage() + renderBudget();
   UI.act.cloudReload = () => { if (confirm('Reabrir a versão do servidor? Exporte as alterações JSON para preservá-las antes de continuar.')) location.reload(); };
   UI.act.importBase = UI.act.useBase = UI.act.delBase = () => { throw new Error('A referência deste projeto é fixa. Publique e gerencie versões no portal administrativo.'); };
-  UI.views.base = { render: () => `<div class="vh"><h1>Referência SINAPI do projeto</h1></div><div class="panel"><h3>SINAPI ${U.esc(state.raw.ref)}</h3><p>Este orçamento permanece vinculado à sua versão. Publicação e seleção de referência padrão pertencem à administração global. <a href="/orcapro" target="_top">Voltar ao portal OrçaPro</a></p></div>` };
+  UI.views.base = { render: () => `<div class="vh"><h1>Referência SINAPI do projeto</h1></div><div class="panel"><h3>SINAPI ${U.esc(state.raw.ref)}</h3><p>Este orçamento permanece vinculado à sua versão. Publicação e seleção de referência padrão pertencem à administração global. <a href="/orcapro/gerenciar" target="_top">Voltar ao portal OrçaPro</a></p></div>` };
   O.main.embeddedRaw = async () => { throw new Error('A referência é obtida do catálogo global autorizado.'); };
   O.main.useBase = () => { throw new Error('Troca de referência disponível somente pelo portal com revisão auditável.'); };
   O.main.openProject = () => { throw new Error('Abra os projetos privados pelo portal OrçaPro.'); };
-  UI.act.newProject = UI.act.demo = UI.act.demo2 = UI.act.openProjects = UI.act.spLoadExample = () => { window.top.location.href = '/orcapro'; };
+  UI.act.newProject = UI.act.demo = UI.act.demo2 = UI.act.openProjects = UI.act.spLoadExample = () => { window.top.location.href = '/orcapro/gerenciar'; };
   UI.act.delPj = UI.act.openPj = () => { throw new Error('Gerencie projetos pelo portal OrçaPro.'); };
   UI.act.importJSON = () => UI.toast('A importação de projeto deve resolver a referência original no portal OrçaPro. O editor atual permanece aberto.', 'warn');
   O.exp.importJSON = N.importData = async () => { throw new Error('Importe o projeto no portal OrçaPro para validar documento e referência antes de abrir o editor.'); };
@@ -396,7 +396,7 @@ function installOrcaProCloud(API_BASE) {
     const pop = UI.$('.pop');
     if (!pop) return;
     pop.querySelectorAll('[data-act="newProject"],[data-act="openProjects"],[data-act="demo"],[data-act="demo2"],[data-act="importJSON"]').forEach((el) => el.remove());
-    pop.insertAdjacentHTML('afterbegin', '<a class="btn ghost" href="/orcapro" target="_top">Projetos no portal OrçaPro</a>');
+    pop.insertAdjacentHTML('afterbegin', '<a class="btn ghost" href="/orcapro/gerenciar" target="_top">Projetos no portal OrçaPro</a>');
   };
 
   async function catalogPage(kind, query, page = 1) {
@@ -544,6 +544,6 @@ function installOrcaProCloud(API_BASE) {
     state.error = error;
     notifyParent('error', error.message);
     const bootElement = document.getElementById('boot');
-    if (bootElement) bootElement.innerHTML = `<div style="max-width:580px;text-align:center"><h2>OrçaPro</h2><p>${U.esc(error.message)}</p><a href="${error.status === 401 ? '/login' : '/orcapro'}" target="_top">Voltar ao portal</a></div>`;
+    if (bootElement) bootElement.innerHTML = `<div style="max-width:580px;text-align:center"><h2>OrçaPro</h2><p>${U.esc(error.message)}</p><a href="${error.status === 401 ? '/login?next=/orcapro' : '/orcapro/gerenciar'}" target="_top">Voltar ao portal</a></div>`;
   });
 }

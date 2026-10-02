@@ -217,24 +217,41 @@ export class OrcaproService {
     }
   }
   async createProject(user: AuthenticatedUser, dto: CreateProjectDto, templateId?: string) {
+    return this.prisma.$transaction(db => this.createProjectInTransaction(db, user, dto, templateId), { timeout: 30000 });
+  }
+  async openWorkspace(user: AuthenticatedUser) {
+    return this.prisma.$transaction(async db => {
+      // Serialize first entry for this authenticated membership: concurrent tabs
+      // must resume one private project rather than clone the example twice.
+      const membership = await db.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT id FROM TenantMembership WHERE id = ${user.membershipId} AND tenantId = ${user.tenantId} AND userId = ${user.userId} AND status = 'ACTIVE' FOR UPDATE`);
+      if (!membership.length) throw new NotFoundException('Vínculo ativo não encontrado.');
+      const existing = await db.orcaproProject.findFirst({ where: { ...this.owner(user), archivedAt: null }, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }] });
+      if (existing) return { id: existing.id };
+      const template = await db.orcaproTemplate.findFirst({ where: { code: 'EDIFICIO_4_PAVIMENTOS', isPublic: true, reference: { status: { in: ['PUBLISHED', 'ARCHIVED'] } } } });
+      const dto: CreateProjectDto = template
+        ? { name: template.name, referenceId: template.referenceId, uf: template.uf, regime: template.regime, data: { ...template.data as JsonRecord, projectTemplateId: template.id, projectTemplateVersion: template.version } }
+        : { name: 'Novo orçamento', uf: 'SP', regime: 'SD' };
+      const project = await this.createProjectInTransaction(db, user, dto, template?.id);
+      return { id: project.id };
+    }, { timeout: 30000 });
+  }
+  private async createProjectInTransaction(db: Db, user: AuthenticatedUser, dto: CreateProjectDto, templateId?: string) {
     assertContext(dto.uf, dto.regime);
     if (!dto.name.trim()) throw new BadRequestException('Nome do projeto obrigatório.');
-    return this.prisma.$transaction(async db => {
-      const defaultReference = await db.orcaproSettings.findUnique({ where: { id: 'global' } });
-      const referenceId = dto.referenceId ?? defaultReference?.defaultReferenceId;
-      if (!referenceId) throw new BadRequestException('Selecione uma referência SINAPI publicada.');
-      const ref = await this.reference(referenceId, db);
-      if (ref.status !== OrcaproReferenceStatus.PUBLISHED && !templateId) throw new BadRequestException('Novos projetos exigem referência publicada.');
-      const id = randomUUID();
-      const initial = dto.data ?? { root: { id: 'root', kind: 'stage', name: '', children: [] }, bdi: 0.25, bdi2: null, round: 'round', links: [], seq: 'escalonado', start: new Date().toISOString().slice(0,10), calendar: { workdays: [1,2,3,4,5], hpd: 8.8, holidays: true, carnaval: false, corpus: false, extra: [] }, created: Date.now(), updated: Date.now(), v: 1 };
-      const data = this.canonicalData(initial, { id, name: dto.name.trim(), referenceId, uf: dto.uf, regime: dto.regime });
-      const codes = projectOfficialCodes(data);
-      await this.graph(referenceId, codes.compositions, codes.inputs, dto.uf, dto.regime, db, false, new Set(codes.optional));
-      const project = await db.orcaproProject.create({ data: { id, ...this.owner(user), name: dto.name.trim(), referenceId, uf: dto.uf, regime: dto.regime, data: json(data), templateId } });
-      await this.syncCustomCatalog(db, user, data, true); await this.snapshot(db, user, project);
-      await this.audit(db, user, 'project.create', id, { referenceId, templateId });
-      return project;
-    }, { timeout: 30000 });
+    const defaultReference = await db.orcaproSettings.findUnique({ where: { id: 'global' } });
+    const referenceId = dto.referenceId ?? defaultReference?.defaultReferenceId;
+    if (!referenceId) throw new BadRequestException('Selecione uma referência SINAPI publicada.');
+    const ref = await this.reference(referenceId, db);
+    if (ref.status !== OrcaproReferenceStatus.PUBLISHED && !templateId) throw new BadRequestException('Novos projetos exigem referência publicada.');
+    const id = randomUUID();
+    const initial = dto.data ?? { root: { id: 'root', kind: 'stage', name: '', children: [] }, bdi: 0.25, bdi2: null, round: 'round', links: [], seq: 'escalonado', start: new Date().toISOString().slice(0,10), calendar: { workdays: [1,2,3,4,5], hpd: 8.8, holidays: true, carnaval: false, corpus: false, extra: [] }, created: Date.now(), updated: Date.now(), v: 1 };
+    const data = this.canonicalData(initial, { id, name: dto.name.trim(), referenceId, uf: dto.uf, regime: dto.regime });
+    const codes = projectOfficialCodes(data);
+    await this.graph(referenceId, codes.compositions, codes.inputs, dto.uf, dto.regime, db, false, new Set(codes.optional));
+    const project = await db.orcaproProject.create({ data: { id, ...this.owner(user), name: dto.name.trim(), referenceId, uf: dto.uf, regime: dto.regime, data: json(data), templateId } });
+    await this.syncCustomCatalog(db, user, data, true); await this.snapshot(db, user, project);
+    await this.audit(db, user, 'project.create', id, { referenceId, templateId });
+    return project;
   }
   async importLegacyProject(user: AuthenticatedUser, dto: CreateProjectDto) {
     if (!dto.referenceId || !dto.data) throw new BadRequestException('Importação histórica exige documento e referência explicitamente selecionada.');

@@ -31,6 +31,7 @@ Valores monetários chegam como strings decimais ou strings inteiras em centavos
 | Método / rota | Entrada / resultado |
 | --- | --- |
 | `GET /projects?archived=false` | Lista os últimos 200 projetos ativos do proprietário; `archived=true` lista arquivados |
+| `POST /workspace/open` | `{id}` do orçamento ativo privado mais recente; primeira entrada cria uma cópia privada de `EDIFICIO_4_PAVIMENTOS` ou orçamento vazio no padrão publicado quando o exemplo não existe |
 | `POST /projects` | `{name,referenceId?,uf?,regime?,data?}`; resolve o padrão uma única vez quando a referência for omitida |
 | `POST /projects/import` | Mesmos campos; `referenceId` e `data` obrigatórios, nunca assume referência histórica pelo padrão |
 | `GET /projects/:id` | `{id,name,referenceId,uf,regime,version,data,...}` |

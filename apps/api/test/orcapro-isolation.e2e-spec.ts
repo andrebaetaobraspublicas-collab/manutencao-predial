@@ -175,10 +175,50 @@ describe('OrçaPro — MySQL, referências e isolamento HTTP', () => {
     expect((await prisma.orcaproTemplate.findUniqueOrThrow({ where: { id: template.id } })).data).toEqual(data);
   });
 
+  it('primeira entrada simultânea cria um único exemplo privado sem copiar SINAPI', async () => {
+    const template = await prisma.orcaproTemplate.upsert({
+      where: { code: 'EDIFICIO_4_PAVIMENTOS' }, update: {},
+      create: { code: 'EDIFICIO_4_PAVIMENTOS', name: 'Edifício inicial de teste', referenceId: ref1, uf: 'SP', regime: 'SD',
+        data: { bdi: 0.25, links: [], catalog: { inputs: [], compositions: [] }, root: { id: 'root', kind: 'stage', name: 'Obra', children: [] } } },
+    });
+    const responses = await Promise.all([1, 2, 3].map(() => sameTenant.post('/api/v1/orcapro/workspace/open').set('Origin', ORIGIN).send({}).expect(201)));
+    expect(new Set(responses.map(r => r.body.id)).size).toBe(1);
+    expect((await sameTenant.get('/api/v1/orcapro/projects').expect(200)).body).toHaveLength(1);
+    const project = await sameTenant.get(`/api/v1/orcapro/projects/${responses[0].body.id}`).expect(200);
+    expect(project.body.templateId).toBe(template.id);
+    expect(project.body.referenceId).toBe(template.referenceId);
+    expect(project.body.data.base).toBeUndefined();
+    expect(project.body.version).toBe(1);
+    await a.agent.get(`/api/v1/orcapro/projects/${project.body.id}`).expect(404);
+    await b.agent.get(`/api/v1/orcapro/projects/${project.body.id}`).expect(404);
+  });
+
+  it('retoma o mais recente do proprietário sem alterar documento, referência ou versões', async () => {
+    const current = await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
+    const updated = await b.agent.put(`/api/v1/orcapro/projects/${projectId}`).set('Origin', ORIGIN).send({ expectedVersion: current.body.version, data: current.body.data }).expect(200);
+    const before = await b.agent.get(`/api/v1/orcapro/projects/${projectId}/versions`).expect(200);
+    const count = await prisma.orcaproProject.count();
+    const opened = await b.agent.post('/api/v1/orcapro/workspace/open').set('Origin', ORIGIN).send({}).expect(201);
+    expect(opened.body).toEqual({ id: projectId });
+    expect((await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200)).body).toEqual(updated.body);
+    expect((await b.agent.get(`/api/v1/orcapro/projects/${projectId}/versions`).expect(200)).body).toEqual(before.body);
+    expect(await prisma.orcaproProject.count()).toBe(count);
+    expect(updated.body.referenceId).toBe(ref1);
+  });
+
+  it('entrada direta ignora arquivados e exige sessão e Origin válido', async () => {
+    await request(app.getHttpServer()).post('/api/v1/orcapro/workspace/open').set('Origin', ORIGIN).send({}).expect(401);
+    await b.agent.post('/api/v1/orcapro/workspace/open').set('Origin', 'https://untrusted.example').send({}).expect(403);
+    const recent = await b.agent.post('/api/v1/orcapro/projects').set('Origin', ORIGIN).send({ name: 'Arquivado não é entrada', uf: 'SP', regime: 'SD', referenceId: ref2 }).expect(201);
+    await b.agent.delete(`/api/v1/orcapro/projects/${recent.body.id}`).set('Origin', ORIGIN).send({ expectedVersion: recent.body.version }).expect(200);
+    expect((await b.agent.post('/api/v1/orcapro/workspace/open').set('Origin', ORIGIN).send({}).expect(201)).body.id).toBe(projectId);
+  });
+
   it('desativa só o OrçaPro sem revogar sessão ou manutenção do usuário', async () => {
     await b.agent.patch(`/api/v1/orcapro/admin/users/${a.userId}/access`).set('Origin', ORIGIN).send({ enabled: false }).expect(403);
     await a.agent.patch(`/api/v1/orcapro/admin/users/${b.userId}/access`).set('Origin', ORIGIN).send({ enabled: false }).expect(200);
     await b.agent.get('/api/v1/orcapro/access').expect(403);
+    await b.agent.post('/api/v1/orcapro/workspace/open').set('Origin', ORIGIN).send({}).expect(403);
     await b.agent.get('/api/v1/auth/me').expect(200);
     await b.agent.get('/api/v1/work-orders').expect(200);
     await a.agent.patch(`/api/v1/orcapro/admin/users/${b.userId}/access`).set('Origin', ORIGIN).send({ enabled: true }).expect(200);

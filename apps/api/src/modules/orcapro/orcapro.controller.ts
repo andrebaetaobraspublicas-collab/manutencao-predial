@@ -19,6 +19,8 @@ export class OrcaproController {
 
   @Get('access') @ApiOperation({ summary: 'Acesso OrçaPro e papel global independente do papel de manutenção.' })
   session(@CurrentUser() user: AuthenticatedUser) { return this.access.session(user); }
+  @Post('workspace/open') @ApiOperation({ summary: 'Retoma o orçamento privado mais recente; na primeira entrada cria uma única cópia privada do exemplo inicial.' })
+  openWorkspace(@CurrentUser() user: AuthenticatedUser) { return this.service.openWorkspace(user); }
   @Get('references') references(@CurrentUser() user: AuthenticatedUser) { return this.service.references(user); }
   @Get('catalog/inputs') inputs(@Query() dto: CatalogQuery) { return this.service.catalogInputs(dto); }
   @Get('catalog/compositions') compositions(@Query() dto: CatalogQuery) { return this.service.catalogCompositions(dto); }

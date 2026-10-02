@@ -49,9 +49,9 @@ export default function OrcaproEditorPage() {
     : status === 'conflict' ? 'Conflito de versão: revise antes de salvar' : status === 'error' ? 'Não foi possível salvar ou abrir' : 'Orçamento vinculado à referência SINAPI';
 
   return <main className={styles.editor}>
-    <header><Link href="/orcapro">← Meus orçamentos</Link><strong>OrçaPro</strong><span role="status" className={status === 'error' || status === 'conflict' ? styles.warning : ''}>{statusText}</span><Link href="/programas">Trocar programa</Link></header>
+    <header><Link href="/orcapro/gerenciar">← Meus orçamentos</Link><strong>OrçaPro</strong><span role="status" className={status === 'error' || status === 'conflict' ? styles.warning : ''}>{statusText}</span><Link href="/programas">Trocar programa</Link></header>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
     {projectId ? <iframe id="orcapro-editor" title="OrçaPro — editor de orçamento de obras" src={`/orcapro-legacy/editor.html?project=${encodeURIComponent(projectId)}`} allow="clipboard-write" />
-      : <div className={styles.empty}><h1>OrçaPro</h1><p>{statusText}</p><Link href="/orcapro">Abrir lista de orçamentos</Link></div>}
+      : <div className={styles.empty}><h1>OrçaPro</h1><p>{statusText}</p><Link href="/orcapro/gerenciar">Abrir lista de orçamentos</Link></div>}
   </main>;
 }

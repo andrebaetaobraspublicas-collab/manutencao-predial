@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { Request } from 'express';
 import {
   AccountTokenPurpose,
@@ -29,6 +29,7 @@ import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { OperationsService } from '../operations/operations.service';
+import { hasOrcaproAccount } from './product-session';
 
 export type IssuedSession = {
   accessToken: string;
@@ -386,13 +387,17 @@ export class AuthService {
         },
       });
 
+      const newUserId = randomUUID();
       const user = await tx.user.create({
         data: {
+          id: newUserId,
           name: dto.ownerName.trim(),
           email,
           passwordHash,
           status: UserStatus.ACTIVE,
           emailVerifiedAt: new Date(),
+          orcaproAccess: { create: { managed: true, updatedByUserId: newUserId } },
+          orcaproSubscription: { create: { tenantId: tenant.id, status: 'TRIALING', currentPeriodStart: new Date(), currentPeriodEnd: trialEndsAt } },
         },
       });
 
@@ -430,7 +435,7 @@ export class AuthService {
         status: MembershipStatus.ACTIVE,
         tenant: {
           slug: dto.tenantSlug.trim().toLowerCase(),
-          status: { in: [TenantStatus.TRIAL, TenantStatus.ACTIVE, TenantStatus.PAST_DUE] },
+          status: { in: [TenantStatus.TRIAL, TenantStatus.ACTIVE, TenantStatus.PAST_DUE, TenantStatus.CANCELED] },
           deletedAt: null,
         },
         user: {
@@ -445,6 +450,7 @@ export class AuthService {
     if (!membership || !(await compare(dto.password, membership.user.passwordHash))) {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
+    if (membership.tenant.status === 'CANCELED' && !(await hasOrcaproAccount(membership.userId, this.prisma, this.config))) throw new UnauthorizedException('A organização não possui acesso contratado.');
 
     if (membership.expiresAt && membership.expiresAt <= new Date()) {
       throw new UnauthorizedException('O acesso provisório expirou.');
@@ -480,12 +486,13 @@ export class AuthService {
       session.membership.status !== MembershipStatus.ACTIVE ||
       (session.membership.expiresAt && session.membership.expiresAt <= now) ||
       session.membership.tenant.deletedAt ||
-      !( [TenantStatus.TRIAL, TenantStatus.ACTIVE, TenantStatus.PAST_DUE] as TenantStatus[]).includes(
+      !( [TenantStatus.TRIAL, TenantStatus.ACTIVE, TenantStatus.PAST_DUE, TenantStatus.CANCELED] as TenantStatus[]).includes(
         session.membership.tenant.status,
       )
     ) {
       throw new UnauthorizedException('Sessão inválida ou expirada.');
     }
+    if (session.membership.tenant.status === 'CANCELED' && !(await hasOrcaproAccount(session.userId, this.prisma, this.config))) throw new UnauthorizedException('A organização não possui acesso contratado.');
 
     const revoked = await this.prisma.refreshSession.updateMany({
       where: { id: session.id, revokedAt: null, expiresAt: { gt: now } },
@@ -536,13 +543,13 @@ export class AuthService {
     });
 
     if (!membership) throw new UnauthorizedException('Vínculo de acesso não encontrado.');
-    return { user: membership.user, tenant: membership.tenant, role: membership.role };
+    return { user: membership.user, tenant: membership.tenant, role: membership.role, maintenanceAccess: membership.maintenanceAccess && membership.tenant.status !== 'CANCELED' };
   }
 
   private async issueSession(
     user: { id: string; name: string; email: string },
-    membership: { id: string; tenantId: string; role: MembershipRole; sessionVersion: number },
-    tenant: { id: string; slug: string },
+    membership: { id: string; tenantId: string; role: MembershipRole; sessionVersion: number; maintenanceAccess?: boolean },
+    tenant: { id: string; slug: string; status?: TenantStatus },
     request: Request,
   ): Promise<IssuedSession> {
     const payload: JwtPayload = {
@@ -584,6 +591,7 @@ export class AuthService {
         role: membership.role,
         email: user.email,
         name: user.name,
+        maintenanceAccess: membership.maintenanceAccess !== false && tenant.status !== 'CANCELED',
       },
     };
   }

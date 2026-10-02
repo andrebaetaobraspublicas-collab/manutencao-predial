@@ -8,19 +8,19 @@ import { OrcaproAccess, OrcaproGuard } from './orcapro.guard';
 const user = { userId: 'person-a',tenantId: 'tenant-a',role: 'OWNER' } as AuthenticatedUser;
 const ctx = (method = 'GET',origin?: string) => ({ switchToHttp: () => ({ getRequest: () => ({ user,method,headers: { origin } }) }),getHandler: () => () => null,getClass: () => class {} }) as unknown as ExecutionContext;
 describe('OrçaPro product RBAC and CSRF isolation',() => {
-  let config: ConfigService, prisma: { orcaproUserAccess: { findUnique: jest.Mock } }, access: OrcaproAccess, reflector: { getAllAndOverride: jest.Mock }, guard: OrcaproGuard;
+  let config: ConfigService, prisma: { orcaproUserAccess: { findUnique: jest.Mock }; orcaproSubscription: { findUnique: jest.Mock } }, access: OrcaproAccess, reflector: { getAllAndOverride: jest.Mock }, guard: OrcaproGuard;
   beforeEach(() => {
     config = new ConfigService({ ORCAPRO_ENABLED: 'true',ORCAPRO_ADMIN_USER_IDS: 'person-global-admin',CORS_ORIGINS: 'https://www.gestaodepredios.com.br,http://localhost:3000' });
-    prisma = { orcaproUserAccess: { findUnique: jest.fn().mockResolvedValue(null) } };
+    prisma = { orcaproUserAccess: { findUnique: jest.fn().mockResolvedValue(null) }, orcaproSubscription: { findUnique: jest.fn().mockResolvedValue(null) } };
     access = new OrcaproAccess(config,prisma as unknown as PrismaService);
     reflector = { getAllAndOverride: jest.fn().mockReturnValue(false) }; guard = new OrcaproGuard(access,reflector as unknown as Reflector,config);
   });
   it('does not promote a maintenance OWNER to global SINAPI ADMIN',async () => {
-    expect(access.role(user)).toBe('USER'); reflector.getAllAndOverride.mockReturnValue(true);
+    expect(access.role(user)).toBe('USER'); reflector.getAllAndOverride.mockImplementation(key => key === 'orcapro-global-admin');
     await expect(guard.canActivate(ctx())).rejects.toThrow('Administração global');
   });
   it('requires explicit admin identity and exact global feature activation',async () => {
-    config.set('ORCAPRO_ADMIN_USER_IDS',user.userId); reflector.getAllAndOverride.mockReturnValue(true);
+    config.set('ORCAPRO_ADMIN_USER_IDS',user.userId); reflector.getAllAndOverride.mockImplementation(key => key === 'orcapro-global-admin');
     await expect(guard.canActivate(ctx())).resolves.toBe(true);
     config.set('ORCAPRO_ENABLED','1'); await expect(guard.canActivate(ctx())).rejects.toThrow('não habilitado');
   });

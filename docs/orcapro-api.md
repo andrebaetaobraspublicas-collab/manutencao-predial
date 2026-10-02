@@ -1,5 +1,27 @@
 # OrçaPro — contrato da API e integridade
 
+## Gestão SaaS e assinatura individual
+
+Prefixo `/api/v1/orcapro`. `/admin/saas/*` exige administrador global explícito, sessão válida e Origin autorizado nas mutações. OWNER/ADMIN da manutenção recebe 403. DTOs rejeitam campos desconhecidos, incluindo tenantId. IDs UUID validados. Dados operacionais permanecem privados por tenant/proprietário.
+
+| Método/caminho | Contrato |
+| --- | --- |
+| GET `/admin/saas/users?search&deleted&page&pageSize` | Diretório paginado seguro, vínculos por programa, licença, acesso e proteção global. Sem senha/hash. |
+| POST `/admin/saas/users` | name,email,password; organizationName/organizationSlug opcionais em par. Cria REQUESTER OrçaPro somente, teste 30 dias; devolve id e slug de login. |
+| PATCH `/admin/saas/users/:id/status` | status ACTIVE/SUSPENDED/DELETED; exclusão recuperável somente OrçaPro, sessões compartilhadas revogadas. |
+| POST `/admin/saas/users/:id/password` | newPassword, 10–72 caracteres e até 72 bytes; invalida todos JWT/refresh/reset tokens. |
+| POST `/admin/saas/users/:id/revoke-sessions` | Encerra sessões da identidade compartilhada. |
+| PUT `/admin/saas/users/:id/subscription` | status, planId opcional, currentPeriodEnd ISO opcional, expectedVersion para licença existente, reason obrigatório. Controle MANUAL, sem cancelar cobrança externa. |
+| GET/POST `/admin/saas/plans`, PUT `/admin/saas/plans/:id` | code,name,billingInterval MONTH/YEAR,priceBrl decimal,active,stripePriceId opcional; atualização exige expectedVersion. Preço de plano com Stripe contratado exige novo plano. |
+| GET `/admin/saas/stripe` | Booleanos de configuração; nunca devolve segredos. |
+| POST `/admin/saas/subscriptions/:id/stripe` | action SYNC/CANCEL_AT_PERIOD_END/RESUME + expectedVersion. SYNC retoma fonte STRIPE; demais alteram renovação externa da assinatura vinculada. |
+| GET `/billing`, GET `/billing/plans` | Somente licença própria e planos ativos; acessível mesmo com licença vencida, mas não após suspensão/exclusão OrçaPro. |
+| POST `/billing/checkout` | planId ativo; valida valor BRL/intervalo, quantidade 1 e customer individual; sessão aberta reutilizada. Sem cobrança Stripe configurada retorna 503. |
+| POST `/billing/portal` | Portal do customer individual próprio, return URL do servidor. |
+| POST `/billing/webhooks/stripe` | Público, raw body + stripe-signature obrigatório; consulta remota/deduplicação sem afetar manutenção. |
+
+Auditoria usa saas.user.*, saas.plan.save, saas.subscription.manual/stripe/webhook. Justificativa manual e origem do cliente registradas; senha/hash não registrados. Administradores globais protegidos. Conta de login compartilhada; licença OrçaPro individual não altera Subscription/SaaSPlan da manutenção. Campo maintenanceAccess em `/auth/me` e usuário de login/refresh sinaliza acesso efetivo à manutenção; false impede rotas dela no JwtAuthGuard.
+
 Base: `/api/v1/orcapro`. Autenticação reutiliza os cookies/JWT já existentes. Nenhuma rota altera login, senha, membership ou catálogo SINAPI de manutenção. Swagger registra os DTOs do módulo.
 
 ## Configuração e autorização

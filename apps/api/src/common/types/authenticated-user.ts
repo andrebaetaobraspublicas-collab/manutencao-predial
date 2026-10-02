@@ -8,4 +8,5 @@ export type AuthenticatedUser = {
   role: MembershipRole;
   email: string;
   name: string;
+  maintenanceAccess?: boolean;
 };

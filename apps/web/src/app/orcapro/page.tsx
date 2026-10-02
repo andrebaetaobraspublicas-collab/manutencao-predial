@@ -37,6 +37,6 @@ export default function OrcaproEntryPage() {
   }, []);
   return <main className={styles.editor}><div className={styles.empty} aria-busy={!error}>
     <h1>OrçaPro</h1><p role={error ? 'alert' : 'status'}>{error || 'Abrindo seu orçamento…'}</p>
-    {error ? <><Link href="/orcapro/gerenciar">Gerenciar meus orçamentos</Link><Link href="/programas">Trocar programa</Link></> : null}
+    {error ? <><Link href="/orcapro/assinatura">Consultar minha assinatura</Link><Link href="/orcapro/gerenciar">Gerenciar meus orçamentos</Link><Link href="/programas">Trocar programa</Link></> : null}
   </div></main>;
 }

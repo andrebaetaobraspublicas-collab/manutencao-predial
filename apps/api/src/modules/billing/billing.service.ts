@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
+import { OrcaproStripeService } from '../orcapro/orcapro-stripe.service';
 import {
   MembershipRole,
   SubscriptionStatus,
@@ -19,6 +20,7 @@ export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly orcapro: OrcaproStripeService,
   ) {
     const key = this.config.get<string>('STRIPE_SECRET_KEY');
     this.stripe = key ? new Stripe(key) : null;
@@ -133,6 +135,7 @@ export class BillingService {
   }
 
   private async routeEvent(event: Stripe.Event): Promise<void> {
+    if (await this.orcapro.handleEvent(event)) return;
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const tenantId = session.metadata?.tenantId || session.client_reference_id;

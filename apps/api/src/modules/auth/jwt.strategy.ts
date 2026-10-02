@@ -12,10 +12,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ACCESS_COOKIE } from './auth.constants';
 import type { JwtPayload } from './jwt-payload.type';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
+import { hasOrcaproAccount } from './product-session';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: ConfigService, private readonly prisma: PrismaService) {
+  constructor(private readonly config: ConfigService, private readonly prisma: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: Request) => request?.cookies?.[ACCESS_COOKIE] as string | null,
@@ -38,17 +39,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         user: { status: UserStatus.ACTIVE, deletedAt: null },
         tenant: {
-          status: { in: [TenantStatus.TRIAL, TenantStatus.ACTIVE, TenantStatus.PAST_DUE] },
+          status: { in: [TenantStatus.TRIAL, TenantStatus.ACTIVE, TenantStatus.PAST_DUE, TenantStatus.CANCELED] },
           deletedAt: null,
         },
       },
       include: {
         user: { select: { id: true, name: true, email: true } },
-        tenant: { select: { id: true, slug: true } },
+        tenant: { select: { id: true, slug: true, status: true } },
       },
     });
 
-    if (!membership) {
+    if (!membership || (membership.tenant.status === 'CANCELED' && !(await hasOrcaproAccount(membership.userId, this.prisma, this.config)))) {
       throw new UnauthorizedException('Acesso suspenso, expirado ou inválido.');
     }
 
@@ -60,6 +61,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       role: membership.role,
       email: membership.user.email,
       name: membership.user.name,
+      maintenanceAccess: membership.maintenanceAccess && membership.tenant.status !== 'CANCELED',
     };
   }
 }

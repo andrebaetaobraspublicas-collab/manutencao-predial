@@ -385,10 +385,29 @@ ADR 0007 separa o orçamento de obras da OS de manutenção. O catálogo existen
 | `OrcaproTemplate` | Exemplos globais públicos com referência; clonagem copia somente projeto/cadastros privados e registra versão do template. |
 | `OrcaproCustomInput`, `OrcaproCustomComposition` | UNIQUE tenant/owner/código/revisão, códigos privados até 60 caracteres, revisões imutáveis. Composição guarda proveniência oficial quando verificável. |
 | `OrcaproImport`, `OrcaproAudit` | Relatório/checksum/autoria e trilha append-only das mudanças. Logs globais somente em administração explícita. |
-| `OrcaproUserAccess` | Habilitação por usuário exclusivamente OrçaPro; não altera User.status, senha ou TenantMembership.role. Administração global usa UUIDs autorizados em configuração server-side separada. |
+| `OrcaproUserAccess` | Habilitação por usuário exclusivamente OrçaPro; `managed` distingue novas contas com licença obrigatória; `deletedAt` permite exclusão recuperável. Não altera User.status ou TenantMembership.role. Administração global usa UUIDs autorizados em configuração server-side separada. |
 
 O domínio impede ciclos e referências analíticas ausentes no mesmo mês/revisão. O custo é calculado pelo contexto referência × UF × regime com escala/truncagem preservadas; não há `currentPrice`. Contextos faltantes mantêm NULL e eventual fallback SP sinalizado. Dados históricos oficiais não desaparecem: FKs RESTRICT, arquivamento e restauração de snapshots com referências arquivadas.
 
 Campos extensos BDI/IVA/EAP/cronogramas/memórias permanecem no documento privado durante a migração incremental. Todo snapshot é validado, restringe cadastros a CP-/IP-, IDs seguros, vínculos e revisões numéricas; a raiz e o contexto são canonizados no servidor. Salvar snapshot antigo não reverte biblioteca privada. Cotações/itens de outra base preservam códigos/custos/memórias, sem cadastro SINAPI artificial. Histórico com origem não verificável é marcado LEGACY_UNVERIFIED.
 
 Toda consulta operacional OrçaPro inclui tenant e proprietário autenticados; consultas globais SINAPI não recebem tenant. Imports/publicação/default/clonagem/snapshots usam transações. O contrato e evidências detalhados estão em [orcapro-api.md](orcapro-api.md).
+
+## 16. Administração SaaS e assinatura individual OrçaPro
+
+Migration aditiva `20261002193000_orcapro_saas_management`, conforme [ADR 0008](adr/0008-orcapro-assinatura-individual.md).
+
+| Modelo/campo | Invariante |
+| --- | --- |
+| `TenantMembership.maintenanceAccess` | Default true preserva vínculos existentes. Cadastro administrativo OrçaPro cria vínculo REQUESTER com false; login não concede acesso à manutenção. |
+| `OrcaproPlan` | Código global único, MONTH/YEAR, DECIMAL(12,2) BRL, preço Stripe único opcional, ativo e versão otimista. Plano sem preço Stripe funciona no controle manual. |
+| `OrcaproSubscription` | UNIQUE userId: uma licença individual exclusiva OrçaPro em todos os vínculos da conta. Tenant de origem identifica contratação/auditoria; não autoriza acesso a orçamentos de outros tenants. Status/período/plano efetivos separados de stripeStatus/stripePeriodEnd. |
+| `OrcaproStripeEvent` | Identificador de evento único e processedAt; deduplicação na transação da licença. Não replica payload financeiro. |
+
+O cliente Stripe da assinatura individual é distinto do cliente da organização usado pela manutenção. `billingSource=MANUAL` preserva decisão manual quando webhook atualiza o estado externo. SYNC explícito retoma fonte STRIPE. Cancelamento de renovação externa não cancela automaticamente um contrato manual. Eventos consultam o estado remoto atual após lock da assinatura; checkout tem idempotência e uma sessão aberta por usuário. `version` impede alterações perdidas.
+
+Contas anteriores sem assinatura e sem managed preservam acesso. Cadastro administrativo recebe teste individual de 30 dias; nenhum plano pago é criado automaticamente. ACTIVE/MANUAL_CONTRACT admitem validade futura ou sem vencimento; TRIALING exige fim futuro; vencimento e inadimplência bloqueiam rotas operacionais, preservando a área de renovação. Administradores globais configurados são protegidos e dispensados de licença comercial.
+
+Todas as criações de identidade pelas rotas de registro, cadastro e convite da manutenção também criam managed=true e teste individual de 30 dias, sem modificar o contrato da manutenção. Vincular uma conta já existente não reinicia seu período. Novas rotas de criação de User devem preservar essa invariante; ausência de licença/grant fica reservada às contas anteriores e fixtures de seed, sem abrir um cadastro alternativo com acesso comercial ilimitado.
+
+Exclusão é lógica no acesso OrçaPro: preserva User, memberships, catálogo e orçamentos. Senha é compartilhada; redefinição administrativa invalida todos os JWT/refresh e tokens de recuperação da conta, com auditoria sem senha/hash. Tenant CANCELED representa cobrança da manutenção: contas OrçaPro contratadas podem autenticar com maintenanceAccess efetivo false. SUSPENDED/DELETED organizacional continua bloqueando ambos.

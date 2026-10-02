@@ -31,12 +31,12 @@ function LoginContent() {
     setSubmitting(true);
     setError('');
     try {
-      await apiFetch('/auth/login', {
+      const session = await apiFetch<{ user: { maintenanceAccess?: boolean } }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ tenantSlug, email, password }),
       });
       setPassword('');
-      let next = destination;
+      let next = destination === '/dashboard' && session.user.maintenanceAccess === false ? '/programas' : destination;
       if (destination === '/orcapro') {
         try {
           const access = await apiFetch<{ enabled: boolean }>('/orcapro/access');

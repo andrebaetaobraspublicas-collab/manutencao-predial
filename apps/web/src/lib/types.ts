@@ -1,4 +1,5 @@
 export type CurrentSession = {
+  maintenanceAccess?: boolean;
   user: { id: string; name: string; email: string; phone?: string | null; status: string; emailVerifiedAt?: string | null };
   tenant: { id: string; name: string; slug: string; status: string; trialEndsAt?: string | null };
   role: string;

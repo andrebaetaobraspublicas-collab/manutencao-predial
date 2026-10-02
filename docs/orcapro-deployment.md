@@ -24,6 +24,8 @@ O portal consulta primeiro `/orcapro/access`, permitindo que o cliente existente
 
 ## Pipeline existente
 
+O build web usa `next build --webpack`. O Linux da Hostinger observado nesta publicação não fornece GLIBC 2.29 exigida pelo SWC nativo do Next 16.3; o Next recorre ao SWC WebAssembly. Webpack admite esse fallback, enquanto Turbopack exige o binding nativo. Manter a versão corrigida do Next e verificar a build real da hospedagem; não contornar a incompatibilidade removendo atualizações de segurança.
+
 O frontend acompanha `main` e pode ser publicado antes de a API nova estar pronta. O workflow `Promote Hostinger runtime` promove a API pela branch técnica `deploy-api` depois da CI de um push em `main` no próprio repositório. Confere que o SHA ainda é o `main` atual antes de publicar, preserva uploads e exige SHA correto e banco alcançável na readiness. CI de pull request e revisão superada não devem promover produção. Essa convivência de versões é tratada pelo portal, que considera endpoint ausente indisponibilidade.
 
 O comando Hostinger da API inclui `prisma migrate deploy` e seed. Executá-lo contra produção é uma publicação com alteração de banco, mesmo que a mudança pareça apenas de build. Não usá-lo para verificação local. Commits em `main`, inclusive de documentação, podem acionar publicação; manter a candidata em branch de trabalho até concluir os gates.

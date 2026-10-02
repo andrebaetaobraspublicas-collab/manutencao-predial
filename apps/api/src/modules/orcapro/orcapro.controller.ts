@@ -22,6 +22,8 @@ export class OrcaproController {
   @Post('workspace/open') @ApiOperation({ summary: 'Retoma o orçamento privado mais recente; na primeira entrada cria uma única cópia privada do exemplo inicial.' })
   openWorkspace(@CurrentUser() user: AuthenticatedUser) { return this.service.openWorkspace(user); }
   @Get('references') references(@CurrentUser() user: AuthenticatedUser) { return this.service.references(user); }
+  @Get('catalog/navigation') @ApiOperation({ summary: 'Índice global de cadernos e descrições para navegação original; sem preços ou analíticos.' })
+  navigation(@Query() dto: ReferenceDto) { return this.service.catalogNavigation(dto.referenceId); }
   @Get('catalog/inputs') inputs(@Query() dto: CatalogQuery) { return this.service.catalogInputs(dto); }
   @Get('catalog/compositions') compositions(@Query() dto: CatalogQuery) { return this.service.catalogCompositions(dto); }
   @Get('catalog/compositions/:code') analytic(@Param('code') code: string, @Query() dto: ContextQuery) { return this.service.composition(code, dto.referenceId, dto.uf, dto.regime); }

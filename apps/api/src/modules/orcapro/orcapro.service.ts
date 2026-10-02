@@ -41,6 +41,15 @@ export class OrcaproService {
     return { items, defaultReferenceId: settings?.defaultReferenceId ?? null };
   }
 
+  async catalogNavigation(referenceId: string) {
+    const ref = await this.reference(referenceId);
+    const rows = await this.prisma.orcaproCompositionVersion.findMany({ where: { referenceId },
+      select: { description: true, unit: true, group: true, composition: { select: { code: true } } },
+      orderBy: { composition: { code: 'asc' } } });
+    const inputCount = await this.prisma.orcaproInputVersion.count({ where: { referenceId } });
+    return { referenceId, inputCount, groups: (ref.metadata as JsonRecord).grupos,
+      items: rows.map(row => ({ code: row.composition.code, description: row.description, unit: row.unit, group: row.group })) };
+  }
   async catalogInputs(query: CatalogQuery) {
     assertContext(query.uf, query.regime); await this.reference(query.referenceId);
     const where: Prisma.OrcaproInputVersionWhereInput = { referenceId: query.referenceId,

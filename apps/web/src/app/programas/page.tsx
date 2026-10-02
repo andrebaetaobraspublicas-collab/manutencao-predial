@@ -16,7 +16,7 @@ type OrcaProAccess = {
   role: 'ADMIN' | 'USER';
 };
 
-type Availability = { enabled: boolean; message: string };
+type Availability = { enabled: boolean; message: string; admin?: boolean };
 
 function unavailableMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -46,6 +46,7 @@ export default function ProgramsPage() {
         const result = await apiFetch<OrcaProAccess>('/orcapro/access');
         access = {
           enabled: result.enabled === true,
+          admin: result.enabled === true && result.role === 'ADMIN',
           message: result.enabled === true ? 'Disponível para sua conta.' : 'O OrçaPro ainda não está habilitado.',
         };
       } catch (cause) {
@@ -135,10 +136,10 @@ export default function ProgramsPage() {
             <span className={styles.icon}><Building2 size={28} /></span>
             <h2>Gestão de Prédios</h2>
             <p>Organize ordens de serviço, edificações, contratos e a execução da manutenção predial.</p>
-            <span className={styles.status}>Disponível para sua organização.</span>
-            <Link className="btn btn-primary" href="/dashboard">
+            <span className={styles.status}>{session.maintenanceAccess === false ? 'Este acesso inclui somente o OrçaPro.' : 'Disponível para sua organização.'}</span>
+            {session.maintenanceAccess !== false ? <Link className="btn btn-primary" href="/dashboard">
               Acessar Gestão de Prédios <ArrowRight size={16} />
-            </Link>
+            </Link> : <button className="btn btn-secondary" disabled>Acesso não contratado</button>}
           </article>
 
           <article className={styles.card}>
@@ -156,8 +157,10 @@ export default function ProgramsPage() {
                 <button className="btn btn-ghost" type="button" onClick={retry}>
                   <RefreshCw size={15} /> Verificar novamente
                 </button>
+                <Link href="/orcapro/assinatura">Consultar minha assinatura</Link>
               </div>
             )}
+            {availability.admin ? <Link className="btn btn-secondary" href="/orcapro/administracao">Gestão do SaaS</Link> : null}
           </article>
         </section>
 

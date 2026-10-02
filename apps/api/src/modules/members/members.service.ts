@@ -113,6 +113,8 @@ export class MembersService {
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({ data: {
         name: dto.name.trim(), email, passwordHash, status: UserStatus.ACTIVE, emailVerifiedAt: new Date(),
+        orcaproAccess: { create: { managed: true, updatedByUserId: actor.userId } },
+        orcaproSubscription: { create: { tenantId: actor.tenantId, status: 'TRIALING', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 30 * 86400000) } },
       } });
       const membership = await tx.tenantMembership.create({ data: {
         tenantId: actor.tenantId, userId: user.id, role: dto.role,
@@ -172,6 +174,8 @@ export class MembersService {
             email,
             passwordHash: placeholderPassword!,
             status: UserStatus.INVITED,
+            orcaproAccess: { create: { managed: true, updatedByUserId: actor.userId } },
+            orcaproSubscription: { create: { tenantId: actor.tenantId, status: 'TRIALING', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 30 * 86400000) } },
           },
         }));
 

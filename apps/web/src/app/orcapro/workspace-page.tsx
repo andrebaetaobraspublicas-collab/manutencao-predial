@@ -6,7 +6,6 @@ import { Building2, Calculator, FolderOpen, LogOut, Plus, Search, ShieldCheck } 
 import { apiFetch, ApiError } from '@/lib/api';
 import styles from './workspace.module.css';
 import { ProjectImport, ProjectHistory, ReferenceImport } from './panels';
-import { AdminControls } from './admin-controls';
 
 type Access = { enabled: boolean; role: 'ADMIN' | 'USER'; userId: string; tenantId: string };
 type Reference = { id: string; label: string; year: number; month: number; revision: number; status: string };
@@ -167,6 +166,8 @@ export default function OrcaproPage() {
         <button className={view === 'projects' ? styles.active : ''} onClick={() => { setView('projects'); setError(''); }}><FolderOpen size={19} /> Meus orçamentos</button>
         <button className={view === 'catalog' ? styles.active : ''} onClick={() => { setView('catalog'); setError(''); }}><Search size={19} /> Catálogo SINAPI</button>
         {access.role === 'ADMIN' ? <button className={view === 'admin' ? styles.active : ''} onClick={openAdmin}><ShieldCheck size={19} /> Base de dados</button> : null}
+        {access.role === 'ADMIN' ? <Link href="/orcapro/administracao"><ShieldCheck size={19} /> Gestão do SaaS</Link> : null}
+        <Link href="/orcapro/assinatura">Minha assinatura</Link>
       </nav>
       <footer><span className={styles.badge}>Sessão protegida · {access.role}</span><Link href="/programas"><Building2 size={16} /> Trocar programa</Link><button onClick={logout}><LogOut size={16} /> Sair</button></footer>
     </aside>
@@ -197,7 +198,7 @@ export default function OrcaproPage() {
         {view === 'admin' && access.role === 'ADMIN' ? <>
           <ReferenceImport onImported={openAdmin} />
           <section className={styles.panel}><h2>Referências SINAPI</h2><p className={styles.muted}>O padrão é usado ao criar novos projetos. Orçamentos anteriores conservam sua referência.</p><div className={styles.tablewrap}><table><thead><tr><th>Referência</th><th>Revisão</th><th>Situação</th><th /></tr></thead><tbody>{adminReferences.map((r) => <tr key={r.id}><td>{r.label}</td><td>{r.revision}</td><td>{r.status}</td><td className={styles.actions}>{r.status === 'DRAFT' ? <button onClick={() => referenceAction(r.id, 'validate')}>Validar</button> : r.status === 'VALIDATED' ? <button onClick={() => referenceAction(r.id, 'publish')}>Publicar</button> : r.status === 'PUBLISHED' ? <><button onClick={() => setDefault(r.id)}>Usar como padrão</button><button onClick={() => referenceAction(r.id, 'archive')}>Arquivar referência</button></> : null}</td></tr>)}</tbody></table></div></section>
-          <AdminControls currentUserId={access.userId} />
+          <section className={styles.panel}><h2>Gestão do SaaS</h2><p>Usuários, senhas, planos, assinaturas e auditoria estão na administração do sistema.</p><Link href="/orcapro/administracao">Abrir gestão do SaaS</Link></section>
         </> : null}
       </div>
     </main>

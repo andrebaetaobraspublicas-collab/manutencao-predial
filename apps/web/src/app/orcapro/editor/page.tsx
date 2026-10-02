@@ -11,6 +11,7 @@ export default function OrcaproEditorPage() {
   const [projectId, setProjectId] = useState('');
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState('');
+  const [admin, setAdmin] = useState(false);
   useEffect(() => {
     let active = true;
     async function load() {
@@ -18,9 +19,9 @@ export default function OrcaproEditorPage() {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
         throw new Error('Selecione um orçamento na sua lista para abrir o editor.');
       }
-      const access = await apiFetch<{ enabled: boolean }>('/orcapro/access');
+      const access = await apiFetch<{ enabled: boolean; role: string }>('/orcapro/access');
       if (!access.enabled) throw new Error('O OrçaPro ainda não está habilitado para sua conta.');
-      if (active) { setProjectId(id); setStatus('ready'); }
+      if (active) { setProjectId(id); setStatus('ready'); setAdmin(access.role === 'ADMIN'); }
     }
     load()
       .catch((cause: unknown) => {
@@ -49,7 +50,7 @@ export default function OrcaproEditorPage() {
     : status === 'conflict' ? 'Conflito de versão: revise antes de salvar' : status === 'error' ? 'Não foi possível salvar ou abrir' : 'Orçamento vinculado à referência SINAPI';
 
   return <main className={styles.editor}>
-    <header><Link href="/orcapro/gerenciar">← Meus orçamentos</Link><strong>OrçaPro</strong><span role="status" className={status === 'error' || status === 'conflict' ? styles.warning : ''}>{statusText}</span><Link href="/programas">Trocar programa</Link></header>
+    <header><Link href="/orcapro/gerenciar">← Meus orçamentos</Link><strong>OrçaPro</strong><span role="status" className={status === 'error' || status === 'conflict' ? styles.warning : ''}>{statusText}</span>{admin ? <Link className={styles.adminLink} href="/orcapro/administracao">Gestão do SaaS</Link> : null}<Link href="/orcapro/assinatura">Minha assinatura</Link><Link href="/programas">Trocar programa</Link></header>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
     {projectId ? <iframe id="orcapro-editor" title="OrçaPro — editor de orçamento de obras" src={`/orcapro-legacy/editor.html?project=${encodeURIComponent(projectId)}`} allow="clipboard-write" />
       : <div className={styles.empty}><h1>OrçaPro</h1><p>{statusText}</p><Link href="/orcapro/gerenciar">Abrir lista de orçamentos</Link></div>}

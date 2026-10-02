@@ -4,9 +4,12 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { PrismaService } from '../../prisma/prisma.service';
+import { subscriptionAllowsAccess } from './orcapro-entitlement';
 
 const ADMIN_KEY = 'orcapro-global-admin';
 export const OrcaproAdmin = () => SetMetadata(ADMIN_KEY, true);
+const BILLING_KEY = 'orcapro-subscription-access';
+export const OrcaproSubscriptionAccess = () => SetMetadata(BILLING_KEY, true);
 
 @Injectable()
 export class OrcaproAccess {
@@ -19,9 +22,12 @@ export class OrcaproAccess {
   assertAdmin(user: AuthenticatedUser): void {
     if (this.role(user) !== 'ADMIN') throw new ForbiddenException('Administração global SINAPI restrita.');
   }
-  async enabledFor(user: AuthenticatedUser): Promise<boolean> {
+  async enabledFor(user: AuthenticatedUser, billingOnly = false): Promise<boolean> {
     const grant = await this.prisma.orcaproUserAccess.findUnique({ where: { userId: user.userId } });
-    return grant?.enabled !== false;
+    if (grant?.enabled === false || grant?.deletedAt) return false;
+    if (billingOnly || this.role(user) === 'ADMIN') return true;
+    const subscription = await this.prisma.orcaproSubscription.findUnique({ where: { userId: user.userId }, select: { status: true, currentPeriodEnd: true } });
+    return subscriptionAllowsAccess(subscription, grant?.managed === true);
   }
   session(user: AuthenticatedUser) { return { userId: user.userId, tenantId: user.tenantId, role: this.role(user), enabled: this.enabled() }; }
 }
@@ -41,7 +47,8 @@ export class OrcaproGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request & { user: AuthenticatedUser }>();
     if (!request.user?.userId || !request.user.tenantId) throw new UnauthorizedException();
     if (!this.access.enabled()) throw new ServiceUnavailableException('OrçaPro ainda não habilitado neste ambiente.');
-    if (!(await this.access.enabledFor(request.user))) throw new ForbiddenException('Acesso ao OrçaPro desativado.');
+    const billingOnly = this.reflector.getAllAndOverride<boolean>(BILLING_KEY, [context.getHandler(), context.getClass()]) === true;
+    if (!(await this.access.enabledFor(request.user, billingOnly))) throw new ForbiddenException('Acesso ao OrçaPro desativado ou assinatura vencida.');
     if (this.reflector.getAllAndOverride<boolean>(ADMIN_KEY, [context.getHandler(), context.getClass()])) this.access.assertAdmin(request.user);
     if (!['GET','HEAD','OPTIONS'].includes(request.method.toUpperCase())) {
       const origins = (this.config.get<string>('CORS_ORIGINS') ?? 'http://localhost:3000').split(',').map(x => x.trim()).filter(Boolean);

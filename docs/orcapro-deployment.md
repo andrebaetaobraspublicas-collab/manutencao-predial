@@ -57,9 +57,21 @@ As suites originais `multi-tenant-isolation` e `homologation-volume` passaram co
 
 ## Rollback
 
+Para o módulo de assinaturas, seguir ADR 0008: código antigo não entende maintenanceAccess=false; suspender esses vínculos de contas novas antes de retornar a revisão anterior. Não apagar tabelas adicionais. A migration `20261002193000_orcapro_saas_management` adiciona somente campos com default conservador e três tabelas; planos e Stripe não são ativados pelo seed.
+
 Desativar o gate servidor do OrçaPro e retornar as aplicações à revisão anterior compatível. O Gestão de Prédios segue usando suas rotas e tabelas. Manter as tabelas adicionais, referências SINAPI publicadas, versões e projetos; não apagar histórico nem desfazer DDL automaticamente. Restaurar banco somente mediante o plano de restauração revisado, quando necessário.
 
 Não modificar as tabelas `SinapiCatalog` e `SinapiCatalogItem` da manutenção para acomodar o catálogo global. O OrçaPro tem catálogo próprio global com referência × UF × regime, enquanto projetos e adaptações privadas permanecem vinculados ao usuário e tenant autenticados.
+
+## Configuração Stripe individual
+
+A gestão fica em `/orcapro/administracao`, ligada ao editor e à área de projetos para o administrador global. `/orcapro/assinatura` apresenta a licença individual ao cliente. O fluxo de entrada continua avisos legais e editor original.
+
+O controle manual funciona sem Stripe. Para cobrança automática, configurar na API ORCAPRO_STRIPE_SECRET_KEY e ORCAPRO_STRIPE_WEBHOOK_SECRET (ambos opcionais, fallback às variáveis Stripe existentes quando a mesma conta/endpoint for usada). Registrar o endpoint HTTPS `/api/v1/orcapro/billing/webhooks/stripe` na conta Stripe e seu segredo correto; não copiar segredo de outro endpoint. Eventos: checkout.session.completed, customer.subscription.created/updated/deleted, invoice.paid e invoice.payment_failed. Usar somente um destino preferencial por produto para evitar consultas remotas extras; webhook comum existente também distingue metadata ORCAPRO, preservando manutenção.
+
+Criar preços recorrentes BRL MONTH/YEAR no Stripe, cadastrar os respectivos price IDs/valor/periodicidade em Planos e Stripe e configurar Customer Portal na conta. O servidor valida preço ativo/valor/moeda/período antes do checkout. Nenhum segredo fica no navegador ou repo. WEB_BASE_URL define retorno HTTPS público; preservar variável atual. Validar com Stripe em modo teste antes de trocar para chaves e preços de produção. Sem configuração completa, contratação automática não é oferecida; controle manual e gestão de usuários continuam disponíveis.
+
+Ao excluir/suspender OrçaPro, eventual cobrança Stripe continua até ação específica de cancelamento; a interface informa essa diferença. Cancelar renovação usa fim do período, preservando contrato pago até sua validade, exceto quando controle manual define outra liberação. Alteração de senha é compartilhada e revoga sessões dos dois programas. Contas históricas não são cobradas automaticamente nem convertidas em teste pela migration.
 
 ## Evidências a registrar
 

@@ -476,9 +476,10 @@ export class OrcaproService {
   }
   async setUserAccess(user: AuthenticatedUser, id: string, enabled: boolean) {
     this.access.assertAdmin(user);
-    if (id === user.userId && !enabled) throw new BadRequestException('O administrador não pode desativar o próprio acesso.');
+    if (this.access.role({ ...user, userId: id }) === 'ADMIN' && !enabled) throw new BadRequestException('Administradores globais são protegidos.');
     return this.prisma.$transaction(async db => {
       if (!(await db.user.findFirst({ where: { id, deletedAt: null }, select: { id: true } }))) throw new NotFoundException('Usuário ausente.');
+      if ((await db.orcaproUserAccess.findUnique({ where: { userId: id } }))?.deletedAt) throw new BadRequestException('Recupere o usuário na gestão do SaaS.');
       const result = await db.orcaproUserAccess.upsert({ where: { userId: id }, create: { userId: id,enabled,updatedByUserId: user.userId }, update: { enabled,updatedByUserId: user.userId } });
       await this.audit(db, user, 'user.orcapro-access.change', id, { enabled }); return result;
     });

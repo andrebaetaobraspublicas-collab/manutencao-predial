@@ -42,7 +42,7 @@ async function bootstrap() {
   });
 
   const server = createServer(express);
-  server.listen(port, '0.0.0.0');
+  server.listen(port, process.env.API_BIND_HOST ?? '0.0.0.0');
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, adapter, {
     rawBody: true,

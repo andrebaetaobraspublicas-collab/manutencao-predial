@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import { fileURLToPath } from 'node:url';
+import { sanitizeDerivedHtml } from './sanitize-derived-html.mjs';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+test('derived ID/revision sinks escape HTML and preserve safe IDs', () => {
+  const template = '`<button data-id="${r.id}" data-fk="q-${r.item.id}">${meta?.revision||1} / ${h.rev}</button>`';
+  const safe = sanitizeDerivedHtml(template);
+  const esc = value => String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+  const context = { window: { OP: { util: { esc } } }, r: { id: '\"><img src=x onerror=alert(1)>', item: { id: 'safe-id' } }, meta: { revision: '<img src=x>' }, h: { rev: '<script>' } };
+  const rendered = vm.runInNewContext(safe, context);
+  assert.ok(rendered.includes('data-fk="q-safe-id"'));
+  assert.ok(rendered.includes('data-id="&quot;&gt;&lt;img'));
+  assert.ok(!rendered.includes('<img') && !rendered.includes('<script>'));
+});
+test('generated editor scripts compile and bridge is outside report template literals', () => {
+  const html = fs.readFileSync(path.join(root, 'apps/web/public/orcapro-legacy/editor.html'), 'utf8');
+  const bridge = html.lastIndexOf('<script>(function installOrcaProCloud');
+  const mainStart = html.indexOf('<script>window.OP_FONTS');
+  const mainEnd = html.lastIndexOf('</script>', bridge);
+  const bodyEnd = html.lastIndexOf('</body>');
+  assert.ok(mainStart > 0 && mainEnd > mainStart && bridge > mainEnd && bodyEnd > bridge);
+  assert.ok(!html.includes('id="op-base"'));
+  assert.ok(!html.includes('${r.id}'));
+  new vm.Script(html.slice(mainStart + '<script>'.length, mainEnd));
+  new vm.Script(html.slice(bridge + '<script>'.length, html.lastIndexOf('</script>')));
+});

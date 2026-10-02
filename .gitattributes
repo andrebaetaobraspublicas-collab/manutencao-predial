@@ -1,0 +1,3 @@
+legacy/** -text
+apps/api/src/modules/orcapro/legacy/assets/** -text
+apps/web/public/orcapro-legacy/** -text

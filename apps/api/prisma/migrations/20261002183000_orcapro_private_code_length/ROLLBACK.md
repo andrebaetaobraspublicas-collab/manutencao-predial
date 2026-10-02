@@ -1,0 +1,1 @@
+Alteração somente amplia códigos privados OrçaPro. Rollback operacional mantém as colunas ampliadas; não reduzi-las quando existirem identificadores acima de 40 caracteres. Nenhum campo de manutenção é alterado.

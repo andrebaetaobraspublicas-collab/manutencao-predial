@@ -18,6 +18,7 @@ import {
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  SwitchCamera,
   UserRound,
   UsersRound,
   Wrench,
@@ -210,6 +211,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="topbar-actions">
+            <Link className="btn btn-ghost" href="/programas" aria-label="Trocar programa">
+              <SwitchCamera size={16} /> <span className="topbar-label">Trocar programa</span>
+            </Link>
             <NotificationBell />
             <span className="badge success topbar-label"><ShieldCheck size={13} /> sessão protegida</span>
             <button className="btn btn-ghost" type="button" onClick={logout}>

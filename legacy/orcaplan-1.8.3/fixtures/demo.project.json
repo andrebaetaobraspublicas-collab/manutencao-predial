@@ -1,0 +1,978 @@
+{
+  "id": "demo-project",
+  "name": "Edificação — exemplo de demonstração",
+  "uf": "DF",
+  "rg": "SD",
+  "bdi": 0.25,
+  "round": "round",
+  "start": "2026-10-05",
+  "calendar": {
+    "workdays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "hpd": 8.8,
+    "holidays": true,
+    "carnaval": false,
+    "corpus": false,
+    "extra": []
+  },
+  "seq": "manual",
+  "links": [
+    {
+      "id": "lk_qohcqlnalc0",
+      "from": "demo-item-3",
+      "to": "demo-item-5",
+      "type": "FS",
+      "lag": 0
+    },
+    {
+      "id": "lk_udcu6xkalc0",
+      "from": "demo-item-4",
+      "to": "demo-item-5",
+      "type": "FS",
+      "lag": 0
+    },
+    {
+      "id": "lk_qmkzyflalc0",
+      "from": "demo-item-5",
+      "to": "demo-item-6",
+      "type": "FS",
+      "lag": 1
+    },
+    {
+      "id": "lk_y4gdsb8alc0",
+      "from": "demo-item-5",
+      "to": "demo-item-8",
+      "type": "FS",
+      "lag": 2
+    },
+    {
+      "id": "lk_ox6znimalc0",
+      "from": "demo-item-8",
+      "to": "demo-item-9",
+      "type": "SS",
+      "lag": 2
+    },
+    {
+      "id": "lk_s0g1ks5alc0",
+      "from": "demo-item-9",
+      "to": "demo-item-10",
+      "type": "FS",
+      "lag": 0
+    },
+    {
+      "id": "lk_h4yx1z3alc0",
+      "from": "demo-item-8",
+      "to": "demo-item-10",
+      "type": "FF",
+      "lag": 1
+    },
+    {
+      "id": "lk_nqys58malc0",
+      "from": "demo-item-10",
+      "to": "demo-item-12",
+      "type": "SS",
+      "lag": 3
+    },
+    {
+      "id": "lk_2kcojnzalc0",
+      "from": "demo-item-10",
+      "to": "demo-item-12",
+      "type": "FF",
+      "lag": 5
+    },
+    {
+      "id": "lk_mo81x38alc0",
+      "from": "demo-item-12",
+      "to": "demo-item-14",
+      "type": "SS",
+      "lag": 8
+    },
+    {
+      "id": "lk_q0aotk7alc0",
+      "from": "demo-item-12",
+      "to": "demo-item-14",
+      "type": "FF",
+      "lag": 2
+    },
+    {
+      "id": "lk_g0d3d9kalc0",
+      "from": "demo-item-14",
+      "to": "demo-item-15",
+      "type": "SS",
+      "lag": 3
+    },
+    {
+      "id": "lk_7xnzyedalc0",
+      "from": "demo-item-14",
+      "to": "demo-item-15",
+      "type": "FF",
+      "lag": 4
+    },
+    {
+      "id": "lk_cvrmbdfalc0",
+      "from": "demo-item-12",
+      "to": "demo-item-16",
+      "type": "FS",
+      "lag": 0
+    },
+    {
+      "id": "lk_wawicpvalc0",
+      "from": "demo-item-16",
+      "to": "demo-item-17",
+      "type": "FS",
+      "lag": 2
+    },
+    {
+      "id": "lk_21mnd3halc0",
+      "from": "demo-item-15",
+      "to": "demo-item-19",
+      "type": "FS",
+      "lag": 0
+    },
+    {
+      "id": "lk_9c3dt6calc0",
+      "from": "demo-item-17",
+      "to": "demo-item-19",
+      "type": "FS",
+      "lag": 0
+    }
+  ],
+  "root": {
+    "id": "root",
+    "kind": "stage",
+    "name": "",
+    "children": [
+      {
+        "id": "demo-stage-1",
+        "kind": "stage",
+        "name": "INFRAESTRUTURA",
+        "children": [
+          {
+            "id": "demo-stage-2",
+            "kind": "stage",
+            "name": "MOVIMENTO DE TERRA E FUNDAÇÕES",
+            "children": [
+              {
+                "id": "demo-item-3",
+                "kind": "item",
+                "code": 90082,
+                "qty": 180,
+                "crew": null,
+                "teams": 1,
+                "target": null,
+                "dur": null
+              },
+              {
+                "id": "demo-item-4",
+                "kind": "item",
+                "code": 95579,
+                "qty": 950,
+                "crew": null,
+                "teams": 1,
+                "target": null,
+                "dur": null
+              },
+              {
+                "id": "demo-item-5",
+                "kind": "item",
+                "code": 96555,
+                "qty": 28,
+                "crew": null,
+                "teams": 1,
+                "target": null,
+                "dur": null
+              },
+              {
+                "id": "demo-item-6",
+                "kind": "item",
+                "code": 93367,
+                "qty": 90,
+                "crew": null,
+                "teams": 1,
+                "target": null,
+                "dur": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "demo-stage-7",
+        "kind": "stage",
+        "name": "SUPERESTRUTURA",
+        "children": [
+          {
+            "id": "demo-item-8",
+            "kind": "item",
+            "code": 92409,
+            "qty": 210,
+            "crew": null,
+            "teams": 2,
+            "target": null,
+            "dur": null
+          },
+          {
+            "id": "demo-item-9",
+            "kind": "item",
+            "code": 92762,
+            "qty": 1800,
+            "crew": null,
+            "teams": 1,
+            "target": null,
+            "dur": null
+          },
+          {
+            "id": "demo-item-10",
+            "kind": "item",
+            "code": 103669,
+            "qty": 24,
+            "crew": null,
+            "teams": 1,
+            "target": null,
+            "dur": null
+          }
+        ]
+      },
+      {
+        "id": "demo-stage-11",
+        "kind": "stage",
+        "name": "VEDAÇÕES",
+        "children": [
+          {
+            "id": "demo-item-12",
+            "kind": "item",
+            "code": 103328,
+            "qty": 820,
+            "crew": null,
+            "teams": 3,
+            "target": null,
+            "dur": null
+          }
+        ]
+      },
+      {
+        "id": "demo-stage-13",
+        "kind": "stage",
+        "name": "REVESTIMENTOS E PISOS",
+        "children": [
+          {
+            "id": "demo-item-14",
+            "kind": "item",
+            "code": 87878,
+            "qty": 1640,
+            "crew": null,
+            "teams": 1,
+            "target": null,
+            "dur": null
+          },
+          {
+            "id": "demo-item-15",
+            "kind": "item",
+            "code": 87529,
+            "qty": 1640,
+            "crew": null,
+            "teams": 2,
+            "target": null,
+            "dur": null
+          },
+          {
+            "id": "demo-item-16",
+            "kind": "item",
+            "code": 87620,
+            "qty": 420,
+            "crew": null,
+            "teams": 1,
+            "target": null,
+            "dur": null
+          },
+          {
+            "id": "demo-item-17",
+            "kind": "item",
+            "code": 87246,
+            "qty": 420,
+            "crew": null,
+            "teams": 1,
+            "target": null,
+            "dur": null
+          }
+        ]
+      },
+      {
+        "id": "demo-stage-18",
+        "kind": "stage",
+        "name": "PINTURA",
+        "children": [
+          {
+            "id": "demo-item-19",
+            "kind": "item",
+            "code": 95622,
+            "qty": 1640,
+            "crew": null,
+            "teams": 1,
+            "target": null,
+            "dur": null
+          }
+        ]
+      }
+    ]
+  },
+  "bdi2": null,
+  "created": 1790953200000,
+  "updated": 1790953200000,
+  "v": 1,
+  "demo": true,
+  "catalog": {
+    "v": 1,
+    "inputs": [],
+    "compositions": []
+  },
+  "iva": {
+    "version": 1,
+    "year": 2033,
+    "priceMode": "budget",
+    "valuation": "budget",
+    "cfg": {
+      "schemaVersion": 7,
+      "appVersion": "2.5",
+      "anos": [
+        2026,
+        2027,
+        2028,
+        2029,
+        2030,
+        2031,
+        2032,
+        2033
+      ],
+      "cbs": [
+        0.9,
+        8.7,
+        8.7,
+        8.8,
+        8.8,
+        8.8,
+        8.8,
+        8.8
+      ],
+      "ibs": [
+        0.1,
+        0.1,
+        0.1,
+        1.92,
+        3.84,
+        5.76,
+        7.68,
+        19.2
+      ],
+      "resid": [
+        100,
+        100,
+        100,
+        90,
+        80,
+        70,
+        60,
+        0
+      ],
+      "transicaoLivre": false,
+      "icms": {
+        "AC": 19,
+        "AL": 21.5,
+        "AM": 20,
+        "AP": 18,
+        "BA": 20.5,
+        "CE": 20,
+        "DF": 20,
+        "ES": 17,
+        "GO": 19,
+        "MA": 23,
+        "MG": 18,
+        "MS": 17,
+        "MT": 17,
+        "PA": 19,
+        "PB": 20,
+        "PE": 20.5,
+        "PI": 22.5,
+        "PR": 19.5,
+        "RJ": 22,
+        "RN": 20,
+        "RO": 19.5,
+        "RR": 20,
+        "RS": 17,
+        "SC": 17,
+        "SE": 20,
+        "SP": 18,
+        "TO": 20
+      },
+      "icmsEnergia": {
+        "AC": 19,
+        "AL": 21.5,
+        "AM": 20,
+        "AP": 18,
+        "BA": 20.5,
+        "CE": 20,
+        "DF": 20,
+        "ES": 17,
+        "GO": 19,
+        "MA": 23,
+        "MG": 18,
+        "MS": 17,
+        "MT": 17,
+        "PA": 19,
+        "PB": 20,
+        "PE": 20.5,
+        "PI": 22.5,
+        "PR": 19.5,
+        "RJ": 22,
+        "RN": 20,
+        "RO": 19.5,
+        "RR": 20,
+        "RS": 17,
+        "SC": 17,
+        "SE": 20,
+        "SP": 18,
+        "TO": 20
+      },
+      "iss": {
+        "AC": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 3,
+          "transporte": 5
+        },
+        "AL": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "AM": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "AP": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "BA": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "CE": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "DF": {
+          "geral": 5,
+          "construcao": 2,
+          "saude": 2,
+          "transporte": 2
+        },
+        "ES": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "GO": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "MA": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "MG": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 3,
+          "transporte": 5
+        },
+        "MS": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "MT": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "PA": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "PB": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "PE": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "PI": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "PR": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "RJ": {
+          "geral": 5,
+          "construcao": 3,
+          "saude": 5,
+          "transporte": 5
+        },
+        "RN": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "RO": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "RR": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "RS": {
+          "geral": 5,
+          "construcao": 2.5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "SC": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "SE": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        },
+        "SP": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 2,
+          "transporte": 2
+        },
+        "TO": {
+          "geral": 5,
+          "construcao": 5,
+          "saude": 5,
+          "transporte": 5
+        }
+      },
+      "par": {
+        "material": 100,
+        "epi": 100,
+        "ferramentas": 100,
+        "servico": 100,
+        "locacao": 100,
+        "agua": 100,
+        "maoObra": 0,
+        "alimentacao": 15,
+        "transporte": 0,
+        "exames": 40,
+        "seguro": 10,
+        "depreciacao": 100,
+        "juros": 0,
+        "manutencao": 70,
+        "impostosSeguros": 50,
+        "operador": 10,
+        "combustivel": 100,
+        "energia": 100,
+        "concretoUsinado": 100
+      },
+      "fatorAliquota": {
+        "exames": 100
+      },
+      "regimes": {
+        "IX": 40,
+        "XIII": 0
+      },
+      "regimeInsumo": {
+        "358": "IX",
+        "359": "IX",
+        "360": "IX",
+        "365": "IX",
+        "3123": "IX",
+        "3322": "IX",
+        "3324": "IX",
+        "7253": "IX",
+        "10826": "IX",
+        "36080": "XIII",
+        "36081": "XIII",
+        "36204": "XIII",
+        "36205": "XIII",
+        "36206": "XIII",
+        "36207": "XIII",
+        "36209": "XIII",
+        "36210": "XIII",
+        "36218": "XIII",
+        "36220": "XIII",
+        "36223": "XIII",
+        "38125": "IX",
+        "38128": "IX",
+        "38639": "IX",
+        "38640": "IX",
+        "38641": "IX",
+        "44479": "IX",
+        "44539": "IX"
+      },
+      "ativo": {
+        "modo": "economico",
+        "ano": 2033,
+        "anoAutomatico": true
+      },
+      "operadorParametrico": false,
+      "precos": {
+        "modo": "restrito",
+        "autorizados": []
+      },
+      "base": {
+        "modo": "semIVA",
+        "ano2026": "potencial",
+        "porPerfil": {
+          "material": {
+            "fonte": ""
+          },
+          "equipamento": {
+            "fonte": ""
+          },
+          "locacao": {
+            "fonte": ""
+          },
+          "servico": {
+            "fonte": ""
+          },
+          "maoObra": {
+            "fonte": ""
+          },
+          "alimentacao": {
+            "fonte": ""
+          },
+          "transporte": {
+            "fonte": ""
+          },
+          "exames": {
+            "fonte": ""
+          },
+          "seguro": {
+            "fonte": ""
+          },
+          "epi": {
+            "fonte": ""
+          },
+          "ferramentas": {
+            "fonte": ""
+          },
+          "dieselRegra": {
+            "fonte": ""
+          },
+          "gasolina": {
+            "fonte": ""
+          },
+          "concretoUsinado": {
+            "fonte": ""
+          },
+          "energia": {
+            "fonte": ""
+          },
+          "agua": {
+            "fonte": ""
+          },
+          "operador": {
+            "fonte": ""
+          },
+          "depreciacao": {
+            "fonte": ""
+          },
+          "juros": {
+            "fonte": ""
+          },
+          "manutencao": {
+            "fonte": ""
+          },
+          "impSeg": {
+            "fonte": ""
+          }
+        },
+        "porInsumo": {}
+      },
+      "combustiveis": {
+        "diesel": {
+          "un": "L",
+          "icms": 1.17,
+          "fatorUnidade": 1,
+          "finalidade": "uso",
+          "federalModo": "percentual",
+          "federal": 4.24,
+          "estadualModo": "percentual",
+          "estadual": 18,
+          "preco": 6.47,
+          "fonte": "Tabela de cenário fornecida pelo usuário: carga federal 4,24% e estadual 18%. Referência econômica, não retrato da tributação legal temporária de 2026.",
+          "anos": [
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            }
+          ]
+        },
+        "gasolina": {
+          "un": "L",
+          "icms": 1.57,
+          "fatorUnidade": 1,
+          "finalidade": "uso",
+          "federalModo": "unitario",
+          "federal": 0.6,
+          "estadualModo": "unitario",
+          "estadual": 1.57,
+          "preco": 6.51,
+          "fonte": "Hipótese econômica de migração: parcela federal R$0,60/L e estadual R$1,57/L. A estrutura Petrobras consultada em 13/09/2026 (coleta de 30/08 a 05/09/2026) informa carga federal agregada de R$0,67/L. Neste cenário, desconta-se uma parcela não migrável estimada de R$0,07/L. Não é alíquota oficial futura nem extensão automática de benefícios temporários. Fonte: https://precos.petrobras.com.br/precos-gasolina",
+          "anos": [
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            }
+          ]
+        },
+        "glp": {
+          "un": "KG",
+          "icms": 1.47,
+          "fatorUnidade": 1,
+          "finalidade": "uso",
+          "federalModo": "unitario",
+          "federal": 0,
+          "estadualModo": "unitario",
+          "estadual": 1.47,
+          "preco": 8.91,
+          "fonte": "Referência Petrobras/Comsefaz 2026: carga federal nula e ICMS de R$1,47/kg. Migração simulada da carga estadual; zero federal é hipótese preenchida, não dado ausente.",
+          "anos": [
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            }
+          ]
+        },
+        "etanol": {
+          "un": "L",
+          "icms": 0,
+          "fatorUnidade": 1,
+          "finalidade": "uso",
+          "federalModo": "unitario",
+          "federal": 0,
+          "estadualModo": "percentual",
+          "estadual": 12,
+          "preco": 4.2,
+          "fonte": "Hipótese econômica preenchida: carga federal nula, carga estadual de 12% e preço ilustrativo de R$4,20/L. Não é alíquota uniforme nacional nem certificação da tributação de uma operação; zero federal é uma hipótese explícita, não ausência de dado.",
+          "anos": [
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            }
+          ]
+        },
+        "biodiesel": {
+          "un": "L",
+          "icms": 1.17,
+          "fatorUnidade": 1,
+          "finalidade": "uso",
+          "federalModo": "percentual",
+          "federal": 4.24,
+          "estadualModo": "percentual",
+          "estadual": 18,
+          "preco": 6.47,
+          "fonte": "Hipótese por analogia ao cenário do diesel fornecido pelo usuário: 4,24% federal e 18% estadual. Não corresponde ao enquadramento específico de um produtor.",
+          "anos": [
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            },
+            {
+              "ibs": null,
+              "cbs": null
+            }
+          ]
+        }
+      },
+      "notasMigracao": []
+    },
+    "terminals": {}
+  }
+}

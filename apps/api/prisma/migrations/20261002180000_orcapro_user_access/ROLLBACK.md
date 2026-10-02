@@ -1,0 +1,1 @@
+Desabilitar `ORCAPRO_ENABLED` e voltar os artefatos mantém a manutenção intacta. Preservar a tabela de concessões OrçaPro; nenhum status/papel de User ou TenantMembership foi alterado. Registros ausentes seguem o gate global; registros com enabled=false bloqueiam somente OrçaPro. Aplicar também esta migration antes de habilitar o módulo.

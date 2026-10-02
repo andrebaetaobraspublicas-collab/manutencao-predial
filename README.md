@@ -104,4 +104,8 @@ Para produção em VPS, use o arquivo `.env.production.example` como ponto de pa
 
 ## Estado desta entrega
 
+O OrçaPro é o segundo programa da plataforma, acessível em `/programas` e `/orcapro`. Compartilha autenticação, preserva a manutenção e mantém o SINAPI como catálogo global versionado por referência, UF e regime. Projetos e adaptações pertencem ao usuário e tenant autenticados. Consulte `docs/orcapro-api.md`, `docs/orcapro-regression.md` e `docs/orcapro-deployment.md`.
+
+A importação inicial é opt-in: `ORCAPRO_SEED_ON_DEPLOY=true` e `ORCAPRO_SEED_ADMIN_USER_ID` apontando para uma conta ativa existente executam o seed específico durante a build da API. O seed é idempotente, preserva referências e exemplos existentes e não cria contas nem altera papéis da manutenção. `ORCAPRO_ENABLED` controla a ativação; `ORCAPRO_ADMIN_USER_IDS` define administradores globais do catálogo.
+
 Esta é uma fundação de engenharia, não a versão comercial final. O código implementa o caminho crítico da OS e deixa os módulos mais amplos modelados/documentados para evolução incremental. Consulte `docs/05-roadmap.md`.

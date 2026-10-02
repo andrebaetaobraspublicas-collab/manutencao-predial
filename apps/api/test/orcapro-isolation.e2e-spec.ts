@@ -1,0 +1,200 @@
+import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import cookieParser from 'cookie-parser';
+import { randomUUID } from 'node:crypto';
+import { hash } from 'bcryptjs';
+import request from 'supertest';
+import { PrismaService } from '../src/prisma/prisma.service';
+
+const ORIGIN = 'http://localhost:3000';
+const PASSWORD = 'test-only-orcapro-password-2026';
+type Agent = ReturnType<typeof request.agent>;
+type Identity = { agent: Agent; userId: string; tenantId: string; tenantSlug: string };
+
+function rawBase(month: string, multiplier = 1) {
+  return { v: 1, fonte: 'SINAPI', ref: `${month}/2036`, emissao: '', ufs: ['SP', 'DF'], cidades: ['', ''],
+    encargos: {}, grupos: ['Concreto de teste'], ct: [''], cls: ['MATERIAL', 'MAO DE OBRA'], un: ['KG', 'H', 'M3'],
+    ins: { c: [991001, 991002], k: [0, 1], d: ['Material de teste', 'Operário de teste'], u: [0, 1], o: [0, 0],
+      p: [[100 * multiplier, 200 * multiplier], [1000 * multiplier, 1500 * multiplier]],
+      lab: { '991002': { CD: [800 * multiplier, 1200 * multiplier], SE: [600 * multiplier, 900 * multiplier] } } },
+    comp: { c: [991003], g: [0], d: ['Concreto — referência de teste automatizado'], u: [2], s: [0], it: [[[991001, 2], [991002, 0.5]]] } };
+}
+
+describe('OrçaPro — MySQL, referências e isolamento HTTP', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let a: Identity; let b: Identity; let sameTenant: Agent;
+  let ref1: string; let ref2: string; let projectId: string;
+  let revision = 1;
+  const previous = new Map<string, string | undefined>();
+  const environment = ['ORCAPRO_ENABLED', 'ORCAPRO_ADMIN_USER_IDS', 'ORCAPRO_TENANT_IDS', 'CORS_ORIGINS', 'COOKIE_DOMAIN', 'COOKIE_SECURE', 'NOTIFICATION_WORKER_ENABLED'];
+
+  beforeAll(async () => {
+    if (!process.env.DATABASE_URL || !/test|restore|staging/i.test(new URL(process.env.DATABASE_URL).pathname)) {
+      throw new Error('Os testes OrçaPro exigem MySQL isolado com nome test, restore ou staging.');
+    }
+    for (const name of environment) previous.set(name, process.env[name]);
+    process.env.ORCAPRO_ENABLED = 'true'; process.env.ORCAPRO_ADMIN_USER_IDS = '';
+    process.env.ORCAPRO_TENANT_IDS = ''; process.env.CORS_ORIGINS = ORIGIN;
+    process.env.COOKIE_DOMAIN = ''; process.env.COOKIE_SECURE = 'false';
+    process.env.NOTIFICATION_WORKER_ENABLED = 'false';
+    process.env.JWT_ACCESS_SECRET ??= 'orcapro-e2e-secret-with-at-least-thirty-two-characters';
+    const { AppModule } = await import('../src/app.module');
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    app.use(cookieParser()); app.setGlobalPrefix('api/v1');
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    await app.init(); prisma = app.get(PrismaService);
+    const lastFixture = await prisma.orcaproReference.aggregate({ where: { year: 2036, month: { in: [1, 2] } }, _max: { revision: true } });
+    revision = (lastFixture._max.revision ?? 0) + 1;
+    a = await createIdentity('a'); b = await createIdentity('b');
+    const email = `orcapro-same-${randomUUID()}@example.test`;
+    const user = await prisma.user.create({ data: { name: 'Outro usuário do tenant', email, passwordHash: await hash(PASSWORD, 12), status: 'ACTIVE' } });
+    await prisma.tenantMembership.create({ data: { userId: user.id, tenantId: a.tenantId, status: 'ACTIVE', role: 'OWNER' } });
+    sameTenant = request.agent(app.getHttpServer());
+    await sameTenant.post('/api/v1/auth/login').send({ tenantSlug: a.tenantSlug, email, password: PASSWORD }).expect(200);
+    app.get(ConfigService).set('ORCAPRO_ADMIN_USER_IDS', a.userId);
+  });
+
+  afterAll(async () => {
+    await app?.close();
+    for (const [name, value] of previous) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
+  });
+
+  async function createIdentity(suffix: string): Promise<Identity> {
+    const agent = request.agent(app.getHttpServer()); const key = randomUUID().slice(0, 12);
+    const tenantSlug = `orcapro-${suffix}-${key}`;
+    const response = await agent.post('/api/v1/auth/register-tenant').send({ tenantName: `OrçaPro ${suffix}`, tenantSlug, ownerName: `Teste ${suffix}`, email: `${tenantSlug}@example.test`, password: PASSWORD }).expect(201);
+    return { agent, tenantSlug, userId: response.body.user.userId, tenantId: response.body.user.tenantId };
+  }
+
+  it('mantém login/manutenção e distingue ADMIN SINAPI de OWNER de tenant', async () => {
+    const accessA = await a.agent.get('/api/v1/orcapro/access').expect(200);
+    const accessB = await b.agent.get('/api/v1/orcapro/access').expect(200);
+    expect(accessA.body.role).toBe('ADMIN'); expect(accessB.body.role).toBe('USER');
+    await b.agent.get('/api/v1/orcapro/admin/references').expect(403);
+    await b.agent.post('/api/v1/orcapro/admin/imports').set('Origin', ORIGIN).send({ raw: rawBase('01'), sourceName: 'test.json' }).expect(403);
+    await a.agent.get('/api/v1/auth/me').expect(200);
+    await a.agent.get('/api/v1/work-orders').expect(200);
+  });
+
+  it('rejeita mutações com Origin não autorizado', async () => {
+    await a.agent.post('/api/v1/orcapro/admin/imports').set('Origin', 'https://untrusted.example').send({ raw: rawBase('01'), sourceName: 'test.json' }).expect(403);
+  });
+
+  it('importa e publica duas referências sem substituir a primeira', async () => {
+    const first = await a.agent.post('/api/v1/orcapro/admin/imports').set('Origin', ORIGIN).send({ raw: rawBase('01'), sourceName: 'orcapro-test-01.json', revision }).expect(201);
+    ref1 = first.body.referenceId ?? first.body.reference?.id ?? first.body.id;
+    expect(ref1).toBeTruthy();
+    await a.agent.post(`/api/v1/orcapro/admin/references/${ref1}/validate`).set('Origin', ORIGIN).send({}).expect(201);
+    await a.agent.post(`/api/v1/orcapro/admin/references/${ref1}/publish`).set('Origin', ORIGIN).send({}).expect(201);
+    await a.agent.put('/api/v1/orcapro/admin/default-reference').set('Origin', ORIGIN).send({ referenceId: ref1 }).expect(200);
+    const second = await a.agent.post('/api/v1/orcapro/admin/imports').set('Origin', ORIGIN).send({ raw: rawBase('02', 2), sourceName: 'orcapro-test-02.json', revision }).expect(201);
+    ref2 = second.body.referenceId ?? second.body.reference?.id ?? second.body.id;
+    await a.agent.post(`/api/v1/orcapro/admin/references/${ref2}/validate`).set('Origin', ORIGIN).send({}).expect(201);
+    await a.agent.post(`/api/v1/orcapro/admin/references/${ref2}/publish`).set('Origin', ORIGIN).send({}).expect(201);
+    const refs = await b.agent.get('/api/v1/orcapro/references').expect(200);
+    expect(refs.body.items.map((r: { id: string }) => r.id)).toEqual(expect.arrayContaining([ref1, ref2]));
+  });
+
+  it('recalcula o mesmo analítico por referência, UF e regime', async () => {
+    const result = async (referenceId: string, uf: string, regime: string) => {
+      const response = await b.agent.get('/api/v1/orcapro/catalog/compositions/991003').query({ referenceId, uf, regime }).expect(200);
+      return response.body.costCents ?? response.body.cost?.cents ?? response.body.cost;
+    };
+    expect(String(await result(ref1, 'SP', 'SD'))).toBe('700');
+    expect(String(await result(ref1, 'DF', 'SD'))).toBe('1150');
+    expect(String(await result(ref1, 'SP', 'CD'))).toBe('600');
+    expect(String(await result(ref2, 'SP', 'SD'))).toBe('1400');
+  });
+
+  it('fixa a referência do projeto e bloqueia acesso entre tenants e usuários do mesmo tenant', async () => {
+    const created = await b.agent.post('/api/v1/orcapro/projects').set('Origin', ORIGIN).send({ name: 'Projeto privado', uf: 'SP', regime: 'SD', referenceId: ref1 }).expect(201);
+    projectId = created.body.id;
+    await a.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(404);
+    const sameTenantProject = await a.agent.post('/api/v1/orcapro/projects').set('Origin', ORIGIN).send({ name: 'Projeto pessoal A', uf: 'SP', regime: 'SD', referenceId: ref1 }).expect(201);
+    await sameTenant.get(`/api/v1/orcapro/projects/${sameTenantProject.body.id}`).expect(404);
+    await sameTenant.get(`/api/v1/orcapro/projects/${sameTenantProject.body.id}/context`).expect(404);
+    await a.agent.put('/api/v1/orcapro/admin/default-reference').set('Origin', ORIGIN).send({ referenceId: ref2 }).expect(200);
+    const old = await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
+    expect(old.body.referenceId).toBe(ref1);
+    const next = await b.agent.post('/api/v1/orcapro/projects').set('Origin', ORIGIN).send({ name: 'Novo usa padrão', uf: 'SP', regime: 'SD' }).expect(201);
+    expect(next.body.referenceId).toBe(ref2);
+  });
+
+  it('não sobrescreve salvamento concorrente e não grava catálogo oficial no projeto', async () => {
+    const loaded = await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
+    const body = { expectedVersion: loaded.body.version, data: loaded.body.data, name: 'Nome atualizado' };
+    await b.agent.put(`/api/v1/orcapro/projects/${projectId}`).set('Origin', ORIGIN).send(body).expect(200);
+    await b.agent.put(`/api/v1/orcapro/projects/${projectId}`).set('Origin', ORIGIN).send(body).expect(409);
+    const updated = await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
+    await b.agent.put(`/api/v1/orcapro/projects/${projectId}`).set('Origin', ORIGIN).send({ expectedVersion: updated.body.version, data: { ...updated.body.data, base: rawBase('01') } }).expect(400);
+  });
+
+  it('a cópia própria mantém proveniência e não altera a composição oficial', async () => {
+    const original = await b.agent.get('/api/v1/orcapro/catalog/compositions/991003').query({ referenceId: ref1, uf: 'SP', regime: 'SD' }).expect(200);
+    const copied = await b.agent.post('/api/v1/orcapro/custom-compositions/from-sinapi/991003').set('Origin', ORIGIN).send({ referenceId: ref1 }).expect(201);
+    expect(copied.body.originCode).toBe('991003'); expect(copied.body.originReferenceId).toBe(ref1);
+    expect(copied.body.code).toMatch(/^CP-/);
+    const unchanged = await b.agent.get('/api/v1/orcapro/catalog/compositions/991003').query({ referenceId: ref1, uf: 'SP', regime: 'SD' }).expect(200);
+    expect(unchanged.body).toEqual(original.body);
+  });
+
+  it('não permite reescrever referência publicada nem publica importação inválida', async () => {
+    await a.agent.post(`/api/v1/orcapro/admin/references/${ref1}/validate`).set('Origin', ORIGIN).send({}).expect(409);
+    await a.agent.post(`/api/v1/orcapro/admin/references/${ref1}/publish`).set('Origin', ORIGIN).send({}).expect(409);
+    const before = await prisma.orcaproReference.count();
+    const malformed = rawBase('03'); malformed.comp.it = [[[-991003, 1]]];
+    await a.agent.post('/api/v1/orcapro/admin/imports').set('Origin', ORIGIN).send({ raw: malformed, sourceName: 'circular-test.json', revision }).expect(400);
+    expect(await prisma.orcaproReference.count()).toBe(before);
+  });
+
+  it('versiona restauração e exportação sem aceitar IDs de outros proprietários', async () => {
+    const loaded = await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
+    const versions = await b.agent.get(`/api/v1/orcapro/projects/${projectId}/versions`).expect(200);
+    expect(versions.body.map((v: { version: number }) => v.version)).toEqual(expect.arrayContaining([1, loaded.body.version]));
+    await a.agent.get(`/api/v1/orcapro/projects/${projectId}/versions`).expect(404);
+    await a.agent.get(`/api/v1/orcapro/projects/${projectId}/export`).expect(404);
+    const restored = await b.agent.post(`/api/v1/orcapro/projects/${projectId}/restore`).set('Origin', ORIGIN).send({ version: 1, expectedVersion: loaded.body.version }).expect(201);
+    expect(restored.body.version).toBe(loaded.body.version + 1); expect(restored.body.referenceId).toBe(ref1);
+    const exported = await b.agent.get(`/api/v1/orcapro/projects/${projectId}/export`).expect(200);
+    expect(exported.body.referenceId).toBe(ref1); expect(exported.body.project.base).toBeUndefined();
+  });
+
+  it('clona template global em documentos privados sem modificar o exemplo', async () => {
+    const data = { id: 'template', name: 'Exemplo teste', uf: 'SP', rg: 'SD', bdi: 0.25, links: [], catalog: { inputs: [], compositions: [] }, root: { id: 'root', kind: 'stage', name: 'Obra', children: [{ id: 'service', kind: 'item', code: 991003, resourceType: 'C', qty: 1 }] } };
+    const template = await prisma.orcaproTemplate.create({ data: { code: `test-${randomUUID()}`, name: 'Exemplo teste', referenceId: ref1, uf: 'SP', regime: 'SD', data } });
+    const one = await a.agent.post(`/api/v1/orcapro/templates/${template.id}/clone`).set('Origin', ORIGIN).send({}).expect(201);
+    const two = await b.agent.post(`/api/v1/orcapro/templates/${template.id}/clone`).set('Origin', ORIGIN).send({}).expect(201);
+    expect(one.body.id).not.toBe(two.body.id); expect(one.body.templateId).toBe(template.id);
+    expect(one.body.ownerUserId).toBe(a.userId); expect(two.body.ownerUserId).toBe(b.userId);
+    await a.agent.get(`/api/v1/orcapro/projects/${two.body.id}`).expect(404);
+    const changed = { ...two.body.data, name: 'Meu exemplo privado' };
+    await b.agent.put(`/api/v1/orcapro/projects/${two.body.id}`).set('Origin', ORIGIN).send({ expectedVersion: two.body.version, name: changed.name, data: changed }).expect(200);
+    expect((await prisma.orcaproTemplate.findUniqueOrThrow({ where: { id: template.id } })).data).toEqual(data);
+  });
+
+  it('desativa só o OrçaPro sem revogar sessão ou manutenção do usuário', async () => {
+    await b.agent.patch(`/api/v1/orcapro/admin/users/${a.userId}/access`).set('Origin', ORIGIN).send({ enabled: false }).expect(403);
+    await a.agent.patch(`/api/v1/orcapro/admin/users/${b.userId}/access`).set('Origin', ORIGIN).send({ enabled: false }).expect(200);
+    await b.agent.get('/api/v1/orcapro/access').expect(403);
+    await b.agent.get('/api/v1/auth/me').expect(200);
+    await b.agent.get('/api/v1/work-orders').expect(200);
+    await a.agent.patch(`/api/v1/orcapro/admin/users/${b.userId}/access`).set('Origin', ORIGIN).send({ enabled: true }).expect(200);
+    await b.agent.get('/api/v1/orcapro/access').expect(200);
+    await a.agent.patch(`/api/v1/orcapro/admin/users/${a.userId}/access`).set('Origin', ORIGIN).send({ enabled: false }).expect(400);
+  });
+
+  it('arquiva e recupera somente orçamento próprio com controle de versão', async () => {
+    const current = await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
+    await b.agent.delete(`/api/v1/orcapro/projects/${projectId}`).set('Origin', ORIGIN).send({ expectedVersion: current.body.version }).expect(200);
+    await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(404);
+    const archived = await b.agent.get('/api/v1/orcapro/projects').query({ archived: true }).expect(200);
+    const row = archived.body.find((p: { id: string }) => p.id === projectId);
+    expect(row).toBeTruthy();
+    await a.agent.post(`/api/v1/orcapro/projects/${projectId}/unarchive`).set('Origin', ORIGIN).send({ expectedVersion: row.version }).expect(404);
+    await b.agent.post(`/api/v1/orcapro/projects/${projectId}/unarchive`).set('Origin', ORIGIN).send({ expectedVersion: row.version }).expect(201);
+    await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
+  });
+});

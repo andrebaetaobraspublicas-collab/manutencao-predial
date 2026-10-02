@@ -1,0 +1,8 @@
+{
+  "sourceSha256": "b0144a95f4ddd1c900196fa5aff41d085e854d3f9d833a2d565b4429f0c68a15",
+  "bridgeSha256": "b62927ccd0749dab9f283da5f655bdfe99fdf62d8bb1a32ca8a49ea2bf6ba620",
+  "editorSha256": "fd41f24feda3d3622f3388afb2508224f6c5aa55efb424f92ba8fbf420c538f0",
+  "sourceVersion": "1.8.3",
+  "apiBase": "https://api.gestaodepredios.com.br/api/v1",
+  "catalog": "authenticated sparse project closure + lazy bundles"
+}

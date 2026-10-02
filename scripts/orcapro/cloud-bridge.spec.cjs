@@ -90,6 +90,43 @@ test('sparse catalog merge remaps dictionaries and does not mutate either source
 });
 
 const officialRaw = JSON.parse(fs.readFileSync(path.join(__dirname, '../../legacy/orcaplan-1.8.3/sinapi-2026-08.raw.json'), 'utf8'));
+test('original catalog shows the complete notebook index and hydrates a selected tree without saving the catalog', async () => {
+  const calls = [], C = officialRaw.comp;
+  const fixture = setup(async (url, options) => {
+    assert.equal(options.method, undefined); calls.push(url);
+    if (url.includes('/navigation?')) return json({ referenceId: 'reference-1', groups: officialRaw.grupos,
+      items: C.c.map((code,j) => ({ code: String(code), description: C.d[j], unit: officialRaw.un[C.u[j]], group: officialRaw.grupos[C.g[j]] })) });
+    if (url.includes('/compositions?')) {
+      const params = new URL(url).searchParams, group = officialRaw.grupos.indexOf(params.get('group'));
+      const codes = C.c.filter((_,j) => C.g[j] === group);
+      const page = Number(params.get('page'));
+      return json({ items: codes.slice((page-1)*100,page*100).map(code => ({ code: String(code) })), total: codes.length, pageSize: 100 });
+    }
+    if (url.includes('/bundle?')) return json({ referenceId: 'reference-1', raw: officialRaw });
+    throw new Error(url);
+  });
+  const { OP } = fixture;
+  const sparse = JSON.parse(JSON.stringify(officialRaw));
+  sparse.comp = { c: [], g: [], d: [], u: [], s: [], it: [] };
+  OP.cloud.raw = sparse; OP.app.base = fixture.runtime.createBase(sparse, 'reference-1');
+  OP.app.pj.uf = 'SP'; OP.app.pj.rg = 'CD'; OP.app.view = 'catalog'; OP.app.sel = {};
+  OP.ui.render = () => {};
+  await OP.ui.views.catalog.after();
+  assert.equal(OP.app.base.nComp, 0);
+  const groups = OP.macro.groups(OP.app.base).flatMap(m => m.items);
+  assert.equal(groups.reduce((sum,g) => sum+g.count,0), C.c.length);
+  assert.match(OP.ui.views.catalog.render(), /Filtrar cadernos técnicos/);
+  assert.match(OP.ui.views.catalog.render(), /Buscar em todo o SINAPI/);
+  const gi = C.g[C.c.indexOf(90084)];
+  await OP.ui.act.pickGroup({ dataset: { gi: String(gi) } });
+  const family = OP.factors.forGroup(OP.app.base, gi).families.find(f => f.members.some(m => C.c[m.j] === 90084));
+  OP.ui.act.pickFam({ dataset: { f: String(family.id) } });
+  assert.match(OP.ui.views.catalog.render(), /ftree-main/);
+  assert.match(OP.ui.views.catalog.render(), /PROFUNDIDADE|Profundidade/i);
+  assert.ok(calls.every(url => url.includes('referenceId=reference-1')));
+  assert.ok(calls.filter(url => !url.includes('/navigation?')).every(url => url.includes('uf=SP') && url.includes('regime=CD')));
+  assert.equal(OP.app.pj.catalog?.compositions?.length || 0, 0);
+});
 function attachBase(state) {
   state.OP.app.base = state.runtime.createBase(officialRaw, 'reference-1', state.OP.app.inputs, state.OP.app.customs);
   state.OP.app.pj.uf = 'SP'; state.OP.app.pj.rg = 'SD';

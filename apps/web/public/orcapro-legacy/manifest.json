@@ -1,7 +1,7 @@
 {
   "sourceSha256": "b0144a95f4ddd1c900196fa5aff41d085e854d3f9d833a2d565b4429f0c68a15",
-  "bridgeSha256": "93e081b9b92ca73651e51523b0262ae089862a7521b953e542c12d550d09c2a3",
-  "editorSha256": "d20c2c3874c66aa36ec987fde3eaaba922f2345195df62f5547b7d38f3fd988d",
+  "bridgeSha256": "42d930a850f3edff4ad8d5c1988b6f61564c524fc9226a6b938bf0567bc79324",
+  "editorSha256": "d0c9c581b46b891cc70e37181fb3e6ed2f6dde273cc7cb9c94cf5b113aa6bf8f",
   "sourceVersion": "1.8.3",
   "apiBase": "https://api.gestaodepredios.com.br/api/v1",
   "catalog": "authenticated sparse project closure + lazy bundles"

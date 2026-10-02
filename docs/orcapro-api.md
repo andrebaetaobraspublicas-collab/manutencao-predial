@@ -1,5 +1,7 @@
 # OrçaPro — contrato da API e integridade
 
+GET `/api/v1/orcapro/catalog/navigation?referenceId=<UUID>` devolve índice global autenticado de descrições, unidades, cadernos e quantidade de insumos da referência publicada/arquivada solicitada. Não inclui preços nem analíticos. O editor reutiliza a navegação original por macrocategoria → caderno → família → árvore; busca por sinônimos usa o índice em memória. Analíticos e custos são carregados por bundles sob demanda, com referência/UF/regime do projeto. O índice nunca integra o documento privado salvo.
+
 ## Gestão SaaS e assinatura individual
 
 Prefixo `/api/v1/orcapro`. `/admin/saas/*` exige administrador global explícito, sessão válida e Origin autorizado nas mutações. OWNER/ADMIN da manutenção recebe 403. DTOs rejeitam campos desconhecidos, incluindo tenantId. IDs UUID validados. Dados operacionais permanecem privados por tenant/proprietário.

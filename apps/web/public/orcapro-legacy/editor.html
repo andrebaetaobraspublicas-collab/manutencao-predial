@@ -15982,7 +15982,63 @@ O.xlsx.writeWorkbook=async function(sheets){if(sheets.some(s=>s.name==='Orçamen
     } catch (error) { if (sequence === catalogSequence) slot.innerHTML = `<p class="note">${U.esc(error.message)}</p>`; }
   }
   const ownViews = { inputs: UI.views.inputs, compositions: UI.views.compositions }, originalCatalogView = UI.views.catalog;
-  for (const view of ['catalog', 'inputs', 'compositions']) UI.views[view] = {
+  let navigationPromise, navigationBase, searchSequence = 0;
+  async function navigation() {
+    if (!navigationPromise) navigationPromise = (async () => {
+      const index = await request('/orcapro/catalog/navigation?' + new URLSearchParams({ referenceId: state.wrapper.referenceId }));
+      if (index.referenceId !== state.wrapper.referenceId) throw new Error('Referência do índice divergente.');
+      const raw = clone(state.raw);
+      raw.comp = { c: [], g: [], d: [], u: [], s: [], it: [] };
+      for (const item of index.items) {
+        raw.comp.c.push(Number(item.code)); raw.comp.g.push(raw.grupos.indexOf(item.group));
+        raw.comp.d.push(item.description); raw.comp.u.push(raw.un.indexOf(item.unit));
+        raw.comp.s.push(''); raw.comp.it.push([]);
+      }
+      navigationBase = N.makeBase(raw, state.wrapper.referenceId, [], []);
+      navigationBase.nIns = index.inputCount ?? navigationBase.nIns;
+    })().catch(error => { navigationPromise = null; throw error; });
+    await navigationPromise;
+  }
+  const originalMacroGroups = O.macro.groups;
+  O.macro.groups = base => originalMacroGroups(base === A.base && navigationBase ? navigationBase : base);
+  const originalResultsHTML = O.catalog.resultsHTML;
+  O.catalog.resultsHTML = (query, options) => A.view === 'catalog'
+    ? '<div id="cloudTreeSearch" role="status">Consultando catálogo SINAPI…</div>' : originalResultsHTML(query, options);
+  async function treeSearch() {
+    const slot = UI.$('#cloudTreeSearch'), query = A.sel.cq, sequence = ++searchSequence;
+    if (!slot) return;
+    try {
+      await navigation();
+      const result = O.search.query(navigationBase, query, 150), C = navigationBase.raw.comp;
+      const own = O.search.query(A.base, query, 1).custom;
+      await loadCodes(result.list.map(row => String(C.c[row.j])));
+      if (sequence !== searchSequence || !slot.isConnected || A.sel.cq !== query) return;
+      const groups = new Map();
+      for (const row of result.list) {
+        const gi = C.g[row.j]; if (!groups.has(gi)) groups.set(gi, []); groups.get(gi).push(row.j);
+      }
+      slot.innerHTML = `<div class="rsum">${U.int(result.total)} composições encontradas · exibindo até 150 · agrupadas por caderno técnico</div>` +
+        (own.length ? `<div class="rgrp"><div class="rg-h"><b>Composições próprias</b></div><div class="rlist">${own.map(row => O.catalog.row(row.code, row.desc, row.unit, result.terms)).join('')}</div></div>` : '') +
+        [...groups].map(([gi, rows]) => `<div class="rgrp"><div class="rg-h"><button class="lnk" data-act="pickGroup" data-gi="${gi}">${U.esc(navigationBase.raw.grupos[gi])}</button></div><div class="rlist">${rows.map(j => O.catalog.row(C.c[j], C.d[j], navigationBase.unit(j), result.terms)).join('')}</div></div>`).join('') +
+        (!result.list.length && !own.length ? '<div class="empty">Nenhuma composição encontrada. Tente menos palavras ou um sinônimo.</div>' : '');
+    } catch (error) { if (slot.isConnected && sequence === searchSequence) slot.textContent = error.message; }
+  }
+  UI.views.catalog = { cls: originalCatalogView.cls,
+    render: () => {
+      if (!navigationBase || A.sel.gi != null || A.sel.cq?.trim()) return originalCatalogView.render();
+      const base = A.base;
+      try { A.base = navigationBase; return originalCatalogView.render(); }
+      finally { A.base = base; }
+    },
+    after: async () => {
+      originalCatalogView.after?.(UI.$('#main'));
+      if (!navigationBase) {
+        try { await navigation(); if (A.view === 'catalog') UI.render(); }
+        catch (error) { UI.toast(error.message, 'warn'); }
+      } else await treeSearch();
+    },
+  };
+  for (const view of ['inputs', 'compositions']) UI.views[view] = {
     render: () => {
       const selection = state.catalog[view] || (state.catalog[view] = { q: '', page: 1 });
       if (view === 'catalog' && selection.tree) return '<div class="row"><button class="btn" data-act="cloudGlobalCatalog">Voltar à consulta global</button><span class="note">Árvores dos cadernos carregados. Para pesquisar todo o SINAPI, volte à consulta global.</span></div>' + originalCatalogView.render();

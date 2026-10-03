@@ -39,6 +39,11 @@ html = sanitizeDerivedHtml(html);
 const bridge = fs.readFileSync(path.join(root, 'scripts/orcapro/cloud-bridge.js'), 'utf8').replaceAll('\r\n','\n');
 const riskUi = fs.readFileSync(path.join(root,'scripts/orcapro/risk-ui.js'),'utf8').replaceAll('\r\n','\n');
 const riskCss = fs.readFileSync(path.join(root,'scripts/orcapro/risk-ui.css'),'utf8').replaceAll('\r\n','\n');
+const manualContent = fs.readFileSync(path.join(root,'scripts/orcapro/manual-content.json'),'utf8').replaceAll('\r\n','\n');
+const manual = JSON.parse(manualContent);
+const manualUi = fs.readFileSync(path.join(root,'scripts/orcapro/manual-ui.js'),'utf8').replaceAll('\r\n','\n');
+const manualCss = fs.readFileSync(path.join(root,'scripts/orcapro/manual-ui.css'),'utf8').replaceAll('\r\n','\n');
+const manualData = JSON.stringify(manual).replaceAll('<', '\\u003c');
 const literal = JSON.stringify(apiBase).replaceAll('<', '\\u003c');
 const csp = `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' ${api.origin}; object-src 'none'; base-uri 'none'; form-action 'none'`;
 html = html.replace('<title>', `<meta http-equiv="Content-Security-Policy" content="${csp}">\n<title>`);
@@ -46,7 +51,7 @@ html = html.replace('<title>', `<meta http-equiv="Content-Security-Policy" conte
 // the document's final closing body, otherwise the browser terminates JS early.
 const bodyEnd = html.lastIndexOf('</body>');
 if (bodyEnd < html.lastIndexOf('</script>')) throw new Error('Original final body boundary missing');
-html = html.slice(0, bodyEnd) + `<style>${riskCss}</style><script>${riskUi}</script><script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
+html = html.slice(0, bodyEnd) + `<style>${riskCss}</style><script>${riskUi}</script><style>${manualCss}</style><script>window.ORCAPRO_MANUAL=${manualData};</script><script>${manualUi}</script><script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
 if (html.includes('id="op-base"') || /M\.boot\(\)\.catch/.test(html)) throw new Error('Offline catalog or bootstrap survived cloud derivation');
 const output = path.join(root, 'apps/web/public/orcapro-legacy');
 fs.mkdirSync(output, { recursive: true });
@@ -54,6 +59,7 @@ fs.writeFileSync(path.join(output, 'editor.html'), html);
 fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify({ sourceSha256: originalHash,
   bridgeSha256: sha(bridge), editorSha256: sha(html), sourceVersion: '1.8.3', apiBase,
   riskUiSha256:sha(riskUi),riskCssSha256:sha(riskCss),riskEngineVersion:'orcapro-risk-1.0.0',
+  manualVersion:manual.version,manualReviewedAt:manual.reviewedAt,manualContentSha256:sha(manualContent),manualUiSha256:sha(manualUi),manualCssSha256:sha(manualCss),
   catalog: 'authenticated sparse project closure + lazy bundles',
 }, null, 2) + '\n');
 console.log(`Cloud editor generated with ${apiBase}; embedded catalog removed; original source unchanged.`);

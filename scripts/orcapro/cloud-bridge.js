@@ -618,6 +618,7 @@ function installOrcaProCloud(API_BASE) {
   state.refreshLibrary = refreshLibrary; state.useLibrary = useLibrary;
   state.loadGroup = loadGroup;
   if (typeof window.installOrcaProRisks === 'function') window.installOrcaProRisks();
+  if (typeof window.installOrcaProManual === 'function') window.installOrcaProManual();
   if (document.getElementById('app')) boot().catch((error) => {
     state.error = error;
     notifyParent('error', error.message);

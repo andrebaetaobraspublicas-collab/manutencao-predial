@@ -1,0 +1,2008 @@
+{
+  "version": "1.0.0",
+  "reviewedAt": "03/10/2026",
+  "title": "Manual interativo do OrçaPro",
+  "sources": [
+    {
+      "id": "caixa",
+      "title": "CAIXA — SINAPI, documentação técnica e relatórios",
+      "url": "https://www.caixa.gov.br/poder-publico/modernizacao-gestao/sinapi/Paginas/default.aspx"
+    },
+    {
+      "id": "conceitos",
+      "title": "CAIXA — SINAPI: Metodologias e Conceitos",
+      "url": "https://www.caixa.gov.br/Downloads/sinapi-metodologia/Livro_SINAPI_Metodologias_Conceitos.pdf"
+    },
+    {
+      "id": "ibge",
+      "title": "IBGE — pesquisa SINAPI e responsabilidades",
+      "url": "https://www.ibge.gov.br/estatisticas/todos-os-produtos-estatisticas/9270-sistema-nacional-de-pesquisa-de-custos-e-indices-da-construcao-civil.html"
+    },
+    {
+      "id": "tcu",
+      "title": "TCU — Acórdão 2622/2013, formação do BDI",
+      "url": "https://pesquisa.apps.tcu.gov.br/documento/acordao-completo/%2A/NUMACORDAO%3A2622%20ANOACORDAO%3A2013%20COLEGIADO%3A%22Plen%C3%A1rio%22/DTRELEVANCIA%20desc%2C%20NUMACORDAO%20desc/0"
+    },
+    {
+      "id": "ec132",
+      "title": "Emenda Constitucional 132/2023 — IVA dual e transição",
+      "url": "https://www.planalto.gov.br/ccivil_03/constituicao/emendas/emc/emc132.htm"
+    },
+    {
+      "id": "lc214",
+      "title": "LC 214/2025 — texto atualizado, inclusive alterações da LC 227/2026",
+      "url": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214.htm"
+    },
+    {
+      "id": "receita",
+      "title": "Receita Federal — legislação da Reforma Tributária do Consumo",
+      "url": "https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/programas-e-atividades/reforma-tributaria-do-consumo/legislacao"
+    },
+    {
+      "id": "simples",
+      "title": "LC 123/2006 — Simples Nacional, texto atualizado",
+      "url": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm"
+    }
+  ],
+  "journeys": [
+    {
+      "id": "first",
+      "title": "Meu primeiro orçamento",
+      "chapters": [
+        "inicio",
+        "custos",
+        "sinapi",
+        "catalogo",
+        "orcamento",
+        "bdi",
+        "verificacao",
+        "arquivos"
+      ]
+    },
+    {
+      "id": "plan",
+      "title": "Do orçamento ao cronograma",
+      "chapters": [
+        "orcamento",
+        "equipes",
+        "planejamento",
+        "cronograma",
+        "recursos",
+        "eventograma"
+      ]
+    },
+    {
+      "id": "risk",
+      "title": "Dos riscos ao preço de venda",
+      "chapters": [
+        "bdi",
+        "riscos",
+        "risco-bdi",
+        "integracoes",
+        "arquivos"
+      ]
+    },
+    {
+      "id": "tax",
+      "title": "Auditar IBS, CBS e curvas ABC",
+      "chapters": [
+        "tributos",
+        "credito",
+        "parametros",
+        "perfis",
+        "equipamentos",
+        "combustiveis",
+        "anexos",
+        "abc-servicos",
+        "abc-insumos",
+        "memoria",
+        "bdi-tributos"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "id": "inicio",
+      "category": "Começar",
+      "title": "1. Entrar, escolher o programa e abrir um projeto",
+      "summary": "Organização, assinatura individual, referência histórica e gravação na nuvem.",
+      "target": "portal",
+      "keywords": "login senha conta usuário organização tenant SaaS trial orçamento novo importar duplicar",
+      "sections": [
+        {
+          "title": "Onde começar",
+          "body": "Depois do login, escolha OrçaPro no seletor de programas. Gestão de Prédios é outro produto, com contratação independente. Na área Meus orçamentos, crie um orçamento vazio, use um exemplo ou abra um projeto existente. O editor só começa depois da tela de avisos legais. O exemplo do edifício é uma base para aprendizado: quantidades, equipes e hipóteses precisam corresponder à sua obra."
+        },
+        {
+          "title": "Criar um orçamento com contexto definido",
+          "steps": [
+            "Em Meus orçamentos, escolha a criação de projeto e informe o nome.",
+            "Selecione a referência SINAPI disponível, a UF e o regime de encargos. Confira mês e revisão; não escolha apenas pelo mês.",
+            "Abra o projeto e leia os avisos. No cabeçalho, confira nome, referência, UF, regime e BDI.",
+            "Edite uma informação e aguarde a indicação Salvo no servidor antes de sair."
+          ],
+          "expected": "O projeto está associado ao seu usuário e organização e mantém a referência escolhida. A referência padrão do administrador só governa projetos novos."
+        },
+        {
+          "title": "Login e acesso",
+          "body": "A organização é identificada por um slug, como minha-empresa: 3 a 100 caracteres, começando por letra minúscula ou número e usando somente letras minúsculas, números e hífen. Não use espaços, acentos, maiúsculas ou símbolos de senha. A senha é outro campo. A habilitação do OrçaPro e a situação da assinatura são verificadas no servidor; ser administrador de uma organização não transforma a conta em administrador global."
+        },
+        {
+          "title": "Salvamento e conflitos",
+          "body": "O SaaS confirma a gravação no servidor. Salvo no servidor significa que a versão foi aceita; uma alteração ainda em gravação não deve ser considerada concluída. Se outra aba alterar o mesmo projeto, pode haver conflito de versão. Preserve suas alterações em JSON e reabra a versão atual antes de continuar. Não trabalhe simultaneamente no mesmo orçamento em várias abas. Progresso de leitura deste manual fica somente neste navegador e não substitui versões do orçamento."
+        }
+      ],
+      "related": [
+        "sinapi",
+        "arquivos",
+        "administracao"
+      ]
+    },
+    {
+      "id": "custos",
+      "category": "Fundamentos",
+      "title": "2. Engenharia de custos: do recurso ao preço",
+      "summary": "Insumo, composição, serviço, EAP, custo direto, preço e orçamento de referência.",
+      "target": "budget",
+      "keywords": "engenharia custo direto indireto levantamento quantitativos coeficientes preço venda unidade administração local central",
+      "sections": [
+        {
+          "title": "As quatro camadas",
+          "body": "Insumo é um recurso: material, profissional, máquina, energia ou serviço. Composição combina recursos por coeficientes para produzir uma unidade de serviço. No orçamento, um serviço recebe uma quantidade física e ocupa uma posição na EAP, a estrutura de etapas e subetapas. O custo direto reúne as parcelas apropriadas à execução. O preço resulta da aplicação do BDI adotado. Por fim, o planejamento transforma quantidades em trabalho, duração e necessidades de recursos."
+        },
+        {
+          "title": "Ler as unidades antes dos números",
+          "body": "Um coeficiente de 0,50 h/m² é consumo de meia hora de uma função por metro quadrado; não significa uma equipe de meia pessoa. Uma quantidade de 100 m² exige 50 horas dessa função, antes da distribuição entre pessoas e equipes. Um preço por kg não pode ser aplicado a toneladas sem conversão. Meça as quantidades a partir do projeto e documente a memória de levantamento. A quantidade orçamentária, o coeficiente e o preço unitário são variáveis distintas."
+        },
+        {
+          "title": "Da quantidade ao valor",
+          "formula": "Horas do recurso = coeficiente (h/un) × quantidade (un)\nCusto direto da linha = quantidade × custo unitário\nPreço da linha = quantidade × preço unitário com BDI\nPreço total = soma dos preços das linhas, respeitando o arredondamento escolhido",
+          "body": "Exemplo didático: 100 m² a R$ 40,00/m² representam R$ 4.000,00 de custo direto. BDI de 25% leva o preço unitário a R$ 50,00 e a linha a R$ 5.000,00. A parcela de R$ 1.000,00 não é toda lucro: também pode cobrir administração central, riscos, seguros, despesas financeiras e tributos."
+        },
+        {
+          "title": "Separar as parcelas uma única vez",
+          "body": "Administração local, canteiro e mobilização podem ser serviços explícitos na planilha. Administração central é o rateio da estrutura empresarial considerado no BDI. Nas referências do TCU para obras públicas, as primeiras parcelas são tratadas no custo direto. Evite incluir a mesma despesa na composição, em um serviço separado e novamente no BDI. Custos estimados não são despesas realizadas; Curva S e histogramas deste sistema são planejamento, não registro de pagamentos."
+        }
+      ],
+      "sources": [
+        "tcu"
+      ],
+      "related": [
+        "orcamento",
+        "bdi",
+        "equipes"
+      ]
+    },
+    {
+      "id": "sinapi",
+      "category": "Fundamentos",
+      "title": "3. SINAPI: referência, UF, regime e estrutura analítica",
+      "summary": "Como interpretar o catálogo global e reproduzir um orçamento histórico.",
+      "target": "catalog",
+      "keywords": "SINAPI CAIXA IBGE referência mês revisão UF regime CD SD SE desoneração encargos SP AS truncamento caderno",
+      "sections": [
+        {
+          "title": "O que consultar na fonte",
+          "body": "O SINAPI é mantido pela CAIXA e pelo IBGE: os aspectos de engenharia das composições e a pesquisa de preços têm responsabilidades institucionais próprias. Para escolher uma referência, consulte descrição, unidade, caderno técnico, itens integrantes, condições de execução e critério de quantificação. A semelhança entre duas descrições não garante equivalência técnica. Os coeficientes de uma composição são referências para aquela condição; não substituem um estudo de produtividade específico da obra."
+        },
+        {
+          "title": "A chave do custo no OrçaPro",
+          "formula": "Estrutura da composição + preços de insumos = custo contextual\nContexto do projeto = referência e revisão × UF × regime\nCusto analítico = Σ truncamento a 2 casas de (coeficiente × preço contextual)",
+          "body": "Não existe um único preço atual gravado na composição. O catálogo oficial é global, com analíticos e preços contextuais. Cada projeto privado conserva sua referência histórica. Ao mudar UF ou regime, são consultados os valores daquele contexto. Uma cotação ou custo informado pode permanecer fixo por decisão do projeto; não deve ser confundido com novo preço SINAPI local. O truncamento das parcelas analíticas é diferente do arredondamento dos totais de linhas do orçamento."
+        },
+        {
+          "title": "Regimes e preços ausentes",
+          "body": "SD significa sem desoneração; CD, com desoneração; SE, sem encargos sociais, quando disponível na referência. São contextos de custos e encargos, não escolhas automáticas de regime tributário da empresa. Uma célula ausente não é preço zero. Quando o motor admite atribuição a SP, essa origem precisa ficar identificada. O simulador tributário pode usar a mesma política do orçamento ou a política restrita/local do anexo; mudar essa política pode tornar um crédito parcial sem mudar o orçamento."
+        },
+        {
+          "title": "Conferência antes de usar",
+          "steps": [
+            "Confira referência, revisão, UF e regime no cabeçalho.",
+            "Abra a composição e leia o analítico, incluindo auxiliares e origens de preços.",
+            "Consulte o caderno técnico para os limites de aplicação e os serviços incluídos/excluídos.",
+            "Confira sinalizações de preço ausente, atribuição a SP, custo informado ou histórico preservado.",
+            "Registre a origem de qualquer complemento próprio e exporte uma memória para a revisão."
+          ],
+          "expected": "O serviço adotado corresponde à solução técnica e seu custo pode ser reproduzido com a mesma referência, UF e regime."
+        }
+      ],
+      "sources": [
+        "caixa",
+        "conceitos",
+        "ibge"
+      ],
+      "related": [
+        "catalogo",
+        "proprios",
+        "memoria"
+      ]
+    },
+    {
+      "id": "catalogo",
+      "category": "Orçamentar",
+      "title": "4. Navegar nas árvores de composições",
+      "summary": "Cadernos, famílias, fatores, busca global, tabela e inclusão de serviço.",
+      "target": "catalog",
+      "keywords": "árvore catálogo buscar sinônimo família filtros cadernos limpar escolhas analítico serviço",
+      "sections": [
+        {
+          "title": "Escolha guiada por fatores",
+          "body": "O Catálogo SINAPI organiza grupos e cadernos na coluna lateral. Dentro de uma família, a árvore mostra decisões técnicas: dimensões, profundidade, equipamento, tipo de solo, interferência e outros fatores reconhecidos para aquele serviço. Cada escolha reduz as variantes compatíveis. A contagem indica quantas composições ainda atendem às escolhas; não é a quantidade de serviços já inseridos no orçamento."
+        },
+        {
+          "title": "Encontrar e conferir uma variante",
+          "steps": [
+            "Filtre os cadernos na coluna lateral ou use a busca global por código, descrição ou expressão técnica.",
+            "Escolha o caderno e a família. Use Árvore para decidir por fatores e Tabela para comparar as alternativas.",
+            "Selecione as características reais do serviço. Use Limpar escolhas para reiniciar a seleção.",
+            "Abra o código/analítico da variante e confira unidade, coeficientes, preço, UF e regime.",
+            "No orçamento, selecione a etapa de destino. Inclua a composição e informe a quantidade medida."
+          ],
+          "expected": "Um serviço novo é incluído na etapa desejada, referenciado ao catálogo; o catálogo global não é duplicado para o usuário."
+        },
+        {
+          "title": "Busca e catálogo sob demanda",
+          "body": "Ctrl+K abre a busca do editor. O SaaS carrega partes do catálogo conforme a navegação, mantendo a interface em árvores. A quantidade de composições carregadas sob demanda no rodapé não é a quantidade total da referência. Espere o carregamento terminar antes de comparar resultados. Uma ausência em uma busca muito restrita não prova que o código não exista: limpe os filtros e verifique a referência do projeto."
+        },
+        {
+          "title": "Composição auxiliar não é serviço duplicado",
+          "body": "Uma composição pode conter outra composição. No analítico, aprofunde os níveis para entender o consumo terminal. Ao inserir a principal no orçamento, seus auxiliares já participam de seu custo. Inserir também os mesmos auxiliares como serviços separados exige uma necessidade técnica independente; do contrário, você pode contar o consumo duas vezes."
+        }
+      ],
+      "related": [
+        "sinapi",
+        "orcamento",
+        "abc-insumos"
+      ]
+    },
+    {
+      "id": "proprios",
+      "category": "Orçamentar",
+      "title": "5. Insumos, composições próprias e adaptações",
+      "summary": "Completar preços, copiar referências, editar analíticos e usar a biblioteca privada.",
+      "target": "compositions",
+      "keywords": "insumo próprio classificação material mão obra equipamento cotação UF preço zero ausente código IP composição biblioteca adaptar",
+      "sections": [
+        {
+          "title": "Escolher a forma de adaptação",
+          "body": "Um insumo próprio representa um recurso cadastrado por você. Uma composição própria pode ter analítico editável ou custo cotado. Copiar uma composição SINAPI para adaptar preserva o catálogo oficial: o novo código e a revisão pertencem ao projeto/usuário. Alterar apenas o custo de uma linha do orçamento é outra operação; esse valor não reconstitui automaticamente o analítico que o produziu. O orçamento pode usar um custo informado enquanto sua decomposição permanece parcial."
+        },
+        {
+          "title": "Cadastrar um insumo e seu preço",
+          "steps": [
+            "Em Insumos, abra o cadastro próprio ou copie o recurso que precisa complementar.",
+            "Informe código próprio estável, classificação, unidade, descrição e documento/fonte.",
+            "Escolha a formação de preço: valor único para os regimes ou formação específica disponível no formulário.",
+            "Na tabela de preços, selecione UF, referência opcional, valor, data da cotação e fonte. Todas as UFs é uma referência nacional expressa, não uma atribuição implícita a SP.",
+            "Salve e confira a prévia do custo no contexto do projeto antes de usar no analítico."
+          ],
+          "expected": "O preço próprio é contextual e rastreável. Campo vazio permanece pendência; zero representa zero informado e deve ser intencional."
+        },
+        {
+          "title": "Editar uma composição para um serviço",
+          "steps": [
+            "Abra a composição ou o analítico do item do orçamento e inicie a edição/cópia própria.",
+            "Inclua insumos ou auxiliares, confira unidades e edite os coeficientes técnicos.",
+            "Verifique a prévia e referências circulares. Uma composição não pode depender de si mesma por nenhum caminho.",
+            "Se o item já tinha custo informado, escolha explicitamente entre manter esse valor e usar o analítico recalculado.",
+            "Salve e confira o serviço, o orçamento e as memórias tributárias afetadas."
+          ],
+          "expected": "A adaptação é aplicada ao escopo escolhido, sem substituir silenciosamente outras ocorrências da referência original."
+        },
+        {
+          "title": "Biblioteca e revisões",
+          "body": "Itens próprios do projeto e revisões da biblioteca não são o catálogo SINAPI global. Ao usar uma revisão da biblioteca, confira que ela foi incorporada ao projeto. Não pressuponha que uma revisão posterior alterará orçamentos antigos automaticamente. Uma composição cotada sem itens pode ter preço, mas seu crédito tributário e seus recursos produtivos não são determinados só pela descrição: informe um perfil tributário explícito quando cabível e planeje sua duração manualmente se faltar base produtiva."
+        }
+      ],
+      "related": [
+        "orcamento",
+        "perfis",
+        "arquivos"
+      ]
+    },
+    {
+      "id": "orcamento",
+      "category": "Orçamentar",
+      "title": "6. Montar e revisar a planilha do orçamento",
+      "summary": "Etapas, subetapas, serviços, custos informados, arredondamento e BDI por item.",
+      "target": "budget",
+      "keywords": "EAP etapa subetapa quantidade preço custo peso custo informado memória subtotal orçamento BDI diferenciado arredondamento",
+      "sections": [
+        {
+          "title": "Construir a EAP",
+          "steps": [
+            "Abra Orçamento e use + Etapa para criar grupos com nomes claros, como Fundação, Estrutura e Acabamentos.",
+            "Selecione uma etapa e crie subetapas quando necessário. A etapa selecionada é o destino dos novos serviços.",
+            "Use Serviço para buscar composições ou Item com custo para um serviço explicitamente cotado.",
+            "Preencha a quantidade física e confira a unidade. Organize os itens com os controles de movimentação e hierarquia.",
+            "Confira subtotais, custo direto, BDI, preço total, peso e prazo. Execute Verificar orçamento e revise a memória."
+          ],
+          "expected": "A EAP é legível, não repete subtotais como custos novos e contém todos os serviços necessários ao escopo."
+        },
+        {
+          "title": "Custo de referência e custo informado",
+          "body": "O custo de referência acompanha analítico, referência, UF e regime. Ao fixar/informar um custo no item, você passa a adotar um valor específico; documente fonte e motivo. A troca de UF não deve ser interpretada como atualização desse custo cotado. Valores históricos preservados continuam válidos como memória daquele projeto, mas não são preços SINAPI atuais. Use o analítico para verificar o que o serviço contém e a memória para conferir a política aplicada."
+        },
+        {
+          "title": "BDI e arredondamento na linha",
+          "formula": "Preço unitário = custo unitário × (1 + BDI do item)\nPreço total da linha = quantidade × preço unitário, conforme a política de arredondamento\nPeso = preço total da linha ÷ preço total do orçamento",
+          "body": "O BDI principal atende aos itens comuns. Um BDI diferenciado pode ser aplicado aos itens expressamente marcados. Alterar o BDI muda preço e pesos financeiros, mas não muda automaticamente quantidade física, coeficientes ou equipe. O motor preserva a precisão dos custos unitários e arredonda nos pontos definidos pela configuração. Não ajuste centavos manualmente para fazer uma soma aproximada coincidir com uma memória que usa outra regra."
+        },
+        {
+          "title": "Itens relacionados ao tempo",
+          "body": "Serviços de administração, locação ou consumos periódicos podem ter quantidades e memórias dependentes do prazo. Ao alterar equipes, calendário ou cronograma, confira essas linhas e o total novamente. A relação Orçamento → Cronograma pode retornar ao custo por esses itens periódicos; para serviços comuns de quantidade fixa, só mudar a data de execução não altera o custo direto de referência."
+        }
+      ],
+      "related": [
+        "bdi",
+        "equipes",
+        "verificacao",
+        "integracoes"
+      ]
+    },
+    {
+      "id": "bdi",
+      "category": "Preço e risco",
+      "title": "7. BDI: formar o preço e aplicar ao orçamento",
+      "summary": "Componentes, três métodos, memória, principal e diferenciado.",
+      "target": "bdi",
+      "keywords": "BDI benefícios despesas indiretas lucro administração central seguros garantias financeiro paramétrico exato simples matriz aplicar taxa",
+      "sections": [
+        {
+          "title": "Entender o fator antes de escolher uma taxa",
+          "body": "BDI reúne parcelas consideradas na passagem de custo direto a preço: administração central, risco, seguro/garantia, despesas financeiras, lucro e tributos, conforme o método. Percentuais de referência são ponto de comparação, não uma taxa universal obrigatória para toda obra. A alíquota de um tributo sobre faturamento não deve ser simplesmente somada às parcelas que têm outra base. IRPJ/CSLL e critérios específicos de obras públicas precisam ser tratados conforme a metodologia e a referência normativa aplicável."
+        },
+        {
+          "title": "Calcular e aplicar",
+          "steps": [
+            "Abra BDI e escolha Paramétrico, Exato ou Simples Nacional.",
+            "Confira tipo de obra, ano, parâmetros de administração central, risco, seguros/garantias, despesas financeiras e lucro. Revise as referências carregadas; o exemplo padrão não descreve automaticamente sua obra.",
+            "Confira ISS, CPRB, deduções e os parâmetros de IVA/crédito usados naquele método.",
+            "Leia resultado, composição e memória. Fazer uma simulação ainda não altera o BDI aplicado ao orçamento.",
+            "Clique em Aplicar como BDI principal, ou aplique como diferenciado para o escopo apropriado.",
+            "Volte ao Orçamento: confira BDI no cabeçalho, preços unitários, total e itens marcados para diferenciado."
+          ],
+          "expected": "A taxa aplicada tem memória e passa a governar os preços das linhas correspondentes."
+        },
+        {
+          "title": "Uma estrutura de leitura da fórmula",
+          "formula": "K = (1 + AC + R + S/G) × (1 + DF) × (1 + L)\nEstrutura paramétrica: BDI = K × (1 + IVAeq) ÷ (1 − T) − 1\nPreço = custo direto × (1 + BDI)",
+          "body": "AC é administração central; R, risco; S/G, seguro/garantia; DF, despesas financeiras; L, lucro. T reúne as parcelas de tributos legados reconhecidas pelo método/ano; IVAeq é a carga equivalente de IVA calculada pelas hipóteses de crédito e incidência. Os métodos Exato e Simples têm memórias próprias e não devem ser reduzidos a uma soma de taxas. Valores percentuais informados na interface são convertidos a frações para calcular."
+        },
+        {
+          "title": "Diferença entre os métodos",
+          "table": {
+            "headers": [
+              "Método",
+              "Base da decisão",
+              "O que conferir"
+            ],
+            "rows": [
+              [
+                "Paramétrico",
+                "Participações e aproveitamentos estimados de materiais, mão de obra, equipamentos e parcelas do BDI",
+                "Tipo de obra, ano, %MATcd, fatores e referências escolhidas"
+              ],
+              [
+                "Exato",
+                "Matriz de custos e fatores de crédito por linha",
+                "Importar/conferir a ABC do orçamento e revisar os fatores; a matriz de exemplo não é a sua obra"
+              ],
+              [
+                "Simples Nacional",
+                "Receita acumulada, anexo, faixa, partilha e cenário tributário do modelo",
+                "RBT12, anexo, opção/modelo, ano e dados cadastrais; confirmar o enquadramento real"
+              ]
+            ]
+          },
+          "body": "É possível comparar cenários A/B, curvas e memórias conforme as abas do método. O arredondamento aplicado da taxa também integra o resultado. Exportar uma memória não é o mesmo que aplicar o BDI."
+        }
+      ],
+      "sources": [
+        "tcu",
+        "simples"
+      ],
+      "related": [
+        "bdi-tributos",
+        "risco-bdi",
+        "orcamento"
+      ]
+    },
+    {
+      "id": "equipes",
+      "category": "Planejar",
+      "title": "8. Quantidade → recursos → equipe → duração",
+      "summary": "Coeficientes, gargalo produtivo, equipe base, prazo-alvo e duração manual.",
+      "target": "crews",
+      "keywords": "produtividade equipe h/un ocupação gargalo prazo-alvo duração CHP CHI equipes mão obra jornada",
+      "sections": [
+        {
+          "title": "Por que o valor do orçamento não basta",
+          "body": "O prazo não é obtido dividindo o preço por uma diária genérica. O módulo procura recursos produtivos no analítico, separa funções/equipamentos e combina seus coeficientes com a quantidade física. Uma cotação sem analítico pode ter custo e não ter produtividade determinada. Nesse caso, defina uma duração justificada; não trate uma duração mínima técnica de preenchimento como estimativa de engenharia."
+        },
+        {
+          "title": "Ler a memória da equipe",
+          "formula": "Hᵣ = Q × cᵣ\nT = maior razão cᵣ/nᵣ entre os recursos determinantes\nD = teto(Q × T ÷ (m × J))\nQ: quantidade; cᵣ: h/un; nᵣ: recursos por equipe; m: equipes; J: h/dia",
+          "body": "Exemplo didático: Q = 100 m², coeficiente determinante = 0,50 h/m², 2 profissionais por equipe, 1 equipe e jornada de 8 horas. T = 0,25 h/m² e a duração é teto(100 × 0,25 / 8) = 4 dias úteis. Com duas equipes independentes, a estimativa cai a 2 dias. A ocupação compara a demanda de cada função com o gargalo; números maiores de pessoas podem não reduzir o prazo se outro recurso continuar limitando a produção."
+        },
+        {
+          "title": "Dimensionar no sistema",
+          "steps": [
+            "Abra Equipes e produtividade e selecione o serviço ou use Equipe no detalhe do cronograma.",
+            "Confira quantidade, recursos diretos, auxiliares, equipe base, jornada e recurso limitante.",
+            "Edite as quantidades por função/equipamento, número de equipes ou prazo-alvo conforme os controles disponíveis.",
+            "Se faltar base produtiva, use duração manual e registre a justificativa técnica.",
+            "Compare duração, produção horária, ocupação e horas totais antes/depois.",
+            "Volte ao Cronograma e Recursos e Curva S para conferir prazo da obra e simultaneidade."
+          ],
+          "expected": "A duração responde às premissas de produção adotadas e pode ser explicada por uma memória de horas e recursos."
+        },
+        {
+          "title": "CHP e CHI",
+          "body": "CHP e CHI representam custos horários produtivo e improdutivo. Na leitura física do equipamento, os coeficientes indicam horas por unidade de serviço. O total de horas não deve ser convertido em quantidade de máquinas sem considerar prazo e jornada. Uma máquina com CHI elevado pode explicar baixa utilização; adicionar máquinas sem revisar a equipe inteira não garante redução proporcional do prazo. Os recursos de apoio e o operador não devem ser contados duas vezes."
+        }
+      ],
+      "related": [
+        "planejamento",
+        "cronograma",
+        "recursos",
+        "equipamentos"
+      ]
+    },
+    {
+      "id": "planejamento",
+      "category": "Planejar",
+      "title": "9. Planejamento por equipes e fases da obra",
+      "summary": "Metas de prazo, equipes disponíveis, frentes, fases e reservas explícitas.",
+      "target": "crews",
+      "keywords": "plano equipe fases meses prazo equipe disponível frente reserva alocação capacidade cronograma por serviço",
+      "sections": [
+        {
+          "title": "O plano do edifício é editável",
+          "body": "O exemplo do edifício inclui planejamento de equipes e fases, com meta de meses e premissas documentadas. Essas definições não são uma regra obrigatória para novos projetos. Confira frentes, fases, recursos e limites antes de usar o exemplo. Uma meta contratual é uma data desejada; não reduz sozinha as durações calculadas. O cronograma precisa caber na meta pelas capacidades e pelos vínculos, não por ocultação de trabalho."
+        },
+        {
+          "title": "Distribuir trabalho e capacidade",
+          "steps": [
+            "Revise os serviços e suas equipes calculadas antes de ajustar o plano por fases.",
+            "No planejamento de equipes, confira fases, equipes disponíveis, associação de serviços e compartilhamento de recursos.",
+            "Edite a meta e as reservas justificadas. Diferencie janela mínima, espera e trabalho produtivo.",
+            "Recalcule e confira os avisos de capacidade, serviços sem associação e duração.",
+            "Compare o cronograma por serviços com histogramas de mão de obra/equipamentos e revise gargalos."
+          ],
+          "expected": "O prazo e as curvas correspondem ao modo de planejamento efetivamente selecionado, com premissas rastreáveis."
+        },
+        {
+          "title": "Reserva não é produtividade",
+          "body": "Uma reserva contratual pode estender a janela de planejamento sem criar produção, pessoas fictícias ou materiais. Não a trate como duração produtiva da equipe. Ao aumentar uma equipe compartilhada, examine a distribuição entre frentes simultâneas. A rede CPM genérica e o planejamento específico por equipes não representam as mesmas restrições: confira a indicação de modo utilizada na tela antes de interpretar folgas."
+        },
+        {
+          "title": "O ciclo de revisão",
+          "body": "Se a data final não atende à meta, identifique serviços determinantes, aumente capacidade onde tecnicamente possível, reorganize frentes e vínculos ou revise a meta. Depois confira custos de itens periódicos ligados ao tempo. Aumentar capacidade pode ter custos e restrições reais fora do cálculo de referência; registre essa decisão no projeto e nas composições/cotações quando ela alterar a solução de execução."
+        }
+      ],
+      "related": [
+        "equipes",
+        "cronograma",
+        "recursos",
+        "integracoes"
+      ]
+    },
+    {
+      "id": "cronograma",
+      "category": "Planejar",
+      "title": "10. Criar o cronograma a partir do orçamento",
+      "summary": "Um roteiro completo para Gantt, rede PERT, tabela CPM e predecessoras.",
+      "target": "schedule",
+      "keywords": "cronograma Gantt PERT CPM predecessora TI II TT IT caminho crítico folga calendário sequência datas prazo",
+      "sections": [
+        {
+          "title": "Roteiro: da planilha a uma rede executável",
+          "steps": [
+            "Conclua a EAP do Orçamento e confira quantidades e unidades; cada serviço é uma atividade, e etapas consolidam os serviços.",
+            "Em Equipes e produtividade, valide duração por serviço. Corrija atividades sem produtividade ou duração justificada.",
+            "Abra Cronograma e informe Início da obra, Semana, Horas/dia e feriados aplicáveis.",
+            "Escolha Sequenciamento: Tudo em série (TI), Escalonado, Etapas em série/serviços em paralelo ou Manual. Use o automático como ponto de partida.",
+            "Na Tabela CPM, edite a coluna Predecessoras pelo número da atividade. Ao editar um modo automático, os vínculos atuais são preservados e o sistema passa a Manual.",
+            "Confira Gantt e Rede PERT. Revise ciclos, datas mais cedo/mais tarde e folgas.",
+            "Confira Recursos e Curva S: simultaneidade aceitável, volume mensal e distribuição financeira.",
+            "Revise itens cujo custo depende do tempo, aguarde a gravação e exporte a versão do cronograma."
+          ],
+          "expected": "Há uma rede de serviços com durações justificadas, calendário definido e dependências coerentes; o prazo final pode ser reproduzido."
+        },
+        {
+          "title": "Escrever predecessoras sem ambiguidade",
+          "table": {
+            "headers": [
+              "Entrada",
+              "Significado",
+              "Exemplo de decisão"
+            ],
+            "rows": [
+              [
+                "3 ou 3TI",
+                "Término da atividade 3 antes do início desta",
+                "Revestir depois de concluir a base"
+              ],
+              [
+                "5II+2",
+                "Início desta pelo menos 2 dias úteis depois do início da 5",
+                "Abrir outra frente após a primeira começar"
+              ],
+              [
+                "7TT-1",
+                "Término desta relacionado ao término da 7 com antecipação de 1 dia",
+                "Compatibilizar encerramentos; conferir viabilidade"
+              ],
+              [
+                "4IT",
+                "Início da 4 relacionado ao término desta",
+                "Vínculo especial; usar somente quando justificado"
+              ],
+              [
+                "3; 5II+2",
+                "Duas restrições simultâneas",
+                "A condição mais restritiva determina a data"
+              ]
+            ]
+          },
+          "body": "Use o número da atividade exibido na Tabela CPM, não o código SINAPI ou o número hierárquico da EAP. Defasagens usam dias úteis. Uma atividade não pode ser sua própria predecessora. Relações circulares são sinalizadas e precisam ser corrigidas; um vínculo ignorado pelo motor não significa que a lógica da obra tenha sido validada."
+        },
+        {
+          "title": "Interpretar CPM e calendário",
+          "body": "PDI/PDT são início e término mais cedo; UDI/UDT, início e término mais tarde. FT é folga total e FL, folga livre. Uma atividade com FT zero é crítica no modelo da rede; seu atraso tende a deslocar o prazo quando as demais premissas ficam iguais. Os índices começam no dia útil zero; as datas do calendário são outra apresentação. A Rede PERT representa dependências, não uma simulação probabilística de prazo. A análise de riscos atual simula custos, não datas."
+        },
+        {
+          "title": "Uma experiência de aprendizagem",
+          "body": "Monte três serviços: preparação, execução e acabamento. Valide suas durações e coloque execução com predecessora 1; acabamento com predecessora 2. Observe a sequência TI no Gantt. Em uma cópia para estudo, mude uma relação para II+2 e veja a sobreposição; depois confronte o histograma de equipe. Sobreposição permitida pela rede não demonstra disponibilidade real de pessoas ou segurança de frentes. Não faça esse experimento em um orçamento aprovado sem salvar uma versão/cópia."
+        }
+      ],
+      "related": [
+        "equipes",
+        "planejamento",
+        "recursos",
+        "eventograma"
+      ]
+    },
+    {
+      "id": "recursos",
+      "category": "Planejar",
+      "title": "11. Recursos, Curva S e cronograma físico-financeiro",
+      "summary": "Ler histogramas, acumulação, custo/receita planejada e intervalos.",
+      "target": "resources",
+      "keywords": "Curva S recurso histograma desembolso custo preço mão obra equipamento físico financeiro mês período medição",
+      "sections": [
+        {
+          "title": "O que alimenta cada gráfico",
+          "body": "Os serviços trazem quantidades, recursos e valores; o cronograma traz a distribuição no tempo. O módulo consolida custo, preço, mão de obra e equipamentos no período selecionado. A Curva S acumula valores ou pesos físicos/financeiros conforme a visão. A planilha mensal resume etapas e intervalos. Custo direto e preço com BDI são universos diferentes: escolha a base antes de comparar totais e inclua essa informação no relatório."
+        },
+        {
+          "title": "Conferir depois de planejar",
+          "steps": [
+            "Abra Recursos e Curva S depois de validar o cronograma.",
+            "Escolha intervalo/escala, base de custo ou com BDI e a curva/histograma desejado.",
+            "Confira se o acumulado final corresponde ao total da base escolhida.",
+            "Localize picos de mão de obra e equipamentos e compare com o efetivo disponível.",
+            "Volte às equipes, frentes e vínculos para corrigir sobrecargas; recalcule e compare.",
+            "Exporte curva, histograma e planilha físico-financeira com o mesmo orçamento e calendário."
+          ],
+          "expected": "O plano financeiro e os recursos previstos são coerentes com as datas e a capacidade adotadas."
+        },
+        {
+          "title": "Planejado, comprado e pago são diferentes",
+          "body": "A distribuição do sistema é uma apropriação planejada baseada nas regras do modelo e no período de execução. Não equivale a uma agenda real de compras, medição contratual ou pagamento com prazo do fornecedor. Uma compra antecipada, estoque, prazo de pagamento ou retenção precisam ser considerados na interpretação. Um fluxo de caixa real pode exigir ajustes externos ou configuração explícita nos eventos. A Curva S não registra produtividade realizada de campo."
+        },
+        {
+          "title": "Alterar BDI não cria trabalho físico",
+          "body": "Com a mesma equipe, quantidade e duração, alterar BDI muda a curva financeira de preço, mas não cria horas de mão de obra. Alterar a quantidade ou a equipe pode mudar duração, consumo e simultaneidade. A coluna de créditos IBS/CBS usa um cenário anual sobre a base; não é automaticamente distribuída pelos meses do cronograma. Para avaliar operações em anos diferentes, documente cenários ou escopos apropriados em vez de somar oito anos como créditos novos."
+        }
+      ],
+      "related": [
+        "cronograma",
+        "eventograma",
+        "tributos",
+        "integracoes"
+      ]
+    },
+    {
+      "id": "eventograma",
+      "category": "Planejar",
+      "title": "12. Eventograma e marcos financeiros",
+      "summary": "Eventos, rateios, prazo, retenção, multas e coerência com o orçamento.",
+      "target": "evento",
+      "keywords": "evento eventograma marco financeiro retenção multa prazo pagamento parcelas etapas diluição",
+      "sections": [
+        {
+          "title": "Relacionar o evento ao escopo",
+          "body": "O Eventograma apresenta eventos e sua distribuição financeira com base nos serviços/etapas do projeto e nas regras configuradas. Ele permite examinar parcelas e marcos de execução, retenção e hipóteses de multa/prazo. Um evento não substitui os serviços da EAP e não deve duplicar seus custos. O total da base deve ser conferido com o preço do orçamento e com as diluições ou retenções explicitamente adotadas."
+        },
+        {
+          "title": "Trabalhar na sequência correta",
+          "steps": [
+            "Conclua orçamento, BDI aplicado e cronograma antes de revisar o Eventograma.",
+            "Confira quais serviços e etapas alimentam cada evento e as parcelas de execução.",
+            "Revise percentuais, critérios, prazo, retenções e premissas exibidas na configuração/memória.",
+            "Compare datas e totais com a rede e com a planilha físico-financeira.",
+            "Exporte a memória e documente que se trata de planejamento, não de aceite de medição ou pagamento efetuado."
+          ],
+          "expected": "Os marcos financeiros correspondem ao escopo e têm uma memória compatível com as premissas do contrato."
+        },
+        {
+          "title": "A integração tem limites",
+          "body": "Mudar equipe ou vínculo pode deslocar os serviços que alimentam um evento. Mudar BDI pode mudar seu valor financeiro. Créditos tributários e contingência de Monte Carlo não viram recebimentos ou pagamentos no Eventograma por serem calculados. A parcela de risco só altera o preço quando aplicada ao BDI. Confirme datas, pesos e totais após qualquer revisão relevante."
+        }
+      ],
+      "related": [
+        "cronograma",
+        "recursos",
+        "bdi",
+        "integracoes"
+      ]
+    },
+    {
+      "id": "abc-servicos",
+      "category": "Analisar",
+      "title": "13. Curva ABC de serviços: custo e impacto tributário",
+      "summary": "Prioridades, critérios de classificação, valores parciais e rastreabilidade.",
+      "target": "budget",
+      "keywords": "ABC curva serviços classificar custo crédito IVA IBS CBS base líquido A B C universo filtros",
+      "sections": [
+        {
+          "title": "Abrir e escolher a pergunta",
+          "steps": [
+            "Em Orçamento, clique em Curva ABC de serviços.",
+            "Confira a base econômica da coluna Custo e o exercício tributário.",
+            "Em Classificar por, escolha custo, crédito de IVA, IBS, CBS, base ponderada ou líquido econômico, conforme as opções da tela.",
+            "Leia a política de valores completos/conhecidos e os avisos de pendências.",
+            "Abra uma linha para conferir as ocorrências que formaram seu crédito.",
+            "Use filtros para localizar linhas, e exporte a curva completa para a revisão."
+          ],
+          "expected": "Você identifica os serviços dominantes no critério escolhido, sem confundir preço com crédito ou subtotal filtrado com orçamento completo."
+        },
+        {
+          "title": "Como ler A, B e C",
+          "body": "Os itens são ordenados pelo valor do critério. A curva considera a contribuição acumulada para classificar A, B e C; os limites de referência são 80% e 95%. O serviço que cruza um limite pode permanecer na classe iniciada antes da passagem. Por isso, não espere exatamente 80,00% somados na classe A. O universo econômico da ABC de serviços usa os valores indicados na tela; a ABC da análise de riscos usa custo direto e é uma fotografia própria. Classes podem ser diferentes entre as duas análises."
+        },
+        {
+          "title": "Classificação tributária e valores não determinados",
+          "body": "Um serviço pode ter alto preço e baixo crédito porque contém mão de obra, encargos não creditáveis ou pendências analíticas. Não determinado não é zero. A política de linhas completas exclui parcelas sem crédito completo do universo daquele critério; valores conhecidos evidenciam a parcela calculável. As linhas com zero, negativo, pendência ou exclusão têm condições próprias e não devem ser forçadas para A/B/C. Os filtros de exibição não redefinem percentuais nem classes."
+        },
+        {
+          "title": "Líquido econômico não altera o orçamento",
+          "formula": "Líquido econômico comparável = custo direto apropriado − crédito IVA conciliado",
+          "body": "Esse critério só é calculado quando as bases são homogêneas e o crédito da linha é completo. Se a valoração tributária usar uma referência independente ou outra política de preços, o líquido pode ficar indisponível. Crédito superior ao custo é preservado como sinal para revisar premissas, não convertido em uma economia garantida. Mudar a classificação não reduz custo ou BDI. Os arquivos de curva incluem todas as linhas, inclusive as não visíveis no filtro."
+        }
+      ],
+      "related": [
+        "abc-insumos",
+        "memoria",
+        "riscos",
+        "bdi-tributos"
+      ]
+    },
+    {
+      "id": "abc-insumos",
+      "category": "Analisar",
+      "title": "14. Curva ABC de insumos: explodir e reconciliar recursos",
+      "summary": "Auxiliares, agregação, quantidades físicas e apropriação monetária.",
+      "target": "budget",
+      "keywords": "ABC insumos explode auxiliar recurso referência orçamento apropriação rateio quantidade composição terminal fonte conciliação",
+      "sections": [
+        {
+          "title": "Decomposição até o nível disponível",
+          "body": "A curva percorre os analíticos e suas auxiliares, multiplica coeficientes pela quantidade de serviço e agrega recursos compatíveis. Código, fonte, unidade e contexto precisam permanecer identificados. Um insumo repetido em várias composições soma seus consumos físicos. Uma composição sem analítico ou uma cotação fica no nível terminal conhecido; o motor não inventa recursos para fechar seu valor."
+        },
+        {
+          "title": "Usar referência ou apropriação ao orçamento",
+          "steps": [
+            "Em Orçamento, abra Curva ABC de insumos.",
+            "Confira se o custo exibido é o da referência analítica ou o apropriado ao orçamento.",
+            "Se houver custos informados, examine a conciliação entre referência e custo direto antes de usar o rateio.",
+            "Compare quantidades técnicas, valor, origem, natureza e condição tributária.",
+            "Classifique por custo ou por uma métrica tributária e abra a memória da linha.",
+            "Exporte a curva, a memória completa e os caminhos para reproduzir a agregação."
+          ],
+          "expected": "Os recursos dominantes podem ser relacionados aos serviços que os consumiram, sem alteração fictícia das quantidades físicas."
+        },
+        {
+          "title": "Físico e monetário não são a mesma conciliação",
+          "body": "Truncamentos e arredondamentos analíticos podem gerar diferença entre somar os insumos a preço cheio e somar os custos unitários publicados dos serviços. A apropriação monetária reconcilia os valores de referência ao custo direto do projeto quando os dados permitem. Ela não muda o coeficiente ou a quantidade física de um material. Se a origem estiver incompleta, o sistema não deve presumir que a parcela conhecida representa todo o serviço."
+        },
+        {
+          "title": "Um código, vários perfis de crédito",
+          "body": "Uma máquina pode participar de depreciação, juros e manutenção. Os créditos são calculados em cada ocorrência/perfil antes da agregação da linha da ABC; não aplique uma alíquota única ao valor total do código. Na memória, leia perfil, natureza, serviço de origem e caminho. O detalhamento mostra um número limitado de ocorrências por vez; Mostrar mais e os arquivos completos permitem auditar o restante. A soma IBS + CBS reconcilia com IVA, inclusive após distribuir centavos."
+        }
+      ],
+      "related": [
+        "abc-servicos",
+        "credito",
+        "equipamentos",
+        "memoria"
+      ]
+    },
+    {
+      "id": "tributos",
+      "category": "Tributação",
+      "title": "15. Reforma Tributária: alcance legal e alcance do modelo",
+      "summary": "IVA dual, débito, crédito, transição e cenários econômicos anuais.",
+      "target": "reforma",
+      "keywords": "reforma tributária IBS CBS IVA dual crédito débito fiscal econômico LC214 LC227 EC132 transição 2026 2033",
+      "sections": [
+        {
+          "title": "O que é IBS/CBS e o que o programa estima",
+          "body": "IBS e CBS integram o modelo de IVA dual sobre consumo. Débito é o tributo da operação tributada; crédito é o montante apropriável nas aquisições nas condições legais. O OrçaPro estima créditos a partir das referências e hipóteses econômicas do orçamento. Não possui documentos fiscais, comprovação de extinção de débitos, enquadramento real de fornecedores nem escrituração fiscal para certificar esse direito. Na LC 214, leia especialmente arts. 47 a 56 e as condições/exceções aplicáveis. O valor da coluna Crédito IVA é uma estimativa, não um saldo declarado."
+        },
+        {
+          "title": "Linha do tempo do cenário",
+          "table": {
+            "headers": [
+              "Exercício",
+              "ICMS/ISS remanescente no motor",
+              "CBS padrão do motor (%)",
+              "IBS padrão do motor (%)"
+            ],
+            "rows": [
+              [
+                "2026",
+                "100%",
+                "0,9",
+                "0,1"
+              ],
+              [
+                "2027",
+                "100%",
+                "8,7",
+                "0,1"
+              ],
+              [
+                "2028",
+                "100%",
+                "8,7",
+                "0,1"
+              ],
+              [
+                "2029",
+                "90%",
+                "8,8",
+                "1,92"
+              ],
+              [
+                "2030",
+                "80%",
+                "8,8",
+                "3,84"
+              ],
+              [
+                "2031",
+                "70%",
+                "8,8",
+                "5,76"
+              ],
+              [
+                "2032",
+                "60%",
+                "8,8",
+                "7,68"
+              ],
+              [
+                "2033",
+                "0%",
+                "8,8",
+                "19,2"
+              ]
+            ]
+          },
+          "body": "A transição de ICMS/ISS é protegida no motor. Os valores futuros de IBS/CBS da tabela são parâmetros pré-preenchidos do simulador, não confirmação de alíquotas legais definitivas da operação. São editáveis em Alíquotas IVA. A escolha de 2026 pode considerar crédito potencial de teste ou desconsiderá-lo no cenário, sem afirmar aproveitamento fiscal automático. Confira legislação e parâmetros atuais antes de emitir uma conclusão tributária."
+        },
+        {
+          "title": "Cenários, não oito compras",
+          "body": "A série 2026–2033 aplica exercícios alternativos ao mesmo conjunto de serviços/insumos. Não soma créditos de oito anos como se fossem compras adicionais e não distribui automaticamente as aquisições pelas datas do cronograma. A seleção de ano sincroniza a leitura tributária no orçamento, curvas ABC e memórias. O ano do BDI é configuração própria. Uma aquisição histórica de equipamento pode utilizar outro ano efetivo, identificado separadamente na memória."
+        },
+        {
+          "title": "Seguir a trilha de uma estimativa",
+          "steps": [
+            "Abra Reforma Tributária e confira ano, UF e regime.",
+            "Na Visão geral, leia total, condição completa/parcial e parcelas sem perfil ou preço.",
+            "Confira Alíquotas IVA, ICMS e ISS, Premissas, Créditos e regimes e Combustíveis.",
+            "Consulte um insumo/serviço e abra Crédito de IVA, Memória tributária, Legislação aplicável e premissas específicas.",
+            "Confronte os parâmetros com documentos/fonte e exporte cenário e memória."
+          ],
+          "expected": "Cada resultado é explicado por contexto, perfil, base, alíquotas, aproveitamento, enquadramento e condições."
+        }
+      ],
+      "sources": [
+        "ec132",
+        "lc214",
+        "receita"
+      ],
+      "related": [
+        "credito",
+        "parametros",
+        "bdi-tributos",
+        "memoria"
+      ]
+    },
+    {
+      "id": "credito",
+      "category": "Tributação",
+      "title": "16. Metodologia: base, IBS, CBS e crédito de cada ocorrência",
+      "summary": "A fórmula monetária, preços com/sem IVA, reduções e pontos de conciliação.",
+      "target": "reforma",
+      "keywords": "metodologia fórmula cálculo IBS CBS base ponderada comIVA semIVA legado fator crédito residual anexo débito centavos",
+      "sections": [
+        {
+          "title": "O percurso completo",
+          "steps": [
+            "Explodir o serviço em ocorrências elementares, preservando o caminho e o perfil.",
+            "Conciliar o valor monetário da ocorrência ao analítico e ao custo do serviço conforme a valoração escolhida; manter quantidade física separada.",
+            "Classificar a ocorrência: material, salário, serviço, depreciação, manutenção, combustível ou outro perfil.",
+            "Determinar a carga legada efetiva por código/perfil/UF e aplicar uma única vez o remanescente constitucional do ano efetivo.",
+            "Depurar a parcela monetária e tratar preço com ou sem IVA.",
+            "Aplicar fatores de alíquota, enquadramento do anexo e aproveitamento sem duplicar redutores.",
+            "Calcular IBS e CBS, classificar crédito econômico/fiscal estimado e consolidar serviços, insumos e orçamento.",
+            "Arredondar e distribuir centavos de modo que as memórias conciliem entre níveis, conservando IBS + CBS = IVA."
+          ],
+          "expected": "O total é a soma rastreável das ocorrências, não uma alíquota genérica multiplicada pelo preço global com BDI."
+        },
+        {
+          "title": "Fórmula do caso monetário comum",
+          "formula": "V = valor monetário da ocorrência\nE = carga legada efetiva × V × remanescente do ano\nτI = IBS anual × fator de alíquota × fator do anexo\nτC = CBS anual × fator de alíquota × fator do anexo\nB = (V − E)                         se IVA será adicionado\nB = (V − E)/(1 + τI + τC)           se o preço já inclui IVA\nBase antes do anexo = B × aproveitamento\nBase ponderada = B × aproveitamento × fator do anexo\nCrédito IBS = B × τI × aproveitamento\nCrédito CBS = B × τC × aproveitamento\nCrédito IVA = crédito IBS + crédito CBS",
+          "body": "As taxas da fórmula são frações: 19,2% corresponde a 0,192. Base ponderada é uma equivalência monetária de crédito, não necessariamente a base legal integral de uma nota fiscal. O fator do anexo já está em τI/τC: não o multiplique novamente pela parcela aproveitada. Se a referência tem IVA embutido, remover o IVA exige divisão, não subtração simples da alíquota do preço bruto. Combustível e aquisição histórica de equipamento usam ramos específicos explicados nos capítulos seguintes."
+        },
+        {
+          "title": "Exemplos reproduzíveis no laboratório",
+          "table": {
+            "headers": [
+              "Premissa didática",
+              "Resultado do modelo"
+            ],
+            "rows": [
+              [
+                "R$100 sem IVA; 2033; IBS 19,2%; CBS 8,8%; aproveitamento 100%; sem anexo",
+                "IBS R$19,20; CBS R$8,80; total R$28,00"
+              ],
+              [
+                "R$128 já com IVA; mesmas alíquotas; sem legado residual",
+                "Base R$100; total R$28,00, e não R$35,84"
+              ],
+              [
+                "R$100 sem IVA; fator IX de 40%; aproveitamento 100%",
+                "Base ponderada R$40; total R$11,20"
+              ],
+              [
+                "R$111,20 com IVA; fator IX de 40%",
+                "Alíquota efetiva 11,2%; base monetária R$100; crédito R$11,20"
+              ],
+              [
+                "R$100 sem IVA; 2029; legado efetivo 18%; remanescente 90%",
+                "Exclusão R$16,20; base R$83,80; IBS/CBS conforme taxas daquele exercício"
+              ]
+            ]
+          },
+          "body": "Esses exemplos são hipóteses de cálculo, não preços de produtos nem créditos fiscais certificados. No Laboratório, altere os números e observe cada etapa. O exercício usa uma configuração separada e não grava no orçamento."
+        },
+        {
+          "title": "Arredondar na etapa certa",
+          "body": "O analítico SINAPI trunca parcelas de custo; o orçamento arredonda totais conforme sua configuração; a memória tributária calcula ocorrências e concilia créditos em centavos. São três processos diferentes. Quantidades físicas não recebem rateio monetário. Os arquivos mostram valores brutos e valores conciliados para explicar diferenças de centavos. A soma visual de números já arredondados pode diferir de uma operação feita antes do arredondamento; use o total conciliado na conferência entre serviços e insumos."
+        }
+      ],
+      "related": [
+        "parametros",
+        "perfis",
+        "combustiveis",
+        "memoria"
+      ]
+    },
+    {
+      "id": "parametros",
+      "category": "Tributação",
+      "title": "17. O que o usuário pode editar no cenário tributário",
+      "summary": "Dicionário de campos, precedência, efeitos e parâmetros protegidos.",
+      "target": "reforma",
+      "keywords": "variáveis editar parâmetros premissas usuário impostos ICMS ISS alíquota por insumo perfil fator protegido importação cenário",
+      "sections": [
+        {
+          "title": "Campos e seus efeitos",
+          "table": {
+            "headers": [
+              "Onde",
+              "Campo editável",
+              "Efeito no cálculo"
+            ],
+            "rows": [
+              [
+                "Cabeçalho / Reforma Tributária",
+                "Ano do IVA",
+                "Seleciona exercício das curvas, orçamento e memórias; não altera automaticamente o ano do BDI"
+              ],
+              [
+                "Cabeçalho / ICMS e ISS",
+                "UF e regime de custos",
+                "Muda contexto de preços e regras; custos cotados podem continuar fixos"
+              ],
+              [
+                "Alíquotas IVA",
+                "CBS e IBS para cada exercício",
+                "Muda taxas nominais do simulador; não publica uma nova alíquota legal nem sincroniza o BDI"
+              ],
+              [
+                "ICMS e ISS",
+                "ICMS geral, energia; ISS construção, saúde, transporte e geral por UF/capital",
+                "Referências de cenário; regra específica de produto pode prevalecer"
+              ],
+              [
+                "Premissas",
+                "IVA adicionado ou preço com IVA",
+                "Escolhe multiplicação sobre base ou remoção por divisão"
+              ],
+              [
+                "Premissas",
+                "2026: potencial ou desconsiderar",
+                "Mantém ou zera o crédito de teste considerado"
+              ],
+              [
+                "Premissas",
+                "Equipamento corrente/econômico, ano e acompanhamento automático",
+                "Seleciona alíquota/depuração da aquisição para depreciação"
+              ],
+              [
+                "Créditos e regimes",
+                "Aproveitamento por perfil e fator de alíquota de exames",
+                "Pondera a base/crédito; salários e juros ficam em zero"
+              ],
+              [
+                "Créditos e regimes",
+                "Enquadramento IX/XIII por código e operador paramétrico",
+                "Escolhe fator aplicável e decomposição/equivalência econômica"
+              ],
+              [
+                "Consulta / premissas do insumo",
+                "Tipo/carga legada, aproveitamento, fator de alíquota e fonte específica",
+                "Substitui explicitamente premissa daquele código; documente a justificativa"
+              ],
+              [
+                "Combustíveis",
+                "Carga federal/estadual, unidade, valores anuais, finalidade e conversão",
+                "Muda cargas unitárias específicas e base monetária equivalente"
+              ],
+              [
+                "Integração com o orçamento",
+                "Valoração e política de preços",
+                "Escolhe custo conciliado ou referência independente, e origem admitida de preços"
+              ],
+              [
+                "Item sem detalhamento",
+                "Perfil tributário terminal e justificativa",
+                "Permite enquadramento explícito de cenário sem inventar um analítico"
+              ]
+            ]
+          }
+        },
+        {
+          "title": "A ordem de precedência",
+          "body": "Uma premissa explícita por insumo prevalece sobre a referência geral aplicável. Regras específicas de produto/UF podem prevalecer sobre o ICMS modal. O aproveitamento do perfil é referência geral, e o fator específico do código pode substituí-lo. Leia a memória para confirmar qual regra foi efetivamente escolhida: informar ICMS geral de 18% não garante que todos os materiais usem 18%. Uma substituição do usuário fica identificada como premissa do usuário e não como conclusão da legislação citada."
+        },
+        {
+          "title": "O que não pode ser livremente alterado",
+          "body": "O remanescente de ICMS/ISS é fixo: 100/100/100/90/80/70/60/0 de 2026 a 2033. Importar um cenário não substitui essa trajetória. Os fatores dos Anexos IX e XIII são 40% e zero no motor; escolha o enquadramento por código, sem alterar esses fatores. Aproveitamento de mão de obra assalariada e juros sobre capital é zero. O ano admitido na consulta é 2026–2033. Esses bloqueios fazem parte da metodologia existente."
+        },
+        {
+          "title": "Alterar com método",
+          "steps": [
+            "Exporte o cenário atual antes de uma revisão abrangente.",
+            "Altere uma hipótese por vez, incluindo a fonte/justificativa quando houver campo próprio.",
+            "Veja na memória qual variável mudou base, alíquota efetiva, aproveitamento ou ano efetivo.",
+            "Compare a curva antes/depois e confira se aumentaram pendências ou bases não homogêneas.",
+            "Exporte o cenário novo e a memória; confira separadamente os parâmetros do BDI antes de aplicar um preço."
+          ],
+          "expected": "A revisão tributária é reproduzível e seu efeito pode ser explicado, sem alteração automática de preços ou prazos."
+        }
+      ],
+      "related": [
+        "credito",
+        "memoria",
+        "bdi-tributos"
+      ]
+    },
+    {
+      "id": "perfis",
+      "category": "Tributação",
+      "title": "18. Materiais, salários, encargos e serviços",
+      "summary": "Perfis e aproveitamentos econômicos pré-preenchidos do motor.",
+      "target": "reforma",
+      "keywords": "salário maoObra crédito mão de obra encargos alimentação transporte exames seguro EPI ferramentas energia água locação perfil terminal",
+      "sections": [
+        {
+          "title": "O perfil é uma decisão de modelagem",
+          "body": "O crédito é calculado pelo perfil da ocorrência, não pelo simples título Material ou Mão de obra da planilha. Uma composição de mão de obra pode incluir salário, alimentação, transporte, exame, seguro, EPI e ferramentas. Salário tem aproveitamento zero no modelo; parcelas de encargos complementares podem ter outras hipóteses. Não aplique 28% ao total da composição de um profissional sem abrir seus componentes."
+        },
+        {
+          "title": "Padrões que precisam ser revisados",
+          "table": {
+            "headers": [
+              "Perfil/rubrica",
+              "Aproveitamento padrão (%)",
+              "Como interpretar"
+            ],
+            "rows": [
+              [
+                "Materiais, EPI, ferramentas, serviços, água, energia, concreto usinado",
+                "100",
+                "Hipótese econômica do perfil; validar a operação"
+              ],
+              [
+                "Mão de obra assalariada",
+                "0, protegido",
+                "Não gera crédito neste motor"
+              ],
+              [
+                "Alimentação",
+                "15",
+                "Equivalência econômica pré-preenchida, editável"
+              ],
+              [
+                "Transporte",
+                "0",
+                "Premissa do perfil, editável quando o campo permite"
+              ],
+              [
+                "Exames de saúde",
+                "40",
+                "Equivalência da redução adotada; fator adicional de alíquota é separado"
+              ],
+              [
+                "Seguro complementar",
+                "10",
+                "Hipótese econômica, não crédito uniforme de toda apólice"
+              ],
+              [
+                "Depreciação",
+                "100",
+                "Rateio econômico do ativo, sujeito ao ano de aquisição"
+              ],
+              [
+                "Juros sobre capital",
+                "0, protegido",
+                "Não gera crédito neste motor"
+              ],
+              [
+                "Manutenção",
+                "70",
+                "Hipótese da parcela de peças/serviço, separada da aquisição"
+              ],
+              [
+                "Impostos/seguros do equipamento",
+                "50",
+                "Equivalência econômica do cadastro"
+              ],
+              [
+                "Operador paramétrico",
+                "10",
+                "Usado quando se escolhe parcela equivalente em vez de abrir encargos"
+              ],
+              [
+                "Combustível",
+                "100",
+                "Cálculo de carga específica; não tributação genérica sobre o preço"
+              ]
+            ]
+          },
+          "body": "Os padrões não são uma tabela de direitos fiscais universais. O aproveitamento só descreve a hipótese adotada pela ferramenta. Um insumo próprio pode exigir perfil explícito para ter crédito determinado."
+        },
+        {
+          "title": "Resolver item terminal sem crédito determinado",
+          "steps": [
+            "Na Reforma Tributária, localize o grupo de itens com crédito não determinado.",
+            "Abra Informar perfil quando estiver disponível; preço ausente ou ciclo exige corrigir a base antes.",
+            "Escolha um perfil compatível com a operação e registre justificativa/fonte.",
+            "Recalcule a memória e confira a condição completa/parcial.",
+            "Guarde o cenário: a atribuição vale para o contexto do código, fonte e unidade, sem criar coeficientes inexistentes."
+          ],
+          "expected": "O sistema distingue enquadramento explícito próprio de um detalhamento oficial SINAPI."
+        },
+        {
+          "title": "Locação e ISS",
+          "body": "Na modelagem atual, o perfil de equipamento em locação adota ISS geral da capital como premissa de depuração legada. Isso não afirma incidência uniforme de ISS em toda locação pura de bem móvel. Confira a nota da regra e a natureza da contratação. Também não estenda a alíquota de construção aos exames, transporte e demais serviços; os campos são separados justamente para não presumir essa equivalência."
+        }
+      ],
+      "related": [
+        "parametros",
+        "equipamentos",
+        "credito",
+        "proprios"
+      ]
+    },
+    {
+      "id": "equipamentos",
+      "category": "Tributação",
+      "title": "19. Equipamentos: aquisição, custo horário e crédito econômico",
+      "summary": "Depreciação, juros, manutenção, operador e ano efetivo.",
+      "target": "reforma",
+      "keywords": "máquina equipamento ativo depreciação juros manutenção CHP CHI econômico aquisição ano parque operador seguro rateio histórico",
+      "sections": [
+        {
+          "title": "Decompor o custo horário",
+          "body": "O custo horário pode reunir depreciação, juros, manutenção, seguros/impostos, combustível e operador. Cada parcela tem natureza própria. A aquisição de uma máquina não deve ser novamente tributada integralmente a cada hora de uso. O motor associa a depreciação a uma equivalência econômica da aquisição; os juros permanecem sem crédito. A manutenção usa a premissa das peças/serviços e não herda automaticamente o imposto da compra da máquina."
+        },
+        {
+          "title": "Corrente e econômico",
+          "table": {
+            "headers": [
+              "Opção",
+              "Ano utilizado",
+              "Interpretação"
+            ],
+            "rows": [
+              [
+                "Alíquota do exercício corrente",
+                "Ano consultado",
+                "Consulta da rubrica naquele cenário"
+              ],
+              [
+                "Rateio econômico + acompanhar exercício",
+                "Ano consultado, por padrão",
+                "Parque considerado adquirido naquele ano para a equivalência"
+              ],
+              [
+                "Rateio econômico + ano manual",
+                "Ano informado, quando anterior/igual ao cenário",
+                "Depreciação usa taxas/depuração da aquisição; memória identifica exclusão histórica"
+              ],
+              [
+                "Aquisição antes de 2026",
+                "Histórico anterior à transição",
+                "Sem crédito novo do ativo neste modelo"
+              ],
+              [
+                "Aquisição posterior ao exercício consultado",
+                "Futuro",
+                "Sem crédito antecipado da aquisição"
+              ]
+            ]
+          },
+          "body": "Os demais perfis podem usar o ano corrente mesmo quando a depreciação usa outro ano. Por isso, somar a base ponderada da máquina e multiplicar pela alíquota do cabeçalho pode não reproduzir seu crédito. Confira as ocorrências antes de agregar."
+        },
+        {
+          "title": "Simular um parque histórico",
+          "steps": [
+            "Em Premissas, escolha Rateio econômico pelo ano de aquisição.",
+            "Desmarque Acompanhar automaticamente o exercício consultado e informe o ano real/hipotético.",
+            "Abra a memória de um serviço mecanizado e encontre as linhas de depreciação.",
+            "Confira Ano efetivo, Exclusão histórica, Base econômica, IBS/CBS e natureza rateio_economico.",
+            "Compare com o modo automático e com combustível/manutenção, que têm regras próprias."
+          ],
+          "expected": "O efeito do parque histórico é rastreável e não é apresentado como um novo crédito fiscal em cada ano de uso."
+        },
+        {
+          "title": "Uma hipótese não substitui documento",
+          "body": "O SINAPI descreve custos de utilização e não contém toda a documentação da aquisição real. O rateio econômico ajuda a estudar efeitos no custo horário; não comprova direito de crédito, saldo anterior, data de compra ou regime do fornecedor. Ao exportar o resultado, mantenha a natureza econômica visível. Uma máquina agregada na ABC pode reunir várias ocorrências: preserve seus perfis, datas efetivas e condições."
+        }
+      ],
+      "related": [
+        "equipes",
+        "combustiveis",
+        "abc-insumos",
+        "memoria"
+      ]
+    },
+    {
+      "id": "combustiveis",
+      "category": "Tributação",
+      "title": "20. Combustíveis: cargas por unidade e base equivalente",
+      "summary": "Ad rem, migração, conversão física, substituições anuais e finalidade.",
+      "target": "reforma",
+      "keywords": "combustível diesel gasolina etanol biodiesel GLP ad rem litro quilo federal estadual automático CBS IBS unidade conversão",
+      "sections": [
+        {
+          "title": "Um ramo próprio de cálculo",
+          "body": "Combustíveis podem usar cargas em reais por litro/quilo ou percentuais do preço convertido a carga unitária. O motor trabalha com a quantidade física da ocorrência e só depois apresenta uma base monetária equivalente. Os valores pré-preenchidos de migração são hipóteses econômicas do cadastro, não alíquotas oficiais futuras para todos os fornecedores. O campo Fonte da aba descreve essas hipóteses por combustível."
+        },
+        {
+          "title": "Como a carga automática é calculada",
+          "formula": "Carga federal unitária = valor R$/un, ou preço por unidade × percentual federal\nCarga estadual unitária = valor R$/un, ou preço por unidade × percentual estadual\nDe 2027 em diante: CBS unitária automática = carga federal\nIBS unitário automático = carga estadual × (1 − remanescente do ano)\nCrédito = quantidade convertida × cargas IBS/CBS × fatores aplicáveis\nBase equivalente = crédito bruto ÷ IVA nominal",
+          "body": "Em 2026, o ramo automático aplica as taxas de teste à base depurada de referência. A equivalência pode superar 100% da base de preço e não é artificialmente limitada a 100; isso exige interpretar a hipótese, não tratá-la como erro automático. Se IVA nominal for zero com carga específica positiva, a base equivalente fica sem cálculo válido. Não depure de novo o imposto legado da equivalência já calculada."
+        },
+        {
+          "title": "Ajustar e reconhecer substituições",
+          "steps": [
+            "Escolha o combustível na aba Combustíveis e confira a unidade L ou KG.",
+            "Revise carga federal/estadual e escolha Percentual do preço ou R$ por unidade.",
+            "Confira a tabela anual e a origem Automática ou Manual.",
+            "Para uma exceção, edite IBS/CBS em R$/un naquele ano. Zero explícito é valor informado; remover a substituição/Voltar ao cálculo automático restaura a hipótese automática.",
+            "Confira fator de conversão da unidade, ICMS legado, finalidade e fonte.",
+            "Abra a memória de uma ocorrência e confronte quantidade convertida, cargas unitárias, crédito e base equivalente."
+          ],
+          "expected": "A unidade tributária e a quantidade física são compatíveis, e cada carga manual fica reconhecível."
+        },
+        {
+          "title": "Finalidade e preço da demonstração",
+          "body": "Uso na atividade e Revenda têm tratamentos distintos; o modo Revenda zera o crédito deste ramo de simulação, não estabelece uma regra geral para toda operação real. O preço ilustrativo da aba não substitui silenciosamente os preços de todas as ocorrências SINAPI: em cargas percentuais, o motor utiliza o preço unitário daquela ocorrência quando disponível. Uma unidade diferente sem conversão adequada deixa aviso de incompletude. Exportar a memória é a forma de mostrar essa diferença."
+        }
+      ],
+      "sources": [
+        "lc214"
+      ],
+      "related": [
+        "credito",
+        "equipamentos",
+        "parametros"
+      ]
+    },
+    {
+      "id": "anexos",
+      "category": "Tributação",
+      "title": "21. Anexos IX/XIII, enquadramentos e reduções",
+      "summary": "Aplicar fatores por insumo, sem duplicar a redução em base e alíquota.",
+      "target": "reforma",
+      "keywords": "anexo IX XIII NCM redutor zero base fator regime insumo enquadramento saúde 40 60 legislação imposto antigo",
+      "sections": [
+        {
+          "title": "O tratamento implementado",
+          "body": "O cadastro do motor identifica determinados insumos como IX ou XIII. Para IX, conserva 40% da base creditável equivalente; para XIII, zero. A redução da alíquota equivalente e a apresentação de base ponderada são duas formas de explicar o mesmo efeito; não são dois descontos cumulativos. O enquadramento é por código e acompanha auxiliares. Não aplique um benefício de um insumo a todos os recursos da composição."
+        },
+        {
+          "title": "Conferir enquadramento",
+          "steps": [
+            "Abra Créditos e regimes e consulte o cadastro de enquadramentos.",
+            "Pesquise o código, leia anexo, item, motivo, condições e NCM indicativa.",
+            "Confronte a especificação real e o documento com a fonte; descrição SINAPI e NCM indicativa não certificam classificação fiscal.",
+            "Mantenha o automático ou faça a escolha explícita de cenário por código.",
+            "Na memória, confira Base antes do anexo, Redução da base, Base ponderada e crédito.",
+            "Exporte o enquadramento e as fontes para a revisão."
+          ],
+          "expected": "A condição adotada é demonstrável e os demais insumos mantêm suas próprias regras."
+        },
+        {
+          "title": "Exemplo sem dupla redução",
+          "formula": "Base monetária R$100 × aproveitamento 50% = R$50 antes do anexo\nR$50 × fator IX 40% = R$20 de base ponderada\nIVA nominal 28%: crédito = R$20 × 28% = R$5,60",
+          "body": "Não aplique 40% novamente sobre R$5,60. No cálculo com preço que já inclui IVA, o denominador usa a alíquota efetiva reduzida. O custo do recurso continua no orçamento e a carga de ICMS/ISS legada segue sua regra própria; o anexo de IBS/CBS não reduz automaticamente o imposto antigo. Exames de saúde já têm aproveitamento equivalente de 40% na modelagem: não atribua IX só para repetir a redução."
+        },
+        {
+          "title": "Não generalizar a obra pública",
+          "body": "O simulador de créditos não aplica automaticamente um redutor de compras governamentais ou de construção sobre todos os insumos. Esses temas podem aparecer como parâmetros no calculador de BDI, com outro escopo de modelagem. A elegibilidade legal depende da operação e do regime, não da mera utilização do recurso numa obra pública. As hipóteses do cadastro precisam ser distinguidas dos comandos legais e de suas condições."
+        }
+      ],
+      "sources": [
+        "lc214"
+      ],
+      "related": [
+        "credito",
+        "perfis",
+        "bdi-tributos"
+      ]
+    },
+    {
+      "id": "memoria",
+      "category": "Tributação",
+      "title": "22. Auditar a memória de cálculo e a legislação",
+      "summary": "Da linha do serviço às parcelas tributárias e aos arquivos completos.",
+      "target": "reforma",
+      "keywords": "memória tributária legislação fonte origem conciliação centavos caminhos CSV JSON Excel condição parcial auditoria",
+      "sections": [
+        {
+          "title": "Leitura coluna a coluna",
+          "table": {
+            "headers": [
+              "Grupo",
+              "O que conferir"
+            ],
+            "rows": [
+              [
+                "Identificação",
+                "Serviço, código físico/tributário, descrição, perfil, unidade e caminho"
+              ],
+              [
+                "Valor",
+                "Quantidade física, valor tributário, preço de referência e origem local/SP/própria"
+              ],
+              [
+                "Conciliação",
+                "Fator entre níveis e ajuste monetário do serviço; não alteração da quantidade física"
+              ],
+              [
+                "Tempo",
+                "Ano selecionado e ano efetivo da aquisição"
+              ],
+              [
+                "Legado",
+                "Carga de referência, residual corrente e exclusão histórica"
+              ],
+              [
+                "Base",
+                "Base antes dos anexos, redução e base ponderada"
+              ],
+              [
+                "Novo tributo",
+                "IBS, CBS, crédito IVA bruto e centavos conciliados"
+              ],
+              [
+                "Condição",
+                "Natureza econômica/fiscal estimada, aproveitamento, anexo, regra, fonte e pendências"
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Roteiro de auditoria de uma linha",
+          "steps": [
+            "Escolha um serviço significativo na ABC e abra seu detalhamento tributário.",
+            "Encontre um insumo terminal e confira a quantidade técnica pelo caminho de coeficientes.",
+            "Confronte valor monetário e origem do preço com o analítico/valor informado.",
+            "Leia o perfil e a regra legada efetivamente usada; confira remanescente e ano efetivo.",
+            "Reproduza base, fatores e créditos IBS/CBS. Compare os valores brutos aos conciliados.",
+            "Volte à curva e confronte a soma das ocorrências com o crédito do serviço/insumo e com o total do orçamento.",
+            "Baixe memória CSV/JSON, caminhos e cenário. Registre as pendências sem convertê-las em zero."
+          ],
+          "expected": "Outra pessoa consegue reproduzir a estimativa com o mesmo contexto e as mesmas premissas."
+        },
+        {
+          "title": "Completo, parcial e não determinado",
+          "body": "Completo significa que o modelo calculou todas as ocorrências daquele escopo com as hipóteses disponíveis; não significa validação fiscal. Parcial conserva os valores conhecidos e indica lacunas. Não determinado significa que não há crédito calculável para aquela parcela, por falta de preço, perfil, detalhamento ou condição. Custo informado pode manter o orçamento com preço mesmo quando o crédito está parcial. Corrigir uma lacuna exige dado, analítico ou enquadramento explícito, não apenas esconder a linha no filtro."
+        },
+        {
+          "title": "Fontes e exercícios futuros",
+          "body": "A aba Legislação aplicável documenta a regra/matriz integrada e suas hipóteses por UF/produto. Uma data de coleta não comprova atualização de toda a legislação. Benefícios com validade limitada podem continuar no cenário futuro por hipótese econômica, sem afirmar prorrogação legal. As referências municipais da matriz usam capitais e não substituem automaticamente a legislação do município real da obra. Confira fontes, condição de destinação e classificação antes de usar a estimativa em uma decisão."
+        }
+      ],
+      "sources": [
+        "receita",
+        "lc214"
+      ],
+      "related": [
+        "abc-servicos",
+        "abc-insumos",
+        "parametros",
+        "arquivos"
+      ]
+    },
+    {
+      "id": "bdi-tributos",
+      "category": "Tributação",
+      "title": "23. Como o motor tributário conversa com o BDI",
+      "summary": "Integrações manuais, matriz exata, parâmetros independentes e dupla apropriação.",
+      "target": "bdi",
+      "keywords": "IVAeq BDI tributário IBS CBS %MATcd importar ABC matriz crédito aplicado sincronização parâmetros redutor gover setor",
+      "sections": [
+        {
+          "title": "Duas perguntas diferentes",
+          "body": "Reforma Tributária pergunta: quanto crédito potencial/econômico pode ser estimado para as aquisições e parcelas dos serviços? BDI pergunta: com as despesas, lucro, incidência na receita e hipóteses de crédito daquele método, qual fator forma o preço? A coluna Crédito IVA no orçamento não é subtraída automaticamente do custo direto, nem enviada como valor bruto para reduzir o BDI. O BDI pode incorporar sua própria hipótese de crédito ao calcular IVAeq. Subtrair de novo o total da Reforma Tributária pode contar o mesmo efeito duas vezes."
+        },
+        {
+          "title": "Parâmetros não são automaticamente iguais",
+          "body": "O ano do IVA no cabeçalho e o ano do método BDI são controles distintos. A tabela padrão de IBS do simulador de créditos chega a 19,2% em 2033; referências padrão do calculador BDI podem usar 17,7% nesse exercício. Isso expressa parametrizações próprias dos motores preservados, não duas alíquotas oficiais igualmente confirmadas. Confira as taxas e hipóteses da memória de cada método; não presuma igualdade pela seleção do mesmo ano. Se sua decisão requer uma base tributária homogênea, ajuste os campos admitidos e documente a reconciliação."
+        },
+        {
+          "title": "Fluxo recomendado para o BDI Exato",
+          "steps": [
+            "Valide o orçamento, a referência e as composições, incluindo custos informados e analíticos incompletos.",
+            "Audite a ABC de insumos e o cenário de créditos. Exporte a memória de premissas.",
+            "No BDI Exato, clique em Importar do orçamento. A ação explode os recursos para a matriz e pode substituir as linhas existentes mediante confirmação. Não mantenha a matriz de exemplo como se fosse sua obra.",
+            "Confira custo, tipo, quantidade, fator gerador/aproveitamento e alíquota de cada linha da matriz.",
+            "Revise ano, IVA, ICMS residual, ISS, fatores setorial/governamental e parcelas do BDI no próprio método.",
+            "Confira memória e preço; aplique explicitamente como principal/diferenciado e retorne ao orçamento."
+          ],
+          "expected": "A matriz e as hipóteses do BDI correspondem ao escopo real, e a aplicação ao orçamento é uma decisão explícita."
+        },
+        {
+          "title": "Paramétrico e Simples",
+          "body": "No Paramétrico, as participações de materiais/mão de obra/equipamentos e os fatores creditáveis são aproximações editáveis; importar a ABC ajuda a substituir referências genéricas por participações do projeto quando o controle oferece essa ação. No Simples, confira RBT12, anexo, modelo, ano e hipóteses de IBS/CBS; o campo razão/CNPJ não valida o regime fiscal da empresa. O método permite estudar cenários, mas não substitui a opção fiscal e a documentação reais. Um resultado de IVAeq do Simples aplicado ao Paramétrico tem memória e condição de ano próprias."
+        },
+        {
+          "title": "Conferência antes de fechar o preço",
+          "body": "Compare custo direto original, BDI aplicado, preço final, hipótese tributária do BDI e crédito estimado informado pela Reforma Tributária. Registre o que já foi considerado na formação do preço. O líquido econômico da ABC é um indicador analítico, não um desconto autorizado. Não altere custo, crédito e BDI simultaneamente sem conseguir explicar os efeitos separados."
+        },
+        {
+          "title": "O que a importação do orçamento preenche — e o que não transfere",
+          "body": "No Exato, Importar do orçamento traz descrições, unidades, quantidades, custos parciais e tipos de recursos. Os fatores geradores iniciais do modelo são material 100%, mão de obra 10% e equipamento segundo o percentual creditável do Paramétrico. Essa inicialização é uma equivalência econômica para o calculador BDI: não copia os perfis, anexos, fatos geradores e créditos por ocorrência da Reforma Tributária. Há também diferença de centavos entre soma explodida e custo direto por truncamento analítico. Revise tipo, fator gerador e alíquota de cada linha; documente a conciliação. No Paramétrico, Usar composição do orçamento preenche participações MAT/MO/EQ, sem importar toda a memória fiscal."
+        },
+        {
+          "title": "Metodologia preservada do BDI Paramétrico",
+          "formula": "m = MAT/CD + 0,10 × MO/CD + crédito de EQ × EQ/CD + crédito do BDI\nm ajustado = m × (1 − ICMS residual)\nf efetivo = (1 − redutor setorial) × (1 − redutor governamental)\nIVAeq = máximo[0; IVA anual × (K × f efetivo − m ajustado) / K]\nISS_BDI = ISS anual × (1 − α)\nT = ISS_BDI + CPRB efetiva + PIS/Cofins do ano\nBDI = K × (1 + IVAeq) / (1 − T) − 1",
+          "body": "Todas as taxas são frações na fórmula. MAT/MO/EQ são participações no custo direto; o 0,10 da mão de obra é uma equivalência do modelo BDI, diferente do crédito zero de salário no motor por ocorrência. É por isso que reconciliar os modelos exige abrir encargos complementares. O ano de 2026 tem IVAeq zero no calculador BDI; o simulador de créditos permite estudar crédito potencial de teste. A CPRB é tratada como zero a partir de 2028 neste calculador preservado. Esses são comportamentos implementados: confira aplicabilidade à operação e não interprete a memória como confirmação automática de enquadramento legal."
+        },
+        {
+          "title": "Metodologia preservada do BDI Exato",
+          "formula": "CD = soma dos custos parciais da matriz\nBase da linha = custo parcial × fator gerador × (1 − ICMS residual)\nCrédito da linha = base da linha × IVA da linha\nCr = soma dos créditos da matriz\nBase equivalente = soma(crédito da linha / IVA nominal)\nm = base equivalente / CD\nm ajustado = m × (1 − ICMS residual)\nIVAeq = máximo[0; IVA cheia × (K × f efetivo − m ajustado) / K]\nBDI = K × (1 + IVAeq) / (1 − T) − 1",
+          "body": "Esta é a sequência efetivamente preservada no calculador: a base da linha e a participação ajustada têm tratamentos sucessivos do ICMS residual. Não substitua a fórmula por uma dedução genérica do crédito do simulador. Quando IVA nominal é zero, o ramo da base equivalente usa a própria base em vez de dividir por zero; 2026 considera IVAeq zero. O fator setorial e o redutor governamental são controles separados. A quantidade informa a matriz, mas o cálculo parte do custo parcial informado: confira sua coerência física e monetária. O valor do contrato, ano de origem e BDI de origem servem ao estudo de reequilíbrio; não alteram o contrato real."
+        },
+        {
+          "title": "Simples Nacional: alíquota efetiva e modelos",
+          "formula": "Alíquota efetiva = (RBT12 × alíquota nominal da faixa − parcela a deduzir) / RBT12\nModelo DAS: IVAeq = 0; BDI = K / (1 − T Simples) − 1\nModelo híbrido: estudar IBS/CBS por fora com participações/fatores do método\nReequilíbrio = (1 + BDI novo) / (1 + BDI de origem) − 1",
+          "body": "RBT12 é a receita acumulada nos 12 meses, não o valor deste orçamento. O anexo e a faixa definem alíquota nominal, dedução e partilha; o calculador expõe a decomposição em IRPJ, CSLL, PIS, Cofins, ISS e CPP conforme o cadastro do modelo. A formação de T do BDI considera a decomposição adotada, excluindo IRPJ/CSLL conforme a metodologia do calculador e tratando CPRB quando aplicável. Confira anexo III/IV/V, fator R quando admitido, sublimites/limites, contribuição previdenciária e opção de IBS/CBS no cenário efetivamente utilizado. O modelo híbrido é um estudo de hipótese; selecionar a opção não realiza opção fiscal. Aplicar IVAeq ao BDI paramétrico é uma ação específica com compatibilidade de ano, seguida de conferência e aplicação do BDI ao orçamento."
+        },
+        {
+          "title": "Campos tributários do BDI e dados derivados",
+          "table": {
+            "headers": [
+              "Grupo",
+              "Editáveis conforme o método",
+              "Derivados ou protegidos"
+            ],
+            "rows": [
+              [
+                "Paramétrico",
+                "Ano; composição MAT/MO/EQ; crédito de EQ/BDI; IVA manual habilitado; ISS manual habilitado; α; redutores; ICMS de referência; CPRB nos anos permitidos",
+                "ISS anual, transição, CPRB efetiva, K, T, IVAeq, BDI e preço"
+              ],
+              [
+                "Exato",
+                "Linhas da matriz: descrição, unidade, quantidade, custo parcial, tipo, fator gerador e IVA; ano; ISS/α; redutores; ICMS de referência; valor e BDI/ano de origem",
+                "Participação, base, crédito, soma CD/Cr, IVAeq, BDI e fator de reequilíbrio"
+              ],
+              [
+                "Simples",
+                "RBT12; anexo/modelo; cenário de receita; ano; premissas setoriais e participações admitidas; AC/R/SG/DF/lucro",
+                "Faixa, alíquota efetiva, partilha, carga T, IVAeq, BDI e preço"
+              ]
+            ]
+          },
+          "body": "Campos desabilitados são governados pelo método/ano. Antes de aplicar, confira a memória do método selecionado. Aplicar BDI principal e Aplicar BDI diferenciado alteram taxas utilizadas no orçamento; comparar, exportar e simular não equivalem a aplicá-las."
+        }
+      ],
+      "sources": [
+        "lc214",
+        "simples"
+      ],
+      "related": [
+        "bdi",
+        "credito",
+        "risco-bdi",
+        "integracoes"
+      ]
+    },
+    {
+      "id": "riscos",
+      "category": "Preço e risco",
+      "title": "24. Monte Carlo, contingência e diagrama de tornado",
+      "summary": "Criar fotografia, editar variáveis/eventos, simular e interpretar P80.",
+      "target": "risks",
+      "keywords": "risco contingência Monte Carlo P80 percentil histograma tornado Bernoulli distribuição triangular PERT uniforme normal lognormal fixo VME RMS semente",
+      "sections": [
+        {
+          "title": "O que a fotografia conserva",
+          "body": "Nova análise captura a versão salva do orçamento, linhas, quantidades, custo direto, referência, UF e regime. A base deve ter 1 a 1.000 serviços com custos determinados e total positivo, dentro da precisão segura. Custos unitários fracionários são aceitos; preços ausentes continuam bloqueando a fotografia e a mensagem identifica serviços. A classe ABC de riscos é calculada pelo custo direto. A análise não copia o catálogo SINAPI inteiro para o usuário."
+        },
+        {
+          "title": "Criar e executar",
+          "steps": [
+            "Aguarde Salvo no servidor e abra Riscos e contingências.",
+            "Clique em Nova análise, informe um nome que identifique a decisão e confirme a fotografia.",
+            "Revise escopo A, A+B ou completo, contrato, iterações, semente e percentil-alvo.",
+            "Selecione serviços e edite probabilidade, mínimo, provável, máximo, distribuição, responsabilidade e tipo de variação. Abra os parâmetros de média/desvio/justificativa quando necessário.",
+            "Cadastre eventos de risco com impacto em reais e justifique a responsabilidade/mitigação.",
+            "Salve o modelo e execute Monte Carlo. Leia os resultados, histograma, curva acumulada, percentis e tornado.",
+            "Exporte o relatório/CSV e só depois revise a aplicação da taxa ao BDI."
+          ],
+          "expected": "Há uma estimativa reproduzível, sustentada por premissas explícitas e pela versão do orçamento usada."
+        },
+        {
+          "title": "Serviços, eventos e distribuições",
+          "body": "Variações dos serviços são percentuais de seu custo direto; eventos têm impactos monetários em reais e ocorrência probabilística. Probabilidade 1 significa 1%, não 100%. Triangular e PERT usam mínimo, provável e máximo; uniforme usa limites; normal truncada usa média/desvio e limites; lognormal usa média positiva/desvio e não trata seus cenários mínimo/máximo como limites de truncamento; fixa adota o provável. As variáveis são independentes no motor atual, sem matriz de correlação. Todas as linhas permanecem na base: itens fora do escopo de risco ficam fixos, sem extrapolar a classe A para o resto do orçamento."
+        },
+        {
+          "title": "Responsabilidade, contrato e limites",
+          "body": "Riscos atribuídos à Administração são excluídos da contingência da análise. Riscos de quantidade em contrato a preço unitário exigem justificativa explícita. O tornado usa os mesmos filtros de inclusão. São admitidas 1.000 a 100.000 iterações, com limite de 10 milhões de sorteios por execução; há limite de 100 eventos e 20 análises por orçamento. As hipóteses iniciais são exemplos editáveis e não uma calibração automática da sua obra."
+        },
+        {
+          "title": "Interpretar os resultados",
+          "formula": "Contingência = máximo(0; custo do percentil-alvo − custo direto da fotografia)\nTaxa de risco = contingência ÷ custo direto\nVME do evento = probabilidade de ocorrência × impacto esperado\nRMS exibido = raiz da média dos quadrados dos VME incluídos",
+          "body": "P80 é o percentil da distribuição do modelo: 80% dos resultados simulados ficam até aquele valor. Não é garantia de que a obra real custará menos, nem probabilidade do evento individual. O tornado compara cenários extremos por variável e ordena os maiores impactos absolutos; não mede correlação. O gráfico mostra até 20 maiores impactos, e os arquivos permitem consultar o resultado salvo. RMS é indicador auxiliar, não um percentil nem raiz da soma dos quadrados. Semente e premissas iguais permitem reproduzir o resultado com a mesma versão do motor."
+        }
+      ],
+      "related": [
+        "risco-bdi",
+        "abc-servicos",
+        "integracoes",
+        "arquivos"
+      ]
+    },
+    {
+      "id": "risco-bdi",
+      "category": "Preço e risco",
+      "title": "25. Aplicar o risco calculado ao BDI, sem somar taxas indevidas",
+      "summary": "Prévia, substituição/soma, método, justificativa e história da aplicação.",
+      "target": "risks",
+      "keywords": "risco BDI aplicar substituir somar dupla contagem taxa parcela R contingência preço histórico orçamento alterado fingerprint",
+      "sections": [
+        {
+          "title": "Uma parcela de risco, não um acréscimo direto ao BDI final",
+          "formula": "Custo direto = R$100.000\nCusto no percentil = R$105.000\nContingência = R$5.000 → taxa R = 5%\nNovo BDI = recálculo do método com R = 5%\nNovo preço = custo direto × (1 + novo BDI)",
+          "body": "Se o BDI anterior era 25%, a nova taxa não é necessariamente 30%. R participa da fórmula junto às outras parcelas e às hipóteses tributárias. A prévia e a aplicação reexecutam o modelo no servidor: não confiam em uma taxa alterada no navegador. O custo direto da fotografia permanece a base; aplicar risco ao BDI não aumenta quantidades nem muda o analítico."
+        },
+        {
+          "title": "Passo a passo da decisão",
+          "steps": [
+            "Execute e salve a simulação após revisar as premissas e o percentil.",
+            "Na ação de BDI com risco, escolha Paramétrico, Exato ou Simples Nacional.",
+            "Confira primeiro os demais parâmetros no menu BDI. A aplicação usa a configuração daquele método; ela não preenche automaticamente sua matriz ou enquadramento fiscal.",
+            "Escolha Substituir a parcela de risco como ponto de partida. Somar exige que o risco existente represente parcelas distintas, com confirmação de dupla contagem.",
+            "Gere a prévia e compare risco anterior/novo, BDI anterior/novo e preço anterior/novo.",
+            "Informe justificativa e confirme a aplicação.",
+            "Volte ao Orçamento e BDI, confira o preço e consulte a memória/histórico. O BDI diferenciado é preservado."
+          ],
+          "expected": "A parcela R é incorporada ao método escolhido com autoria, configuração anterior e resultado registrados."
+        },
+        {
+          "title": "Quando refazer a análise",
+          "body": "Se quantidade, custo, referência, UF ou regime mudar, a fotografia pode deixar de corresponder ao orçamento atual. A análise antiga permanece reproduzível, mas a aplicação ao BDI exige o mesmo contexto financeiro. Crie uma nova análise para o orçamento atualizado. Editar premissas invalida o resultado anterior até nova simulação. Cronograma e variação de custo são problemas distintos; este módulo não executa Monte Carlo das durações."
+        },
+        {
+          "title": "Versões, cópia e importação",
+          "body": "Análises salvas estão no histórico privado do orçamento. A cópia/importação como projeto novo remove fotografias vinculadas às versões do projeto original; crie nova análise na cópia. O arquivo exportado e a história original continuam preservados. Não use uma taxa de uma obra diferente como se tivesse sido calculada para a nova obra. Exportar o relatório não aplica o risco; confirmar Aplicar é uma decisão distinta."
+        }
+      ],
+      "related": [
+        "riscos",
+        "bdi",
+        "bdi-tributos",
+        "arquivos"
+      ]
+    },
+    {
+      "id": "integracoes",
+      "category": "Começar",
+      "title": "26. Mapa de integrações: o que muda e o que permanece",
+      "summary": "Uma matriz para revisar as consequências de cada decisão.",
+      "target": "budget",
+      "keywords": "integração fluxo conversa módulo orçamento cronograma BDI risco tributo automático manual impacto",
+      "sections": [
+        {
+          "title": "Matriz de consequências",
+          "table": {
+            "headers": [
+              "Decisão",
+              "Consequência direta",
+              "O que conferir depois"
+            ],
+            "rows": [
+              [
+                "Mudar quantidade do serviço",
+                "Custo, preço, horas/recursos e duração podem mudar",
+                "Cronograma, Curva S, ABC, créditos e nova fotografia de riscos"
+              ],
+              [
+                "Mudar UF/regime",
+                "Reconsulta custo contextual, regras e memórias",
+                "Cotações fixas/históricas, pendências, ABC e riscos"
+              ],
+              [
+                "Editar equipe/jornada",
+                "Muda duração/capacidade do plano",
+                "Datas, simultaneidade e custos de itens periódicos"
+              ],
+              [
+                "Editar predecessoras",
+                "Muda rede, datas e folgas",
+                "Histograma, Curva S e eventos ligados aos serviços"
+              ],
+              [
+                "Simular BDI sem aplicar",
+                "Resultado/memória do cenário",
+                "O BDI do orçamento ainda pode ser o anterior"
+              ],
+              [
+                "Aplicar BDI principal",
+                "Muda preços dos itens principais",
+                "Total e curva financeira; diferenciado tem escopo próprio"
+              ],
+              [
+                "Mudar premissas de IVA",
+                "Muda créditos e memórias tributárias",
+                "ABC tributária; preços e BDI não são substituídos automaticamente"
+              ],
+              [
+                "Importar ABC para BDI",
+                "Preenche referências/matriz pelo comando escolhido",
+                "Fatores tributários e parcelas do BDI ainda precisam de conferência"
+              ],
+              [
+                "Executar Monte Carlo",
+                "Salva distribuição, contingência e taxa de risco",
+                "Nenhum preço novo até aplicar a parcela ao BDI"
+              ],
+              [
+                "Aplicar risco ao BDI",
+                "Recalcula risco, BDI principal e preço",
+                "Memória anterior/nova, método e preço no orçamento"
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Uma ordem de trabalho coerente",
+          "body": "Defina o escopo e o contexto SINAPI; monte o orçamento; valide analíticos e quantidades; dimensione equipes e cronograma; confira itens dependentes de prazo; estude créditos e seus parâmetros; configure o BDI; simule riscos sobre uma base estável; aplique a parcela de risco no método BDI; revise preço, curvas financeiras e memórias; exporte a versão final. Esse ciclo pode exigir novas rodadas, mas cada revisão deve ter motivo e resultado verificáveis."
+        },
+        {
+          "title": "Quatro erros de integração a evitar",
+          "body": "Não trate o crédito estimado como desconto automático. Não some a taxa de risco diretamente ao BDI final. Não reduza o prazo apenas mudando uma meta de meses. Não considere a classificação de uma ABC filtrada como um novo orçamento. Cada módulo responde a uma pergunta, e a memória mostra quais dados foram efetivamente utilizados. Use o mapa interativo deste manual para navegar pelos capítulos relacionados antes de alterar uma configuração."
+        }
+      ],
+      "related": [
+        "orcamento",
+        "cronograma",
+        "bdi-tributos",
+        "risco-bdi"
+      ]
+    },
+    {
+      "id": "verificacao",
+      "category": "Analisar",
+      "title": "27. Verificar orçamento e investigar inconsistências",
+      "summary": "Diagnóstico, preços ausentes, analíticos, diferenças e pendências fiscais.",
+      "target": "budget",
+      "keywords": "verificar diagnóstico conferência erro divergência preço pendência revisão custo zero classificação precisão vínculo circular",
+      "sections": [
+        {
+          "title": "Uma conferência em camadas",
+          "steps": [
+            "Em Orçamento, execute Verificar orçamento e abra os apontamentos.",
+            "Confira unidades, quantidades positivas e serviços sem custo ou com zero informado.",
+            "Compare custos informados com a referência, lendo fonte e justificativa sem substituir automaticamente a cotação.",
+            "Abra analíticos e caminhos para referências ausentes, auxiliares e possíveis ciclos.",
+            "Confira datas/durações, vínculos e capacidade; ausência de preço e ausência de produtividade são pendências diferentes.",
+            "Confira crédito parcial e base tributária homogênea antes de usar líquido econômico.",
+            "Corrija, recalcule, aguarde a gravação e repita a conferência dos itens afetados."
+          ],
+          "expected": "As pendências são resolvidas ou documentadas com a informação disponível, sem inventar preço, coeficiente ou crédito."
+        },
+        {
+          "title": "Mensagens comuns e próximo passo",
+          "table": {
+            "headers": [
+              "Situação",
+              "Interpretação e ação"
+            ],
+            "rows": [
+              [
+                "Preço ausente na análise de riscos",
+                "Identifique os códigos listados e determine custos no orçamento; unitário fracionário válido não é pendência"
+              ],
+              [
+                "Custo/quantidade fora da precisão",
+                "Revise sinal, unidade, escala e grandeza antes de simular"
+              ],
+              [
+                "Fotografia/contexto alterado",
+                "Crie nova análise para a versão atual, mantendo a antiga como história"
+              ],
+              [
+                "Modelo de riscos alterado",
+                "Salve e execute novamente antes de prévia/aplicação ao BDI"
+              ],
+              [
+                "Crédito parcial / não determinado",
+                "Abra a memória; complete preço/analítico ou declare perfil terminal justificadamente"
+              ],
+              [
+                "Líquido indisponível",
+                "Confronte valoração e preços; bases independentes não permitem subtração homogênea"
+              ],
+              [
+                "Vínculo circular no cronograma",
+                "Revise predecessoras; não aceite rede com restrição ignorada sem investigação"
+              ],
+              [
+                "Conflito de versão",
+                "Exporte alterações, reabra o servidor e reconcilie; evite edição simultânea"
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Quando números diferentes estão corretos",
+          "body": "Custo de referência, custo informado, custo apropriado na ABC, base ponderada tributária e preço com BDI têm definições diferentes. Uma diferença pode ser explicada por contexto, origem, arredondamento, valoração ou enquadramento. Compare primeiro unidade, referência, UF, regime, ano, método e política. Só conclua que há falha depois de comparar o mesmo universo e reproduzir a memória."
+        }
+      ],
+      "related": [
+        "sinapi",
+        "credito",
+        "riscos",
+        "arquivos"
+      ]
+    },
+    {
+      "id": "arquivos",
+      "category": "SaaS e registros",
+      "title": "28. Exportar, preservar versões e entregar a memória",
+      "summary": "JSON, Excel, CSV, PDF, SVG/PNG e relatórios específicos.",
+      "target": "budget",
+      "keywords": "exportação JSON Excel CSV PDF arquivo histórico versões salvar nuvem backup restauração imprimir relatório",
+      "sections": [
+        {
+          "title": "Escolher o arquivo pela finalidade",
+          "table": {
+            "headers": [
+              "Arquivo",
+              "Uso recomendado",
+              "Limite importante"
+            ],
+            "rows": [
+              [
+                "Projeto JSON",
+                "Preservar configuração e documento do projeto",
+                "Importar pelo portal precisa resolver a referência original; não é backup integral do catálogo"
+              ],
+              [
+                "Excel/CSV do orçamento",
+                "Conferência de linhas, valores e tabelas",
+                "Uma planilha exportada não grava alterações de volta ao SaaS"
+              ],
+              [
+                "Impressão/PDF",
+                "Entrega legível da visão/memória",
+                "Confira escopo, totais e data antes de compartilhar"
+              ],
+              [
+                "SVG/PNG de gráficos",
+                "Gantt, rede, curvas e histogramas quando a tela oferece",
+                "É imagem do cenário, não rede editável"
+              ],
+              [
+                "Excel tributário",
+                "Serviços, insumos, memória e cenário",
+                "Créditos estimados e condições precisam acompanhar os valores"
+              ],
+              [
+                "Cenário tributário JSON",
+                "Reproduzir parâmetros fiscais/econômicos",
+                "Não modifica a transição protegida nem autentica a validade legal"
+              ],
+              [
+                "Relatório/CSV de riscos",
+                "Premissas, resultados, tornado e aplicação ao BDI",
+                "Clonagem/importação de projeto exige nova fotografia"
+              ],
+              [
+                "Manual completo HTML",
+                "Leitura offline e impressão deste guia",
+                "É uma edição datada do conteúdo; consulte atualizações no sistema"
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Montar um pacote de revisão",
+          "steps": [
+            "Aguarde a confirmação de gravação e anote referência/revisão, UF, regime e versão do projeto.",
+            "Exporte orçamento e projeto JSON pela opção disponível no portal/editor.",
+            "Inclua memória do BDI efetivamente aplicado, cronograma e Curva S na base escolhida.",
+            "Inclua cenário e memória de créditos, com condições de origem/preço/enquadramento.",
+            "Inclua relatório de riscos e justificativa da aplicação ao BDI.",
+            "Revise nomes, datas, escopos e consistência entre todos os arquivos antes da entrega."
+          ],
+          "expected": "O destinatário consegue entender a formação do custo, preço, prazo e estimativas tributárias/risco."
+        },
+        {
+          "title": "Histórico do SaaS",
+          "body": "Versões de projeto e ações relevantes são preservadas no servidor. Restaurar uma versão histórica recupera aquele documento e suas premissas; confira a nova gravação e possíveis diferenças antes de seguir. Arquivar orçamento é gestão de acesso à lista, não eliminação da referência global SINAPI. A cópia é outro projeto, com proprietário e versões próprios. O JSON exportado não autoriza acesso a dados de outro usuário e não contém a autenticação da conta."
+        }
+      ],
+      "related": [
+        "inicio",
+        "memoria",
+        "risco-bdi"
+      ]
+    },
+    {
+      "id": "administracao",
+      "category": "SaaS e registros",
+      "title": "29. Usuários, assinaturas, SINAPI global e administração",
+      "summary": "Funções do administrador e separação entre acesso, cobrança e catálogo.",
+      "target": "portal",
+      "keywords": "administrador global Gestão SaaS cadastrar excluir usuário mudar senha organização assinatura Stripe manual plano mensal anual base importar publicar auditoria",
+      "sections": [
+        {
+          "title": "Quem administra o quê",
+          "body": "Gestão do SaaS é visível para a conta habilitada como administradora global. O papel de organização é outro. A administração global gerencia identidades/licenças e o catálogo publicado; não dá acesso automático aos orçamentos operacionais de outros proprietários. Usuário/organização pertencem ao login compartilhado, enquanto assinatura OrçaPro é individual e separada da contratação de Gestão de Prédios."
+        },
+        {
+          "title": "Cadastrar e manter contas",
+          "steps": [
+            "Abra Gestão do SaaS → Usuários e assinaturas e clique em Cadastrar usuário.",
+            "Informe nome, e-mail e senha inicial. Preencha nome/identificador de nova organização para isolar o cliente; deixar ambos vazios usa a organização atual do administrador e deve ser uma decisão consciente.",
+            "Use identificador minúsculo com números/hífen, como empresa-123, sem símbolos ou espaços.",
+            "Confira acesso, organização e teste/assinatura depois de salvar.",
+            "Use ações da conta para alteração de senha, situação, revogação de sessões e exclusão recuperável conforme a interface.",
+            "Registre a justificativa das decisões e consulte Auditoria."
+          ],
+          "expected": "A conta tem identidade, organização e acesso OrçaPro definidos. Alterar senha afeta a identidade compartilhada e encerra suas sessões."
+        },
+        {
+          "title": "Assinatura manual e Stripe",
+          "body": "Planos têm valor/periodicidade por usuário. No controle manual, situação, plano, validade e motivo governam acesso, mas não cancelam cobranças externas. Cancelar renovação Stripe é uma ação distinta, com confirmação e efeitos próprios. Retomar controle Stripe pode substituir o controle manual. Chaves e webhook precisam estar configurados no ambiente seguro; um painel com Configuração pendente não indica cobrança automática ativa. Minha assinatura apresenta o estado de acesso e as opções disponíveis para o usuário."
+        },
+        {
+          "title": "Publicar referência SINAPI",
+          "body": "A administração de bases importa estrutura e preços como referência global, verifica e publica uma versão/revisão. Uma referência padrão pode ser definida para novos projetos. Projetos históricos continuam vinculados às suas versões; publicar uma referência nova não atualiza silenciosamente todos os orçamentos. No editor, Base de dados mostra o contexto do projeto e orienta o gerenciamento no portal, substituindo o fluxo antigo de base local do standalone."
+        }
+      ],
+      "related": [
+        "inicio",
+        "sinapi",
+        "arquivos"
+      ]
+    }
+  ],
+  "glossary": [
+    [
+      "Analítico",
+      "Estrutura de itens e coeficientes de uma composição, incluindo auxiliares."
+    ],
+    [
+      "Aproveitamento",
+      "Percentual de crédito adotado na hipótese econômica do perfil/ocorrência."
+    ],
+    [
+      "ABC",
+      "Classificação ordenada pela participação acumulada do critério escolhido."
+    ],
+    [
+      "Base ponderada",
+      "Equivalência monetária de crédito após aproveitamentos e fatores; não é sempre a base legal integral."
+    ],
+    [
+      "BDI",
+      "Fator de formação do preço a partir do custo direto, com parcelas e método declarados."
+    ],
+    [
+      "CBS",
+      "Contribuição sobre Bens e Serviços; as taxas futuras do cenário não certificam a operação."
+    ],
+    [
+      "CHI / CHP",
+      "Custo horário improdutivo/produtivo do equipamento, com consumo em horas no analítico."
+    ],
+    [
+      "Coeficiente",
+      "Quantidade de recurso necessária por unidade do serviço na composição."
+    ],
+    [
+      "Composição auxiliar",
+      "Composição utilizada dentro de outra; já participa do custo da principal."
+    ],
+    [
+      "Contingência",
+      "Montante adicional acima da base, conforme percentil e riscos incluídos no modelo."
+    ],
+    [
+      "Crédito não determinado",
+      "Parcela sem cálculo suficiente; não é zero informado."
+    ],
+    [
+      "Custo direto",
+      "Custos apropriados aos serviços/escopo, antes da aplicação do BDI."
+    ],
+    [
+      "Custo informado",
+      "Valor específico/cotado adotado no item, que pode permanecer fixo ao mudar a UF."
+    ],
+    [
+      "Curva S",
+      "Acumulação de valores ou pesos planejados ao longo do cronograma."
+    ],
+    [
+      "EAP",
+      "Estrutura Analítica do Projeto: organização de etapas, subetapas e serviços."
+    ],
+    [
+      "Folga total",
+      "Margem entre a data mais cedo e a mais tarde no modelo da rede."
+    ],
+    [
+      "Gargalo",
+      "Recurso que limita a produção da equipe na combinação adotada."
+    ],
+    [
+      "IBS",
+      "Imposto sobre Bens e Serviços do modelo de IVA dual."
+    ],
+    [
+      "IVAeq",
+      "Carga equivalente de IVA utilizada no cálculo do método BDI."
+    ],
+    [
+      "Lognormal",
+      "Distribuição positiva parametrizada por média/desvio; os extremos do tornado não a truncam."
+    ],
+    [
+      "Monte Carlo",
+      "Repetição de sorteios das variáveis para estimar distribuição de resultados do modelo."
+    ],
+    [
+      "P80",
+      "Valor até o qual ficam 80% dos resultados simulados, condicionado às premissas."
+    ],
+    [
+      "Rateio econômico",
+      "Apropriação monetária para análise de custo; não um novo crédito fiscal comprovado."
+    ],
+    [
+      "Referência × UF × regime",
+      "Contexto necessário para determinar o custo SINAPI de um projeto."
+    ],
+    [
+      "RMS de VME",
+      "Raiz da média dos quadrados dos valores esperados incluídos; indicador auxiliar."
+    ],
+    [
+      "Semente",
+      "Número que torna os sorteios reproduzíveis com premissas/motor iguais."
+    ],
+    [
+      "Tornado",
+      "Comparação da sensibilidade a cenários extremos, ordenada por impacto."
+    ],
+    [
+      "Truncamento",
+      "Descarte de casas excedentes na parcela analítica; diferente de arredondamento."
+    ],
+    [
+      "VME",
+      "Valor monetário esperado: probabilidade combinada com impacto esperado."
+    ],
+    [
+      "Versão do projeto",
+      "Documento histórico usado para conferir e reproduzir decisões."
+    ],
+    [
+      "Slug",
+      "Identificador de organização no login, com letras minúsculas, números e hífen."
+    ]
+  ],
+  "quiz": [
+    {
+      "question": "Alterei a alíquota do simulador de créditos. O preço do orçamento diminuiu automaticamente?",
+      "options": [
+        "Sim, todo crédito vira desconto",
+        "Não: revisar créditos e aplicar/reconciliar o BDI são operações distintas"
+      ],
+      "answer": 1,
+      "explanation": "O cenário altera créditos e memórias. Preço só muda pelos dados e BDI efetivamente aplicados; não subtraia o crédito novamente se a hipótese já estiver no BDI."
+    },
+    {
+      "question": "O BDI era 25% e a taxa de risco calculada foi 5%. O novo BDI é necessariamente 30%?",
+      "options": [
+        "Sim, basta somar",
+        "Não, o método recalcula a parcela R com as demais variáveis"
+      ],
+      "answer": 1,
+      "explanation": "R é uma parcela interna da fórmula. Use a prévia de risco/BDI e confira preço anterior/novo."
+    },
+    {
+      "question": "Uma linha não tem crédito determinado. Posso considerá-la com crédito zero?",
+      "options": [
+        "Não: falta de informação é diferente de zero",
+        "Sim, para fechar o total"
+      ],
+      "answer": 0,
+      "explanation": "Abra a memória e identifique preço, perfil ou analítico ausente. O sistema conserva a parcela conhecida sem inventar a desconhecida."
+    },
+    {
+      "question": "Meu cronograma mostra sobreposição de duas atividades. Isso garante equipe suficiente?",
+      "options": [
+        "Sim, o vínculo faz essa garantia",
+        "Não, preciso conferir capacidade e histograma"
+      ],
+      "answer": 1,
+      "explanation": "A rede representa dependências. Capacidade compartilhada e recursos simultâneos precisam de conferência no modo de planejamento utilizado."
+    },
+    {
+      "question": "Um anexo deixou a base ponderada em 40%. Devo multiplicar o crédito final por 40% outra vez?",
+      "options": [
+        "Sim, são duas reduções",
+        "Não, o fator já foi incorporado uma vez"
+      ],
+      "answer": 1,
+      "explanation": "O mesmo fator aparece na explicação da base e nas alíquotas efetivas; não é um segundo desconto."
+    },
+    {
+      "question": "Posso somar os créditos das colunas 2026 a 2033 como se fossem oito aquisições?",
+      "options": [
+        "Não: são cenários alternativos do mesmo escopo",
+        "Sim, é o crédito total da obra"
+      ],
+      "answer": 0,
+      "explanation": "A série anual não distribui compras pelo cronograma. Uma análise temporal real requer escopos e premissas documentados."
+    }
+  ]
+}

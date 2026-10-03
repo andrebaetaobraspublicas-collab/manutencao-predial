@@ -68,7 +68,7 @@ jobs:
           HOSTINGER_STATIC_EXPORT: "1"
         run: npm run build:web
       - name: Verify preserved OrçaPro editor and cloud bridge
-        run: node --test scripts/orcapro/cloud-bridge.spec.cjs scripts/orcapro/sanitize-derived-html.spec.mjs scripts/orcapro/risk-ui.spec.cjs
+        run: node --test scripts/orcapro/cloud-bridge.spec.cjs scripts/orcapro/sanitize-derived-html.spec.mjs scripts/orcapro/risk-ui.spec.cjs scripts/orcapro/manual-ui.spec.cjs
       - name: Render homologation report
         if: always()
         run: |

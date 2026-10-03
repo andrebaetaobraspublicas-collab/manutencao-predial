@@ -19,7 +19,16 @@ export class OrcaproRiskService {
   private rows(raw: Document, project: Document) {
     const runtime=loadLegacyRuntime(), calc=runtime.calculateProject(raw,project,{referenceId:project.sinapiReferenceId});
     const items=calc.model.items as Document[];
-    if (!items.length || items.length>1000 || items.some(row=>row.unitCost==null || !Number.isSafeInteger(row.unitCost) || !Number.isSafeInteger(row.direct) || row.direct<0 || !Number.isFinite(row.qty) || row.qty<0)) throw new BadRequestException('A análise exige orçamento com 1 a 1.000 itens e custos preenchidos dentro da precisão permitida. Resolva as pendências de preço antes de criar a fotografia.');
+    if (!items.length) throw new BadRequestException('Inclua ao menos um serviço no orçamento antes de criar a análise.');
+    if (items.length>1000) throw new BadRequestException(`O orçamento tem ${items.length} serviços. A análise permite até 1.000 serviços.`);
+    const identify=(row:Document)=>String(row.node.code || row.id);
+    const missing=items.filter(row=>row.unitCost==null);
+    if(missing.length) throw new BadRequestException(`Há ${missing.length} serviço(s) com preço ausente: ${missing.slice(0,5).map(identify).join(', ')}${missing.length>5?'…':''}. Informe os custos antes de criar a análise.`);
+    // The original engine intentionally keeps fractional cents in unit costs,
+    // including binary conversion noise. Only line totals are integer cents.
+    // Preserve the unit cost; rounding it here would change quantity variations.
+    const invalid=items.filter(row=>!Number.isFinite(row.unitCost) || row.unitCost<0 || row.unitCost>Number.MAX_SAFE_INTEGER || !Number.isSafeInteger(row.direct) || row.direct<0 || !Number.isFinite(row.qty) || row.qty<0);
+    if(invalid.length) throw new BadRequestException(`Custo ou quantidade inválido, ou fora da precisão permitida, nos serviços: ${invalid.slice(0,5).map(identify).join(', ')}. Revise esses itens antes de criar a análise.`);
     const rows=classifyRows(items.map(row=>({ id:row.id,code:String(row.node.code || ''),description:row.desc,unit:row.unit,qty:row.qty,
       unitCostCents:String(row.unitCost),directCents:String(row.direct),abc:'' })));
     const total=rows.reduce((sum,row)=>sum+BigInt(row.directCents),0n);

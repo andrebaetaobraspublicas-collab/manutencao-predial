@@ -1,7 +1,11 @@
 import { HttpException, Injectable, OnModuleDestroy, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import mariadb, { type Pool, type PoolConnection } from 'mariadb';
+import mariadb, { type Pool, type PoolConnection, type PoolConfig } from 'mariadb';
 import { parseMySqlUrl } from '../../prisma/database-url';
+const { utcValues, utcTypeCast } = require('./assets/infra-utc-db.cjs') as {
+  utcValues: (values: unknown[]) => unknown[];
+  utcTypeCast: NonNullable<PoolConfig['typeCast']>;
+};
 
 export type InfraSql = Pick<PoolConnection, 'query'>;
 @Injectable()
@@ -33,18 +37,23 @@ export class InfraDatabase implements OnModuleDestroy {
       }
       this.pool = mariadb.createPool({ ...options, connectionLimit: 3, acquireTimeout: 10000,
         bigIntAsNumber: false, decimalAsNumber: false, insertIdAsNumber: false,
+        typeCast: utcTypeCast,
       });
     }
     return this.pool;
   }
   async query<T = any>(sql: string, values: unknown[] = []): Promise<T> {
-    try { return await this.connection().query(sql,values) as T; }
+    try { return await this.connection().query(sql,utcValues(values)) as T; }
     catch (error) { throw this.failure(error); }
   }
   async transaction<T>(fn: (db: InfraSql) => Promise<T>): Promise<T> {
     let db: PoolConnection;
     try { db = await this.connection().getConnection(); } catch (error) { throw this.failure(error); }
-    try { await db.beginTransaction(); const result = await fn(db); await db.commit(); return result; }
+    try {
+      await db.beginTransaction();
+      const utcDb: InfraSql = { query: ((sql: string, values: unknown[] = []) => db.query(sql,utcValues(values))) as PoolConnection['query'] };
+      const result = await fn(utcDb); await db.commit(); return result;
+    }
     catch (error) { await db.rollback().catch(() => undefined); throw this.failure(error); }
     finally { db.release(); }
   }

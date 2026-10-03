@@ -46,6 +46,27 @@ jobs:
       - name: Create isolated Infraestrutura test databases
         run: |
           docker exec "${{ job.services.mysql.id }}" mysql -uroot -proot --execute="CREATE DATABASE infra_security_test_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE infra_import_test_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER 'infra_test'@'%' IDENTIFIED BY 'infra_ci_password'; GRANT ALL PRIVILEGES ON infra_security_test_ci.* TO 'infra_test'@'%'; GRANT ALL PRIVILEGES ON infra_import_test_ci.* TO 'infra_test'@'%';"
+          # MySQL 8.4 uses caching_sha2_password. Authenticate the disposable
+          # account once through the official TLS client rather than enabling
+          # unpinned RSA public-key retrieval in the application driver.
+          docker exec "${{ job.services.mysql.id }}" mysql --protocol=TCP -h127.0.0.1 --ssl-mode=REQUIRED -uinfra_test -pinfra_ci_password --execute="SELECT 1" infra_security_test_ci
+      - name: Verify isolated MySQL driver connections
+        run: |
+          node --input-type=module <<'JAVASCRIPT'
+          import mariadb from 'mariadb';
+          for (const key of ['INFRA_TEST_DATABASE_URL','INFRA_IMPORT_TEST_DATABASE_URL']) {
+            const uri = new URL(process.env[key]);
+            let connection;
+            try {
+              connection = await mariadb.createConnection({host:uri.hostname,port:Number(uri.port||3306),user:decodeURIComponent(uri.username),password:decodeURIComponent(uri.password),database:uri.pathname.slice(1),timezone:'Z'});
+              await connection.query('SELECT 1');
+              console.log(key + ': isolated driver ready');
+            } catch (error) {
+              console.error(key + ': connection failed (' + String(error.code || 'unavailable') + ')');
+              process.exitCode = 1;
+            } finally { if (connection) await connection.end(); }
+          }
+          JAVASCRIPT
       - name: Prisma validate and generate
         run: |
           npm exec -w @gestaopredios/api prisma validate

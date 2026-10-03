@@ -2,6 +2,8 @@
 
 Prefixo `/api/v1/infraestrutura`. Implantação desta entrega somente em DEV. Controllers NestJS expõem as rotas no Swagger existente. Este contrato complementa os schemas de validação de `infra-domain.ts`; campos desconhecidos em corpos privados são recusados.
 
+Datas de metadados retornam instantes UTC em ISO8601. Janelas de login, bloqueios e retenção usam a mesma referência UTC, independentemente do fuso do processo que executa a API ou os CLI.
+
 ## Identidade e segurança
 
 Sessão central em cookies HttpOnly `gp_access` e `gp_refresh`. O servidor deriva `userId` e `tenantId` do principal autenticado; nenhum projeto aceita proprietário/tenant enviado pelo cliente. Perfil local ativo é obrigatório. Papéis `USER` e `ADMIN` são independentes do papel de manutenção. Administração global pode consultar diretório de contas para concessão, mas não torna projetos ordinários públicos.

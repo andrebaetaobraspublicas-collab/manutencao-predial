@@ -9,6 +9,7 @@ import mariadb from 'mariadb';
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const runtime = require(resolve(here,'../src/modules/infraestrutura/assets/legacy-runtime.cjs'));
+const { utcTypeCast } = require(resolve(here,'../src/modules/infraestrutura/assets/infra-utc-db.cjs'));
 export const digest = value => createHash('sha256').update(value).digest('hex');
 const stringify = value => JSON.stringify(value);
 // Only diagnostics created here are suitable for persisted validation or CLI
@@ -32,7 +33,7 @@ export function connectionOptions(databaseUrl, primaryUrl) {
     let primary; try { primary = new URL(primaryUrl); } catch { throw new InfraImportError('DATABASE_URL principal inválida.'); }
     if (primary.hostname === value.hostname && (primary.port || '3306') === (value.port || '3306') && decodeURIComponent(primary.pathname) === decodeURIComponent(value.pathname)) throw new InfraImportError('O banco Infraestrutura deve ser independente do banco principal.');
   }
-  return { host: value.hostname,port: Number(value.port || 3306),database: decodeURIComponent(value.pathname.slice(1)),user: decodeURIComponent(value.username),password: decodeURIComponent(value.password),timezone: 'Z',connectionLimit: 2,decimalAsNumber: false,bigIntAsNumber: false };
+  return { host: value.hostname,port: Number(value.port || 3306),database: decodeURIComponent(value.pathname.slice(1)),user: decodeURIComponent(value.username),password: decodeURIComponent(value.password),timezone: 'Z',typeCast: utcTypeCast,connectionLimit: 2,decimalAsNumber: false,bigIntAsNumber: false };
 }
 export function connectInfra(environment = process.env) {
   if (environment.INFRA_ENABLED !== 'true' || !environment.INFRA_DATABASE_URL) throw new InfraImportError('Ative INFRA_ENABLED e configure INFRA_DATABASE_URL independente.');

@@ -73,4 +73,22 @@ suite('Infraestrutura login — isolamento e concorrência MySQL real', () => {
     for (let i = 0; i < 5; i++) { const keys = await security.consume(`${marker}@example.invalid`, `198.18.5.1-${marker}`); await security.finish(keys, true); }
     await expect(security.consume(`${marker}@example.invalid`, `198.18.5.1-${marker}`)).rejects.toMatchObject({ status: 429 });
   });
+
+  test('gravação e leitura dos prazos permanecem UTC mesmo com Node em horário de Brasília', async () => {
+    const previousTimezone = process.env.TZ;
+    process.env.TZ = 'America/Sao_Paulo';
+    try {
+      const marker = randomUUID(); let keys: string[] = [];
+      for (let i = 0; i < 5; i++) { keys = await security.consume(`${marker}@example.invalid`, `198.18.6.1-${marker}`); await security.finish(keys, false); }
+      const rows = await db.query<Array<{ blocked_until: Date; storedBlock: string; storedSeen: string }>>("SELECT blocked_until,DATE_FORMAT(blocked_until,'%Y-%m-%d %H:%i:%s.%f') AS storedBlock,DATE_FORMAT(last_seen_at,'%Y-%m-%d %H:%i:%s.%f') AS storedSeen FROM InfraLoginAttempt WHERE bucket_key IN (?,?)", keys);
+      const utc = (value: string) => new Date(`${value.replace(' ', 'T').slice(0, 23)}Z`).getTime();
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect(utc(row.storedBlock)).toBeGreaterThan(Date.now() + 13 * 60_000);
+        expect(utc(row.storedBlock)).toBeLessThan(Date.now() + 16 * 60_000);
+        expect(Math.abs(utc(row.storedSeen) - Date.now())).toBeLessThan(5000);
+        expect(row.blocked_until.getTime()).toBe(utc(row.storedBlock));
+      }
+    } finally { if (previousTimezone === undefined) delete process.env.TZ; else process.env.TZ = previousTimezone; }
+  });
 });

@@ -286,10 +286,9 @@ suite('Infraestrutura HTTP/MySQL — autorização, histórico e conflito', () =
     await db.query('UPDATE InfraUser SET erasure_requested_at=? WHERE external_user_id=? AND tenant_id=?', [new Date(Date.now() - 31 * 86400000), due.principal.userId, due.principal.tenantId]);
     await db.query('UPDATE InfraUser SET erasure_requested_at=? WHERE external_user_id=? AND tenant_id=?', [new Date(Date.now() - 5 * 86400000), future.principal.userId, future.principal.tenantId]);
     const staleBucket = sha(`stale-${randomUUID()}`), blockedBucket = sha(`blocked-${randomUUID()}`), recentBucket = sha(`recent-${randomUUID()}`);
-    const eightDaysAgo = new Date(Date.now() - 8 * 86400000), oneDayAgo = new Date(Date.now() - 86400000);
-    for (const fixture of [{ key: staleBucket, seen: eightDaysAgo, block: null }, { key: blockedBucket, seen: eightDaysAgo, block: new Date(Date.now() + 3600000) }, { key: recentBucket, seen: oneDayAgo, block: null }]) {
-      await db.query('INSERT INTO InfraLoginAttempt(bucket_key,window_started_at,attempts,failures,blocked_until,last_seen_at) VALUES(?,?,1,1,?,?)', [fixture.key, fixture.seen, fixture.block, fixture.seen]);
-    }
+    // Retention is evaluated against the database clock. Construct these
+    // boundary fixtures with the same clock, even on a skewed local SQL host.
+    await db.query('INSERT INTO InfraLoginAttempt(bucket_key,window_started_at,attempts,failures,blocked_until,last_seen_at) VALUES(?,DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 8 DAY),1,1,NULL,DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 8 DAY)),(?,DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 8 DAY),1,1,DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 1 HOUR),DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 8 DAY)),(?,DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 1 DAY),1,1,NULL,DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 1 DAY))', [staleBucket, blockedBucket, recentBucket]);
     const cli = await promisify(execFile)(process.execPath, [join(__dirname, '../../../scripts/infraestrutura-purge.mjs')], { cwd: join(__dirname, '../../..'), windowsHide: true, env: { ...process.env, INFRA_ENV_FILE: '', INFRA_ENABLED: 'true', INFRA_DATABASE_URL: supplied!, DATABASE_URL: 'mysql://unused:unused@127.0.0.1:3308/identity_not_opened', INFRA_DELETED_DATA_RETENTION_DAYS: '30' } });
     expect(JSON.parse(cli.stdout).erasedProfiles).toBeGreaterThanOrEqual(1);
     expect(JSON.parse(cli.stdout).expiredLoginBuckets).toBeGreaterThanOrEqual(1);

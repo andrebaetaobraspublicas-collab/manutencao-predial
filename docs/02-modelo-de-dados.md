@@ -456,6 +456,8 @@ Exclusão é lógica no acesso OrçaPro: preserva User, memberships, catálogo e
 
 Os IDs centrais são referências externas sem FKs entre bancos. O servidor valida User/TenantMembership centrais antes de conceder perfil. Nova identidade recebe `maintenanceAccess=false` e `OrcaproUserAccess(managed=true,enabled=false)`, preservando licenças independentes. A mudança de senha e revogação central incluem `AuditLog` transacional; perfil/password não são duplicados.
 
+As datas DATETIME/TIMESTAMP deste banco são UTC. O adapter Infraestrutura converte parâmetros `Date` em texto SQL UTC e lê datas SQL como instantes UTC explícitos, inclusive dentro de transações; isso evita conversões pelo fuso local do processo no MariaDB3.5.3. A mesma leitura é usada pelos CLI, sem alterar o fuso global do Node ou o adapter do banco principal.
+
 O raw é a entrada exata do motor legado; colunas DECIMAL normalizadas servem consulta e conferência, sem substituir escalas, arredondamento ou custos ausentes do original. Projetos históricos mantêm ciclo fixo; migração compara versões e cria nova revisão. Snapshot de catálogo nunca é incorporado a cada usuário/projeto. Somente dados próprios aparecem no documento privado.
 
 Exclusão ordinária usa lixeira. Pedido expresso de eliminação LGPD encerra acesso local e, após30dias por padrão, o CLI remove projetos/versões/próprios/configurações/perfil e anonimiza auditoria. Preserva outro tenant do mesmo usuário, identidade central, outros produtos e catálogo global. Backups anteriores expiram em14dias. Esse descarte específico é documentado e não autoriza exclusão física genérica dos produtos existentes. [Contratos/limites](infraestrutura-api.md), [migrations/rollback](infraestrutura-deploy.md).

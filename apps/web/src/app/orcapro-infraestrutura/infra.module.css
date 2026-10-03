@@ -1,0 +1,9 @@
+.responsive div,.responsive section,.responsive nav{min-width:0}
+.responsive input:not([type=checkbox]):not([type=radio]),.responsive select,.responsive textarea{max-width:100%}
+@media(max-width:640px){
+  .responsive.responsive form{min-width:0;width:100%}
+  .responsive.responsive form>label{min-width:0;max-width:100%}
+  .responsive.responsive form input,.responsive.responsive form select{width:100%;min-width:0}
+  .responsive section>div:first-child{flex-wrap:wrap}
+  .responsive pre{max-width:100%;overflow-wrap:anywhere}
+}

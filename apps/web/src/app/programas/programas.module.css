@@ -11,7 +11,7 @@
 .eyebrow { display: block; color: var(--primary); font-size: 0.8rem; font-weight: 700; margin-bottom: 14px; }
 .header h1 { margin: 0 0 12px; font-size: clamp(1.8rem, 4vw, 2.8rem); letter-spacing: -0.04em; }
 .header p { margin: 0; color: var(--text-soft); font-size: 0.9rem; }
-.programs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.programs { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 24px; }
 .card { display: flex; align-items: flex-start; flex-direction: column; padding: clamp(24px, 4vw, 40px); background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); }
 .icon { display: inline-flex; padding: 16px; margin-bottom: 28px; color: var(--primary); background: var(--primary-soft); border-radius: 14px; }
 .orcaIcon { color: var(--warning); background: var(--warning-soft); }

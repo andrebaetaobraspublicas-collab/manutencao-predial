@@ -24,6 +24,7 @@ import { KpisModule } from './modules/kpis/kpis.module';
 import { PilotModule } from './modules/pilot/pilot.module';
 import { InspectorsModule } from './modules/inspectors/inspectors.module';
 import { OrcaproModule } from './modules/orcapro/orcapro.module';
+import { InfraModule } from './modules/infraestrutura/infra.module';
 
 configureBigIntJsonSerialization();
 
@@ -56,6 +57,7 @@ configureBigIntJsonSerialization();
     BillingModule,
     InspectorsModule,
     OrcaproModule,
+    InfraModule,
   ],
 })
 export class AppModule {}

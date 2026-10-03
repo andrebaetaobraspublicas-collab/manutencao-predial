@@ -1,0 +1,366 @@
+{
+  "source": "C:\\Orçapro\\platform\\legacy\\infraestrutura-1.8.3\\original.html",
+  "sourceSha256": "25b2f195311656c876d1ae33ce250859deff6b4b31802457633f701dce7cd683",
+  "mainSha256": "abc0d70f7b4ccedd45153ce19cb42787589abae43f921241a2539708c4d430c7",
+  "catalogSha256": "a94439e7d3970e19f9dd7a6014f4c30c0581fe28528ad2478678dccb43cd239c",
+  "catalogRawSha256": "71711a2c13cf1c33dbc9fd0cd718eeeb3e7a8c870ccac0fb54e1d2d3dacca565",
+  "catalogGzipBytes": 311758,
+  "fontSha256": "0492d6ae3ba472ff95102a47d974b3052491d048251333284134137b97c6851f",
+  "modules": [
+    {
+      "file": "00_core.js",
+      "originalSha256": "b5828ad067422dd9e3da6b707ed5d1e0cfcc169c4326315fbb8bc7e6c6bfb349",
+      "extractedSha256": "b5828ad067422dd9e3da6b707ed5d1e0cfcc169c4326315fbb8bc7e6c6bfb349",
+      "bytes": 4525
+    },
+    {
+      "file": "01_xlsx.js",
+      "originalSha256": "8ee38594d980a4654bb6ad963e5d786e4686e4b19fef3a6d7bce6a22439fa5b4",
+      "extractedSha256": "8ee38594d980a4654bb6ad963e5d786e4686e4b19fef3a6d7bce6a22439fa5b4",
+      "bytes": 18069
+    },
+    {
+      "file": "02_sicro.js",
+      "originalSha256": "9442aabb0ea2ca8e0edf3ec107d6f668fd3fba6672e3ae03b74bd3476f8febad",
+      "extractedSha256": "9442aabb0ea2ca8e0edf3ec107d6f668fd3fba6672e3ae03b74bd3476f8febad",
+      "bytes": 58854
+    },
+    {
+      "file": "03_factors.js",
+      "originalSha256": "24280d659b089b26c52b6dc50efae4d639e9333d283835c9e164673db884bd86",
+      "extractedSha256": "24280d659b089b26c52b6dc50efae4d639e9333d283835c9e164673db884bd86",
+      "bytes": 30647
+    },
+    {
+      "file": "04_search.js",
+      "originalSha256": "5ddd289f9ddcfa4ea0b657f4068e1d1964158163c02905d44f7ce6a878ca0830",
+      "extractedSha256": "5ddd289f9ddcfa4ea0b657f4068e1d1964158163c02905d44f7ce6a878ca0830",
+      "bytes": 6854
+    },
+    {
+      "file": "05_store.js",
+      "originalSha256": "8dc1f803cc78ca3ca07588bd6c52ae8c7afd7682c58950de19fe57e717f27937",
+      "extractedSha256": "8dc1f803cc78ca3ca07588bd6c52ae8c7afd7682c58950de19fe57e717f27937",
+      "bytes": 2284
+    },
+    {
+      "file": "06_productivity.js",
+      "originalSha256": "ad1b9014a58fa350c5e38de8f84ea16961c82e64171e91a5e3c59dd124f0b611",
+      "extractedSha256": "ad1b9014a58fa350c5e38de8f84ea16961c82e64171e91a5e3c59dd124f0b611",
+      "bytes": 5039
+    },
+    {
+      "file": "07_cpm.js",
+      "originalSha256": "61dd8cf00d5f4966c724d9567412c7bcad58b2887213b2a259afd711736472ad",
+      "extractedSha256": "61dd8cf00d5f4966c724d9567412c7bcad58b2887213b2a259afd711736472ad",
+      "bytes": 7355
+    },
+    {
+      "file": "08_resources.js",
+      "originalSha256": "2ace45568d207a12c4036e1635c97d8ac2597b432c816817ff52cc0ce67125db",
+      "extractedSha256": "2ace45568d207a12c4036e1635c97d8ac2597b432c816817ff52cc0ce67125db",
+      "bytes": 5037
+    },
+    {
+      "file": "09_engine.js",
+      "originalSha256": "eb85523643cf4797ca419acdb27212c745257986cc851cc008806504afa93edf",
+      "extractedSha256": "eb85523643cf4797ca419acdb27212c745257986cc851cc008806504afa93edf",
+      "bytes": 14258
+    },
+    {
+      "file": "10_ui_core.js",
+      "originalSha256": "1929d07f408a74cf98638eb3691f1adb95f32be8634a931a9e846771ec22abfb",
+      "extractedSha256": "1929d07f408a74cf98638eb3691f1adb95f32be8634a931a9e846771ec22abfb",
+      "bytes": 16858
+    },
+    {
+      "file": "11_ui_catalog.js",
+      "originalSha256": "8e7ef1d64ae91ce2434cbaf4d2e9c4e45da6b972c8b89e1afd9d7a8622a3d5e6",
+      "extractedSha256": "8e7ef1d64ae91ce2434cbaf4d2e9c4e45da6b972c8b89e1afd9d7a8622a3d5e6",
+      "bytes": 19466
+    },
+    {
+      "file": "12_ui_comp.js",
+      "originalSha256": "11dea2f92fb0f0d90b0bb08f86616c27fbb0eba35bfaa7c4070c76032d2f1242",
+      "extractedSha256": "11dea2f92fb0f0d90b0bb08f86616c27fbb0eba35bfaa7c4070c76032d2f1242",
+      "bytes": 23953
+    },
+    {
+      "file": "13_ui_budget.js",
+      "originalSha256": "ae398894559ea3be164eedadcb62fc12d7bdb72f9f54e6311e90f2e5910ca0bc",
+      "extractedSha256": "ae398894559ea3be164eedadcb62fc12d7bdb72f9f54e6311e90f2e5910ca0bc",
+      "bytes": 17269
+    },
+    {
+      "file": "14_ui_crews.js",
+      "originalSha256": "4f0ef9ae5abc13dd2f40c28b28ba8c8a0833b37693934031fa0c06b5676130cb",
+      "extractedSha256": "4f0ef9ae5abc13dd2f40c28b28ba8c8a0833b37693934031fa0c06b5676130cb",
+      "bytes": 9282
+    },
+    {
+      "file": "15_ui_schedule.js",
+      "originalSha256": "fd98cc23a2c0184788d022a8412b14e8f0f6fdf42957d788482f713f79060b8e",
+      "extractedSha256": "fd98cc23a2c0184788d022a8412b14e8f0f6fdf42957d788482f713f79060b8e",
+      "bytes": 9642
+    },
+    {
+      "file": "16_ui_resources.js",
+      "originalSha256": "6c7ca3db4ceae999c005f1030bf69465b644b126e0fb393248f1ecf41d91d466",
+      "extractedSha256": "6c7ca3db4ceae999c005f1030bf69465b644b126e0fb393248f1ecf41d91d466",
+      "bytes": 5450
+    },
+    {
+      "file": "17_export.js",
+      "originalSha256": "0911a39c20a0e7cdec1e486ad74d78703376bb9dd213a1ccd0d906bf9c03ff3d",
+      "extractedSha256": "0911a39c20a0e7cdec1e486ad74d78703376bb9dd213a1ccd0d906bf9c03ff3d",
+      "bytes": 9849
+    },
+    {
+      "file": "18_ui_base.js",
+      "originalSha256": "3c9a401a00bddb1181e1ec95044a9402c37a858a28adee19b465ad82ce338b34",
+      "extractedSha256": "3c9a401a00bddb1181e1ec95044a9402c37a858a28adee19b465ad82ce338b34",
+      "bytes": 23347
+    },
+    {
+      "file": "19_macro.js",
+      "originalSha256": "7e460725a7a22c992933b49d7382478b925d07f1589fce52434987a6542c01ba",
+      "extractedSha256": "7e460725a7a22c992933b49d7382478b925d07f1589fce52434987a6542c01ba",
+      "bytes": 2323
+    },
+    {
+      "file": "20_charts.js",
+      "originalSha256": "2c60b2846e74d024be9d6d727a6cbe2f71202b2942c37af0ae3af7278f8fac33",
+      "extractedSha256": "2c60b2846e74d024be9d6d727a6cbe2f71202b2942c37af0ae3af7278f8fac33",
+      "bytes": 19893
+    },
+    {
+      "file": "21_bdi_core.js",
+      "originalSha256": "82c9ce1c7d9e8ff25747ed09f58756d0ea6589b047c5befd6d6ce14373a9273f",
+      "extractedSha256": "82c9ce1c7d9e8ff25747ed09f58756d0ea6589b047c5befd6d6ce14373a9273f",
+      "bytes": 102522
+    },
+    {
+      "file": "22_ui_bdi.js",
+      "originalSha256": "655f0f1af1f742d939f6f4a3f3537dd16c05bef8e94691ac992635564fdbd75a",
+      "extractedSha256": "655f0f1af1f742d939f6f4a3f3537dd16c05bef8e94691ac992635564fdbd75a",
+      "bytes": 38244
+    },
+    {
+      "file": "23_ui_bdi2.js",
+      "originalSha256": "6872f38829b45860750ff9a5530c3fa0f8821c84cd92a890c824747f593e6929",
+      "extractedSha256": "6872f38829b45860750ff9a5530c3fa0f8821c84cd92a890c824747f593e6929",
+      "bytes": 41184
+    },
+    {
+      "file": "24_evt_core.js",
+      "originalSha256": "23fdd3e2c7d1fdfa059a33c947c40840973e5868946c0ce184f19fb4553142c5",
+      "extractedSha256": "23fdd3e2c7d1fdfa059a33c947c40840973e5868946c0ce184f19fb4553142c5",
+      "bytes": 10419
+    },
+    {
+      "file": "25_ui_evento.js",
+      "originalSha256": "5a2f63798d38ee3d8ad92233d8b9931feced3e966193dd660c079094468634a2",
+      "extractedSha256": "5a2f63798d38ee3d8ad92233d8b9931feced3e966193dd660c079094468634a2",
+      "bytes": 23825
+    },
+    {
+      "file": "26a_abc_core.js",
+      "originalSha256": "848ceaf710b511ea938ef01b3a37ec209c83049fbdaa02354018f23e24661a72",
+      "extractedSha256": "848ceaf710b511ea938ef01b3a37ec209c83049fbdaa02354018f23e24661a72",
+      "bytes": 14155
+    },
+    {
+      "file": "26_exemplo_rodovia.js",
+      "originalSha256": "88548b66459232d7d42a77f0a5021097880b6bcb481470f5b4a682d18fb3b9b3",
+      "extractedSha256": "88548b66459232d7d42a77f0a5021097880b6bcb481470f5b4a682d18fb3b9b3",
+      "bytes": 21104
+    },
+    {
+      "file": "27_ui_transport.js",
+      "originalSha256": "fe5f648d33afc9a5266918b553ccdee2a2b1999c1f6c95b69ade1e58cef908af",
+      "extractedSha256": "fe5f648d33afc9a5266918b553ccdee2a2b1999c1f6c95b69ade1e58cef908af",
+      "bytes": 7304
+    },
+    {
+      "file": "46_fit.js",
+      "originalSha256": "54acf57e457769e93fc0e195ae11091692d96b4715140fa0363c789b77816850",
+      "extractedSha256": "54acf57e457769e93fc0e195ae11091692d96b4715140fa0363c789b77816850",
+      "bytes": 11133
+    },
+    {
+      "file": "47_fic.js",
+      "originalSha256": "04342966f9edfbdae4f47328f855850c9714454946ae4febb571efdc0026475f",
+      "extractedSha256": "04342966f9edfbdae4f47328f855850c9714454946ae4febb571efdc0026475f",
+      "bytes": 13645
+    },
+    {
+      "file": "48_pem.js",
+      "originalSha256": "cadbe01f4ed629852cd7028fa0d1f1eb85355265721efe837f2e444b11c99222",
+      "extractedSha256": "1a647745b7b32282da08215db5bc26cc26afe8dfc746105050218ec5dcd6bdde",
+      "bytes": 21661
+    },
+    {
+      "file": "28_abc_ui.js",
+      "originalSha256": "7e412fc555d5b8f0eba9869f76c29ee8caac13ab6f7f96ff3ced394f20e82e6d",
+      "extractedSha256": "7e412fc555d5b8f0eba9869f76c29ee8caac13ab6f7f96ff3ced394f20e82e6d",
+      "bytes": 540240
+    },
+    {
+      "file": "29_basic_diagnostics.js",
+      "originalSha256": "13107a7a1d2f5f80f80fc57e6d745e250c387f15bfaf4b332a4d206f1c333a4d",
+      "extractedSha256": "13107a7a1d2f5f80f80fc57e6d745e250c387f15bfaf4b332a4d206f1c333a4d",
+      "bytes": 48138
+    },
+    {
+      "file": "30_catalog_core.js",
+      "originalSha256": "63fbbea13d0cf6c77bbe82b1db030a3d1404935d864c0c63518d67545f9b87e0",
+      "extractedSha256": "63fbbea13d0cf6c77bbe82b1db030a3d1404935d864c0c63518d67545f9b87e0",
+      "bytes": 28102
+    },
+    {
+      "file": "31_catalog_ui.js",
+      "originalSha256": "71e3ef6332763ad97e602a5c0bb8554ccf804f2ad792794b3f3e89a7c1c873cd",
+      "extractedSha256": "71e3ef6332763ad97e602a5c0bb8554ccf804f2ad792794b3f3e89a7c1c873cd",
+      "bytes": 45860
+    },
+    {
+      "file": "32_tax_abc_core.js",
+      "originalSha256": "cb374014f6e78d1e46b7ea5dca2212b92b991caacc5bfd10603b28a494fde329",
+      "extractedSha256": "cb374014f6e78d1e46b7ea5dca2212b92b991caacc5bfd10603b28a494fde329",
+      "bytes": 10595
+    },
+    {
+      "file": "33_tax_abc_ui.js",
+      "originalSha256": "aa17bb984c3cc4692a6feaeb7edf15148326309496bc5a264e92f2948174f0ad",
+      "extractedSha256": "aa17bb984c3cc4692a6feaeb7edf15148326309496bc5a264e92f2948174f0ad",
+      "bytes": 33502
+    },
+    {
+      "file": "36_native_resources.js",
+      "originalSha256": "98f0c497cb6a3de979ede9ec812228301e77e159cf0b6ce12fadd221ca13e61b",
+      "extractedSha256": "98f0c497cb6a3de979ede9ec812228301e77e159cf0b6ce12fadd221ca13e61b",
+      "bytes": 3863
+    },
+    {
+      "file": "40_sicro_ui.js",
+      "originalSha256": "c0ecc1d4ba0ac5464972e45279bcfd0194c35294168540eb36869db725a1719b",
+      "extractedSha256": "c0ecc1d4ba0ac5464972e45279bcfd0194c35294168540eb36869db725a1719b",
+      "bytes": 17651
+    },
+    {
+      "file": "51_analytic.js",
+      "originalSha256": "764af8086fea605c8a4cbd8f2146897f3faa8f025a17ec2207f1b3bb11d6cc45",
+      "extractedSha256": "764af8086fea605c8a4cbd8f2146897f3faa8f025a17ec2207f1b3bb11d6cc45",
+      "bytes": 8222
+    },
+    {
+      "file": "41_al_core.js",
+      "originalSha256": "0536437a60763d84dbb49204c98d2636c05eb1cdc32ebe754aa0a1124a8ac28e",
+      "extractedSha256": "8be47985bf6ec3abbdd3ae9959328bec984ef24c6540b4294b7f65893bd1961c",
+      "bytes": 39772
+    },
+    {
+      "file": "42_ui_al.js",
+      "originalSha256": "52db4678952c3dd304bcf59421290b540af47b61c747334f0694899742061da4",
+      "extractedSha256": "52db4678952c3dd304bcf59421290b540af47b61c747334f0694899742061da4",
+      "bytes": 27557
+    },
+    {
+      "file": "43_mob_core.js",
+      "originalSha256": "649bb4c289be39df911cfb37e5ff34f962ffb6e0c25940408e78e05626d6d398",
+      "extractedSha256": "589ce2a6cc6dc3184613fe71bd80fe97a8841fe64e783a190025aee684b2223c",
+      "bytes": 18306
+    },
+    {
+      "file": "44_can_core.js",
+      "originalSha256": "0f92fc92668adf0fd1652ce35ee948769ae413bb655a807a55205363defdb573",
+      "extractedSha256": "0f92fc92668adf0fd1652ce35ee948769ae413bb655a807a55205363defdb573",
+      "bytes": 70002
+    },
+    {
+      "file": "45_ui_mob_can.js",
+      "originalSha256": "379f6712f1d365cf3452976bad9b50362cc906511ecc6d8e5cca613e6f490da9",
+      "extractedSha256": "379f6712f1d365cf3452976bad9b50362cc906511ecc6d8e5cca613e6f490da9",
+      "bytes": 29111
+    },
+    {
+      "file": "49_sync.js",
+      "originalSha256": "1974d41c3b84cb8f6f5cba80369253029545fdf6593527114b9164e440b0050a",
+      "extractedSha256": "1974d41c3b84cb8f6f5cba80369253029545fdf6593527114b9164e440b0050a",
+      "bytes": 2464
+    },
+    {
+      "file": "50_manual.js",
+      "originalSha256": "244202d4cb8d5269f18a9d0fd40d283384920fd409d736724dcaf139ac816fa9",
+      "extractedSha256": "244202d4cb8d5269f18a9d0fd40d283384920fd409d736724dcaf139ac816fa9",
+      "bytes": 27596
+    },
+    {
+      "file": "99_main.js",
+      "originalSha256": "88f8a0b61f37c48c69ef2b3d398a2d88eedc02bd8af3d5e984684d0c40eb44ad",
+      "extractedSha256": "379d34a430914c1f13a2178f054ca493b04d97ba966911768854729255f7ae8f",
+      "bytes": 7079
+    },
+    {
+      "file": "risk-engine.js",
+      "originalSha256": "1d4e4e17442acb0a456c44e0c7d3a8174e723ad69d7dff19604629b23a109218",
+      "extractedSha256": "1d4e4e17442acb0a456c44e0c7d3a8174e723ad69d7dff19604629b23a109218",
+      "bytes": 25686
+    },
+    {
+      "file": "risk-local.js",
+      "originalSha256": "2cc5bc727e09f77163092e00d29480933a89f92e01a2d163b76f6cf1a4380a01",
+      "extractedSha256": "2cc5bc727e09f77163092e00d29480933a89f92e01a2d163b76f6cf1a4380a01",
+      "bytes": 15555
+    },
+    {
+      "file": "risk-ui.js",
+      "originalSha256": "a8c4fffdad2c0caf47272dc4789054b4c60e784e3348cdd521d02105e1aca45c",
+      "extractedSha256": "a8c4fffdad2c0caf47272dc4789054b4c60e784e3348cdd521d02105e1aca45c",
+      "bytes": 29561
+    }
+  ],
+  "data": [
+    {
+      "module": "48_pem.js",
+      "variable": "PD",
+      "file": "pem.json",
+      "globalKey": "pem",
+      "sha256": "5084e433a4b23c0f2994b92e52569e0043a6a93a5ebece72b710ba2c031ce48b",
+      "gzipBytes": 97603,
+      "originalLiteralSha256": "5084e433a4b23c0f2994b92e52569e0043a6a93a5ebece72b710ba2c031ce48b"
+    },
+    {
+      "module": "41_al_core.js",
+      "variable": "SEED",
+      "file": "administracao-local-seed.json",
+      "globalKey": "alSeed",
+      "sha256": "a239e9753a5aea5051744ed0c4715afb2cff9b8ace8d23223f295e6c31c8d0cc",
+      "gzipBytes": 7383,
+      "originalLiteralSha256": "a239e9753a5aea5051744ed0c4715afb2cff9b8ace8d23223f295e6c31c8d0cc"
+    },
+    {
+      "module": "43_mob_core.js",
+      "variable": "DB",
+      "file": "mobilizacao-seed.json",
+      "globalKey": "mobilizationSeed",
+      "sha256": "d08d8798a661e26c4aaa83f947f6c29b8a0a9368f7ac64831f7eb908f5ca3038",
+      "gzipBytes": 3980,
+      "originalLiteralSha256": "d08d8798a661e26c4aaa83f947f6c29b8a0a9368f7ac64831f7eb908f5ca3038"
+    }
+  ],
+  "entries": {
+    "editor": {
+      "html": "index.html",
+      "script": "src/entry.js"
+    },
+    "importer": {
+      "html": "import.html",
+      "script": "src/importer.js"
+    },
+    "bridge": {
+      "canonical": "../../scripts/infraestrutura/api-store.js",
+      "buildCopy": "src/api-store.js"
+    }
+  }
+}

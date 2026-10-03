@@ -242,3 +242,11 @@ AGENTS.md                 instruções permanentes para Codex/agentes
 .env.example              catálogo de variáveis
 Dockerfile(s)             implantação reproduzível
 ```
+
+## 16. Terceiro aplicativo: OrçaPro Infraestrutura
+
+O proprietário confirmou em03/10/2026 manter a stack Node/NestJS e usar **outro banco MySQL para SICRO**, conforme [ADR0009](adr/0009-infraestrutura-banco-independente-identidade-compartilhada.md). O portal DEV seleciona três programas. Infraestrutura conserva o frontend original em Vite sob `/orcapro-infraestrutura` e API `/api/v1/infraestrutura`; `INFRA_ENABLED=false` fecha o novo produto sem afetar manutenção/OrçaPro. Os dois sites comerciais ficam fora desta implantação.
+
+A autenticação central e seus cookies são compartilhados; autorização Infraestrutura verifica perfil/papel próprios a cada requisição. O pool `mariadb` independente e suas migrations SQL não alteram o schema Prisma central. SICRO/PEM ficam globais uma vez por ciclo e dados privados segregam proprietário+tenant. Cadastro exclusivo cria membership sem manutenção e nega OrçaPro explicitamente; senha compartilhada não é duplicada.
+
+Importações grandes usam lotes HTTP e conferência CLI finita com lock MySQL, SHA-256 e o motor original. Comparativos entre referências executam em Worker Thread. A persistência relacional usa DECIMAL, enquanto regras legadas e centavos do raw permanecem intactos para evitar divergências. [Contrato completo](infraestrutura-api.md), [modelo](02-modelo-de-dados.md) e [operação](infraestrutura-deploy.md) documentam os limites e o rollback.

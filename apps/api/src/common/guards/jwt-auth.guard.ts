@@ -20,8 +20,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const authenticated = await super.canActivate(context);
     const request = context.switchToHttp().getRequest<{ user?: AuthenticatedUser; originalUrl: string }>();
     const path = request.originalUrl.split('?')[0];
-    if (request.user?.maintenanceAccess === false && !path.startsWith('/api/v1/auth/') && !path.startsWith('/api/v1/orcapro/')) {
-      throw new ForbiddenException('Esta conta possui acesso somente ao OrçaPro.');
+    if (request.user?.maintenanceAccess === false && !path.startsWith('/api/v1/auth/') && !path.startsWith('/api/v1/orcapro/') && !path.startsWith('/api/v1/infraestrutura/')) {
+      throw new ForbiddenException('Esta conta não possui acesso à manutenção predial.');
     }
     return authenticated === true;
   }

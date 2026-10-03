@@ -240,3 +240,11 @@ Cada item é classificado por:
 6. evidência de uso.
 
 Um novo módulo não entra no roadmap apenas por ser tecnicamente possível. Deve existir problema, usuário, resultado esperado e critério de aceite.
+
+## Entrega adicional autorizada: OrçaPro Infraestrutura (03/10/2026)
+
+O proprietário solicitou expressamente transformar o HTML SICRO em terceiro programa no DEV, mantendo interface e resultados numéricos. Confirmou stack Node/NestJS com banco separado; produção comercial não faz parte desta entrega. [ADR0009](adr/0009-infraestrutura-banco-independente-identidade-compartilhada.md) registra a decisão.
+
+Escopo desta etapa: extração Vite fiel, catálogo SICRO/PEM global versionado, login central com acesso independente, projetos privados/versões/conflito409, próprios, administração, importação incremental, backups e LGPD. Critérios verificáveis:6.619custos iguais à fotografia SP07/2026; exemplo172dias e mesmos totais; autotestes AL/Mobilização/Canteiro/FIT/FIC/PEM; autorização admin403; usuário e tenant privados; migração com comparativo; upload/hash/transporte gzip; rollback por gate sem apagar bancos.
+
+Cobrança Stripe específica Infraestrutura, biblioteca PEM independente de ciclos, compartilhamento colaborativo de projetos e publicação comercial são evoluções futuras, sem telas ou promessas de funcionalidades concluídas nesta fase. Evidências executadas e limitações constam nos testes e na entrega; [contrato](infraestrutura-api.md) e [operação](infraestrutura-deploy.md) acompanham o código.

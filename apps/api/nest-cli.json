@@ -7,6 +7,7 @@
     "assets": [
       { "include": "modules/orcapro/legacy/assets/**/*", "watchAssets": true },
       { "include": "modules/orcapro/risks/assets/**/*", "watchAssets": true }
+      ,{ "include": "modules/infraestrutura/assets/**/*", "watchAssets": true }
     ]
   }
 }

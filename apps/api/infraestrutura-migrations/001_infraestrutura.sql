@@ -1,0 +1,100 @@
+-- Independent database only. Never apply this migration to DATABASE_URL.
+CREATE TABLE InfraUser (
+ id CHAR(36) PRIMARY KEY, external_user_id CHAR(36) NOT NULL, tenant_id CHAR(36) NOT NULL,
+ name VARCHAR(200) NOT NULL, email VARCHAR(254) NOT NULL, role ENUM('ADMIN','USER') NOT NULL DEFAULT 'USER',
+ status ENUM('ACTIVE','PENDING','BLOCKED') NOT NULL DEFAULT 'PENDING', deleted_at DATETIME(3) NULL, erasure_requested_at DATETIME(3) NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+ UNIQUE KEY principal(external_user_id,tenant_id), KEY tenant_users(tenant_id,status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraCycle (
+ id CHAR(36) PRIMARY KEY, source VARCHAR(10) NOT NULL DEFAULT 'SICRO', uf CHAR(2) NOT NULL, ref CHAR(7) NOT NULL,
+ status ENUM('DRAFT','PUBLISHED','ARCHIVED') NOT NULL DEFAULT 'DRAFT', import_status ENUM('UPLOADING','QUEUED','PROCESSING','PASSED','FAILED') NOT NULL DEFAULT 'UPLOADING',
+ imported_by CHAR(36) NOT NULL, imported_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), published_at DATETIME(3) NULL,
+ content_hash CHAR(64) NOT NULL, raw_size BIGINT UNSIGNED NOT NULL, expected_chunks INT UNSIGNED NOT NULL,
+ validation JSON NULL, files JSON NULL, example_json JSON NULL, processing_at DATETIME(3) NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+ UNIQUE KEY reference(source,uf,ref), KEY publication(status,import_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraCycleChunk (
+ cycle_id CHAR(36) NOT NULL, seq INT UNSIGNED NOT NULL, sha256 CHAR(64) NOT NULL, raw_size INT UNSIGNED NOT NULL,
+ data LONGBLOB NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), PRIMARY KEY(cycle_id,seq),
+ FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraCycleSnapshot (
+ cycle_id CHAR(36) PRIMARY KEY, format VARCHAR(20) NOT NULL DEFAULT 'raw-v1', gz_blob LONGBLOB NOT NULL, etag CHAR(64) NOT NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraCycleInput (
+ cycle_id CHAR(36) NOT NULL, code VARCHAR(64) NOT NULL, kind VARCHAR(10) NOT NULL, description TEXT NOT NULL,
+ unit VARCHAR(30) NOT NULL, price_sd DECIMAL(24,8) NULL, price_cd DECIMAL(24,8) NULL, price_se DECIMAL(24,8) NULL, data JSON NOT NULL,
+ PRIMARY KEY(cycle_id,code), FULLTEXT KEY input_search(description), FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraCycleComposition (
+ cycle_id CHAR(36) NOT NULL, code VARCHAR(64) NOT NULL, description TEXT NOT NULL, unit VARCHAR(30) NOT NULL,
+ group_code VARCHAR(64) NULL, production DECIMAL(24,8) NULL, fic DECIMAL(18,8) NULL, official_cost DECIMAL(24,2) NULL, data JSON NOT NULL,
+ PRIMARY KEY(cycle_id,code), KEY category(cycle_id,group_code), FULLTEXT KEY composition_search(description),
+ FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraCycleItem (
+ cycle_id CHAR(36) NOT NULL, comp_code VARCHAR(64) NOT NULL, section VARCHAR(2) NOT NULL, seq INT NOT NULL,
+ ref_code VARCHAR(64) NULL, q DECIMAL(30,12) NULL, data JSON NOT NULL,
+ PRIMARY KEY(cycle_id,comp_code,section,seq), FOREIGN KEY(cycle_id,comp_code) REFERENCES InfraCycleComposition(cycle_id,code) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraCycleEquipmentPart (
+ cycle_id CHAR(36) NOT NULL, code VARCHAR(64) NOT NULL, regime VARCHAR(2) NOT NULL, data JSON NOT NULL,
+ PRIMARY KEY(cycle_id,code,regime), FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraCycleTransportItem (
+ cycle_id CHAR(36) NOT NULL, seq INT NOT NULL, data JSON NOT NULL, PRIMARY KEY(cycle_id,seq),
+ FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraCycleCharge (
+ cycle_id CHAR(36) NOT NULL, name VARCHAR(100) NOT NULL, data JSON NOT NULL, PRIMARY KEY(cycle_id,name),
+ FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraPem (
+ id CHAR(36) PRIMARY KEY, cycle_id CHAR(36) NOT NULL, comp_code VARCHAR(64) NOT NULL, group_code VARCHAR(64) NULL,
+ version INT UNSIGNED NOT NULL DEFAULT 1, data JSON NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ UNIQUE KEY pem_code(cycle_id,comp_code), FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraPemSnapshot (
+ cycle_id CHAR(36) PRIMARY KEY, gz_blob LONGBLOB NOT NULL, etag CHAR(64) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraProject (
+ id CHAR(36) PRIMARY KEY, user_id CHAR(36) NOT NULL, tenant_id CHAR(36) NOT NULL, cycle_id CHAR(36) NOT NULL,
+ name VARCHAR(200) NOT NULL, uf CHAR(2) NOT NULL, regime ENUM('SD','CD','SE') NOT NULL, bdi DECIMAL(14,8) NOT NULL DEFAULT 0,
+ data JSON NOT NULL, version INT UNSIGNED NOT NULL DEFAULT 1, deleted_at DATETIME(3) NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+ KEY owner_projects(tenant_id,user_id,deleted_at,updated_at), FOREIGN KEY(cycle_id) REFERENCES InfraCycle(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraProjectVersion (
+ project_id CHAR(36) NOT NULL, version INT UNSIGNED NOT NULL, gz_blob LONGBLOB NOT NULL, created_by CHAR(36) NOT NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), PRIMARY KEY(project_id,version),
+ FOREIGN KEY(project_id) REFERENCES InfraProject(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraOwnRecord (
+ user_id CHAR(36) NOT NULL, tenant_id CHAR(36) NOT NULL, kind ENUM('INPUT','COMPOSITION') NOT NULL, code VARCHAR(100) NOT NULL,
+ data JSON NOT NULL, revision INT UNSIGNED NOT NULL DEFAULT 1, deleted_at DATETIME(3) NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+ PRIMARY KEY(tenant_id,user_id,kind,code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraSetting (
+ tenant_id CHAR(36) NOT NULL, user_id CHAR(36) NOT NULL, name VARCHAR(100) NOT NULL, data JSON NOT NULL,
+ updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3), PRIMARY KEY(tenant_id,user_id,name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraPolicy (
+ name VARCHAR(50) PRIMARY KEY, data JSON NOT NULL, version INT UNSIGNED NOT NULL DEFAULT 1, updated_by CHAR(36) NOT NULL,
+ updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraAudit (
+ id CHAR(36) PRIMARY KEY, tenant_id CHAR(36) NOT NULL, user_id CHAR(36) NOT NULL, action VARCHAR(100) NOT NULL,
+ entity VARCHAR(80) NOT NULL, entity_id VARCHAR(100) NOT NULL, payload JSON NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY audit_history(created_at), KEY user_history(tenant_id,user_id,created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE InfraLoginAttempt (
+ bucket_key CHAR(64) PRIMARY KEY, window_started_at DATETIME(3) NOT NULL, attempts INT UNSIGNED NOT NULL DEFAULT 0,
+ failures INT UNSIGNED NOT NULL DEFAULT 0, blocked_until DATETIME(3) NULL, last_seen_at DATETIME(3) NOT NULL,
+ KEY expires(last_seen_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

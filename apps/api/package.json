@@ -5,7 +5,7 @@
   "scripts": {
     "build": "nest build",
     "build:api:hostinger": "npm run hostinger:deploy",
-    "hostinger:deploy": "npm run prisma:generate && npm run build && npm run hostinger:prepare && npm run prisma:deploy && npm run prisma:seed && npm run orcapro:deploy-seed && npm run hostinger:verify-artifact",
+    "hostinger:deploy": "npm run prisma:generate && npm run build && npm run hostinger:prepare && npm run prisma:deploy && npm run maintenance:deploy-seed && npm run orcapro:deploy-seed && npm run hostinger:verify-artifact",
     "hostinger:prepare": "node scripts/hostinger-prepare-output.mjs",
     "hostinger:verify": "node -e \"const fs=require('node:fs');if(!fs.existsSync('dist/main.js')){throw new Error('Missing prebuilt dist/main.js')}console.log('Prebuilt API artifact verified')\"",
     "hostinger:verify-artifact": "node -e \"const fs=require('node:fs');if(!fs.existsSync('dist/main.js')){throw new Error('Missing Hostinger output dist/main.js')}console.log('Hostinger API output verified')\"",
@@ -20,6 +20,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
+    "maintenance:deploy-seed": "node scripts/maintenance-deploy-seed.mjs",
     "orcapro:deploy-seed": "node scripts/orcapro-deploy-seed.mjs",
     "orcapro:seed": "tsx scripts/orcapro-seed.ts",
     "orcapro:verify": "tsx scripts/orcapro-verify.ts"

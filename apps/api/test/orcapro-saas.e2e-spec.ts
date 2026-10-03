@@ -21,13 +21,14 @@ describe('OrçaPro SaaS — gestão global e licença por usuário em MySQL', ()
   let remote: Stripe.Subscription; let checkoutMetadata: Record<string, string> = {};
   const key = randomUUID().replaceAll('-', '');
   const old = new Map<string, string | undefined>();
-  const env = ['ORCAPRO_ENABLED', 'ORCAPRO_ADMIN_USER_IDS', 'ORCAPRO_TENANT_IDS', 'CORS_ORIGINS', 'COOKIE_DOMAIN', 'COOKIE_SECURE', 'NOTIFICATION_WORKER_ENABLED', 'ORCAPRO_STRIPE_SECRET_KEY', 'ORCAPRO_STRIPE_WEBHOOK_SECRET'];
+  const env = ['ORCAPRO_ENABLED', 'ORCAPRO_ADMIN_USER_IDS', 'ORCAPRO_TENANT_IDS', 'CORS_ORIGINS', 'COOKIE_DOMAIN', 'COOKIE_SECURE', 'NOTIFICATION_WORKER_ENABLED', 'ORCAPRO_STRIPE_SECRET_KEY', 'ORCAPRO_STRIPE_WEBHOOK_SECRET', 'ORCAPRO_STRIPE_MODE', 'ORCAPRO_STRIPE_PORTAL_CONFIGURATION_ID'];
   const sdk = new Stripe('sk_test_local_only');
   const retrieveSubscription = jest.fn(async () => remote);
   const createCheckout = jest.fn(async (params: Stripe.Checkout.SessionCreateParams) => { checkoutMetadata = params.metadata as Record<string, string>; return { id: `cs_test_${key}`, url: 'https://checkout.stripe.com/c/pay/test', status: 'open' }; });
   const createCustomer = jest.fn(async () => ({ id: `cus_${key}` }));
-  const createPortal = jest.fn(async () => ({ url: 'https://billing.stripe.com/p/session/test' }));
-  const retrievePrice = jest.fn(async () => ({ active: true, currency: 'brl', unit_amount: 9900, recurring: { interval: 'month', interval_count: 1 } }));
+  const createPortal = jest.fn(async () => ({ livemode: false, url: 'https://billing.stripe.com/p/session/test' }));
+  const retrievePortalConfiguration = jest.fn(async () => ({ id: `bpc_${key}`, active: true, livemode: false }));
+  const retrievePrice = jest.fn(async () => ({ livemode: false, active: true, currency: 'brl', unit_amount: 9900, recurring: { interval: 'month', interval_count: 1 } }));
   const updateSubscription = jest.fn(async (_id: string, params: { cancel_at_period_end: boolean }) => ({ ...remote, cancel_at_period_end: params.cancel_at_period_end }));
 
   async function login(identity: Identity, pass = password) {
@@ -53,13 +54,13 @@ describe('OrçaPro SaaS — gestão global e licença por usuário em MySQL', ()
     return request(app.getHttpServer()).post('/api/v1/orcapro/billing/webhooks/stripe').set('Content-Type', 'application/json').set('stripe-signature', signature ?? sdk.webhooks.generateTestHeaderString({ payload, secret })).send(payload);
   }
   function event(id: string, status = 'past_due') {
-    return { id: `evt_${key}_${id}`, object: 'event', type: 'customer.subscription.updated', data: { object: { ...remote, status } } };
+    return { id: `evt_${key}_${id}`, object: 'event', livemode: false, type: 'customer.subscription.updated', data: { object: { ...remote, status } } };
   }
 
   beforeAll(async () => {
     if (!process.env.DATABASE_URL || !/test|restore|staging/i.test(new URL(process.env.DATABASE_URL).pathname)) throw new Error('MySQL isolado obrigatório.');
     for (const name of env) old.set(name, process.env[name]);
-    Object.assign(process.env, { ORCAPRO_ENABLED: 'true', ORCAPRO_ADMIN_USER_IDS: '', ORCAPRO_TENANT_IDS: '', CORS_ORIGINS: origin, COOKIE_DOMAIN: '', COOKIE_SECURE: 'false', NOTIFICATION_WORKER_ENABLED: 'false', ORCAPRO_STRIPE_SECRET_KEY: 'sk_test_local_only', ORCAPRO_STRIPE_WEBHOOK_SECRET: secret });
+    Object.assign(process.env, { ORCAPRO_ENABLED: 'true', ORCAPRO_ADMIN_USER_IDS: '', ORCAPRO_TENANT_IDS: '', CORS_ORIGINS: origin, COOKIE_DOMAIN: '', COOKIE_SECURE: 'false', NOTIFICATION_WORKER_ENABLED: 'false', ORCAPRO_STRIPE_SECRET_KEY: 'sk_test_local_only', ORCAPRO_STRIPE_WEBHOOK_SECRET: secret, ORCAPRO_STRIPE_MODE: 'TEST', ORCAPRO_STRIPE_PORTAL_CONFIGURATION_ID: '' });
     const { AppModule } = await import('../src/app.module');
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication({ rawBody: true }); app.use(cookieParser()); app.setGlobalPrefix('api/v1');
@@ -68,7 +69,7 @@ describe('OrçaPro SaaS — gestão global e licença por usuário em MySQL', ()
     app.get(ConfigService).set('ORCAPRO_ADMIN_USER_IDS', admin.userId);
     referenceId = (await prisma.orcaproReference.create({ data: { year: 2037, month: 12, revision: parseInt(key.slice(0, 7), 16), label: 'Referência vazia de teste SaaS', status: 'PUBLISHED', sourceChecksum: '0'.repeat(64), sourceName: 'synthetic-saas-test', importedByUserId: admin.userId, publishedAt: new Date(), metadata: { ufs: ['SP'] } } })).id;
     stripeService = app.get(OrcaproStripeService);
-    Object.defineProperty(stripeService, 'stripe', { value: { webhooks: sdk.webhooks, prices: { retrieve: retrievePrice }, customers: { create: createCustomer }, checkout: { sessions: { create: createCheckout, retrieve: jest.fn(async () => ({ status: 'open', url: 'https://checkout.stripe.com/c/pay/test' })) } }, subscriptions: { retrieve: retrieveSubscription, update: updateSubscription }, billingPortal: { sessions: { create: createPortal } } } });
+    Object.defineProperty(stripeService, 'stripe', { value: { webhooks: sdk.webhooks, prices: { retrieve: retrievePrice }, customers: { create: createCustomer }, checkout: { sessions: { create: createCheckout, retrieve: jest.fn(async () => ({ status: 'open', url: 'https://checkout.stripe.com/c/pay/test' })) } }, subscriptions: { retrieve: retrieveSubscription, update: updateSubscription }, billingPortal: { configurations: { retrieve: retrievePortalConfiguration }, sessions: { create: createPortal } } } });
   });
   afterAll(async () => { await app?.close(); for (const [name, value] of old) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } });
 
@@ -152,7 +153,7 @@ describe('OrçaPro SaaS — gestão global e licença por usuário em MySQL', ()
     await prisma.tenant.update({ where: { id: customer.tenantId }, data: { status: 'ACTIVE' } }); expect((await login(customer, newPassword)).status).toBe(200);
   });
   it('checkout concorrente gera apenas uma contratação por usuário e valida preço Stripe', async () => {
-    retrievePrice.mockResolvedValueOnce({ active: true, currency: 'usd', unit_amount: 9900, recurring: { interval: 'month', interval_count: 1 } });
+    retrievePrice.mockResolvedValueOnce({ livemode: false, active: true, currency: 'usd', unit_amount: 9900, recurring: { interval: 'month', interval_count: 1 } });
     await customer.agent.post('/api/v1/orcapro/billing/checkout').set('Origin', origin).send({ planId }).expect(400);
     const responses = await Promise.all([1, 2].map(() => customer.agent.post('/api/v1/orcapro/billing/checkout').set('Origin', origin).send({ planId }).expect(201)));
     expect(responses[0].body.url).toBe(responses[1].body.url); expect(createCheckout).toHaveBeenCalledTimes(1); expect(createCustomer).toHaveBeenCalledTimes(1);
@@ -160,7 +161,7 @@ describe('OrçaPro SaaS — gestão global e licença por usuário em MySQL', ()
     expect(checkoutMetadata.userId).toBe(customer.userId); expect(checkoutMetadata.activationVersion).toBe(String(row.version));
     const pendingPlan = await prisma.orcaproPlan.findUniqueOrThrow({ where: { id: planId } });
     await admin.agent.put(`/api/v1/orcapro/admin/saas/plans/${planId}`).set('Origin', origin).send({ code: pendingPlan.code, name: pendingPlan.name, billingInterval: 'MONTH', priceBrl: '109.00', active: true, stripePriceId: pendingPlan.stripePriceId, expectedVersion: pendingPlan.version }).expect(409);
-    remote = { id: `sub_${key}`, customer: row.stripeCustomerId!, metadata: checkoutMetadata, status: 'active', cancel_at_period_end: false, items: { data: [{ current_period_start: Math.floor(Date.now() / 1000), current_period_end: Math.floor(Date.now() / 1000) + 864000, price: { id: `price_${key}` } }] } } as unknown as Stripe.Subscription;
+    remote = { id: `sub_${key}`, livemode: false, customer: row.stripeCustomerId!, metadata: checkoutMetadata, status: 'active', cancel_at_period_end: false, items: { data: [{ current_period_start: Math.floor(Date.now() / 1000), current_period_end: Math.floor(Date.now() / 1000) + 864000, price: { id: `price_${key}` } }] } } as unknown as Stripe.Subscription;
   });
   it('webhook verifica assinatura, ativa fonte Stripe, deduplica e usa estado atual em eventos atrasados', async () => {
     const tenantBefore = await prisma.tenant.findUniqueOrThrow({ where: { id: customer.tenantId } });
@@ -178,7 +179,10 @@ describe('OrçaPro SaaS — gestão global e licença por usuário em MySQL', ()
     remote = { ...remote, status: 'past_due' }; expect((await signed(event('manual'))).status).toBe(201);
     sub = await prisma.orcaproSubscription.findUniqueOrThrow({ where: { userId: customer.userId } }); expect(sub.status).toBe('MANUAL_CONTRACT'); expect(sub.stripeStatus).toBe('past_due'); expect(updateSubscription).not.toHaveBeenCalled();
     await customer.agent.get('/api/v1/orcapro/projects').expect(200);
-    await customer.agent.post('/api/v1/orcapro/billing/portal').set('Origin', origin).send({}).expect(201); expect(createPortal.mock.calls[0]).toBeDefined();
+    app.get(ConfigService).set('ORCAPRO_STRIPE_PORTAL_CONFIGURATION_ID', `bpc_${key}`);
+    await customer.agent.post('/api/v1/orcapro/billing/portal').set('Origin', origin).send({}).expect(201);
+    expect(retrievePortalConfiguration).toHaveBeenCalledWith(`bpc_${key}`);
+    expect(createPortal).toHaveBeenCalledWith({ customer: sub.stripeCustomerId, return_url: expect.stringContaining('/orcapro/assinatura'), configuration: `bpc_${key}` });
     await neighbor.agent.post('/api/v1/orcapro/billing/portal').set('Origin', origin).send({}).expect(400);
     await other.agent.post(`/api/v1/orcapro/admin/saas/subscriptions/${sub.id}/stripe`).set('Origin', origin).send({ action: 'SYNC', expectedVersion: sub.version }).expect(403);
     await admin.agent.post(`/api/v1/orcapro/admin/saas/subscriptions/${sub.id}/stripe`).set('Origin', origin).send({ action: 'SYNC', expectedVersion: sub.version - 1 }).expect(409);

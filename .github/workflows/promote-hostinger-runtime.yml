@@ -1,4 +1,4 @@
-name: Promote Hostinger runtime
+name: Promote Hostinger development runtime
 
 on:
   workflow_run:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: hostinger-production-runtime
+  group: hostinger-development-runtime
   cancel-in-progress: false
 
 jobs:
@@ -20,6 +20,9 @@ jobs:
       github.event.workflow_run.head_repository.full_name == github.repository &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
+    # Historical environment name: these credentials still belong exclusively
+    # to gestaodepredios.com.br (development). Commercial production uses the
+    # separate orcapro-production environment and a manual workflow.
     environment: production
     env:
       RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -119,7 +122,7 @@ jobs:
           set -euo pipefail
           remote="${SSH_USER}@${SSH_HOST}"
           release_file="${APP_ROOT}/apps/api/dist/release-sha.txt"
-          process_pattern="^lsnode:/home/${SSH_USER}/domains/api.gestaodepredios.com.br/.builds/cur$"
+          process_pattern="^lsnode:/home/${SSH_USER}/domains/api\\.gestaodepredios\\.com\\.br/(\\.builds|hbuilds)/(cur|curr|curre|curren|current)(/.*)?$"
           ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10)
           stamped=false
 

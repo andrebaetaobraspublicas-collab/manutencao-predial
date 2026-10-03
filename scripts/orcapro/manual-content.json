@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "reviewedAt": "03/10/2026",
   "title": "Manual interativo do OrçaPro",
   "sources": [
@@ -125,7 +125,7 @@
         },
         {
           "title": "Login e acesso",
-          "body": "A organização é identificada por um slug, como minha-empresa: 3 a 100 caracteres, começando por letra minúscula ou número e usando somente letras minúsculas, números e hífen. Não use espaços, acentos, maiúsculas ou símbolos de senha. A senha é outro campo. A habilitação do OrçaPro e a situação da assinatura são verificadas no servidor; ser administrador de uma organização não transforma a conta em administrador global."
+          "body": "No ambiente comercial, sistema.orcaproobras.com.br, entre no OrçaPro com seu e-mail e sua senha; não é necessário informar o identificador de uma organização. No cadastro online, esse identificador é gerado automaticamente e a conta permite retomar o pagamento, mas não libera o orçamento antes da confirmação da assinatura. Se você comprou diretamente, use a conta e a validade concedidas pelo administrador. No ambiente de desenvolvimento com os dois programas, www.gestaodepredios.com.br, o login também solicita a organização: seu slug, como minha-empresa, tem 3 a 100 caracteres, começa por letra minúscula ou número e usa somente letras minúsculas, números e hífen. Não use espaços, acentos, maiúsculas ou símbolos de senha nesse identificador; a senha é outro campo. A habilitação do OrçaPro e a situação da assinatura são verificadas no servidor. Ser administrador de uma organização não transforma a conta em administrador global."
         },
         {
           "title": "Salvamento e conflitos",

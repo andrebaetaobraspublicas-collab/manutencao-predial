@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Building2, Calculator, FolderOpen, LogOut, Plus, Search, ShieldCheck } from 'lucide-react';
 import { apiFetch, ApiError } from '@/lib/api';
+import { endSession } from '@/lib/end-session';
+import { ORCAPRO_ONLY } from '@/lib/product-config';
 import styles from './workspace.module.css';
 import { ProjectImport, ProjectHistory, ReferenceImport } from './panels';
 
@@ -47,6 +49,7 @@ export default function OrcaproPage() {
   const [analytic, setAnalytic] = useState<Analytic | null>(null);
   const [historyProject, setHistoryProject] = useState<Project | null>(null);
   const [adminReferences, setAdminReferences] = useState<Reference[]>([]);
+  const [signingOut, setSigningOut] = useState(false);
 
   const loadProjects = useCallback(async (archived = showArchived) => {
     const rows = await apiFetch<Project[] | { items: Project[] }>(`/orcapro/projects${archived ? '?archived=true' : ''}`);
@@ -69,7 +72,7 @@ export default function OrcaproPage() {
       if (!active) return;
       if (cause instanceof ApiError && cause.status === 401) { window.location.assign('/login?next=/orcapro'); return; }
       setError(cause instanceof ApiError && [403, 404, 503].includes(cause.status)
-        ? 'O OrçaPro ainda não está habilitado para sua conta. O Gestão de Prédios continua disponível.' : message(cause));
+        ? ORCAPRO_ONLY ? 'Confira a situação da sua assinatura para acessar o OrçaPro.' : 'O OrçaPro ainda não está habilitado para sua conta. O Gestão de Prédios continua disponível.' : message(cause));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
@@ -153,11 +156,14 @@ export default function OrcaproPage() {
     } catch (cause) { setError(message(cause)); }
   }
   async function logout() {
-    await apiFetch('/auth/logout', { method: 'POST' }).catch(() => undefined); window.location.assign('/login');
+    if (signingOut) return;
+    setSigningOut(true); setError('');
+    try { await endSession(); }
+    catch { setError('Não foi possível encerrar a sessão. Tente novamente.'); setSigningOut(false); }
   }
 
   if (loading) return <main className={styles.loading} aria-busy="true"><Calculator size={30} /><p>Validando sessão do OrçaPro…</p></main>;
-  if (!access) return <main className={styles.loading}><Calculator size={32} /><h1>OrçaPro</h1><p role="alert">{error}</p><Link href="/dashboard">Abrir Gestão de Prédios</Link><Link href="/programas">Escolher programa</Link></main>;
+  if (!access) return <main className={styles.loading}><Calculator size={32} /><h1>OrçaPro</h1><p role="alert">{error}</p><Link href="/orcapro/assinatura">Consultar minha assinatura</Link>{!ORCAPRO_ONLY ? <><Link href="/dashboard">Abrir Gestão de Prédios</Link><Link href="/programas">Escolher programa</Link></> : null}</main>;
 
   return <div className={styles.workspace}>
     <aside className={styles.sidebar}>
@@ -169,10 +175,10 @@ export default function OrcaproPage() {
         {access.role === 'ADMIN' ? <Link href="/orcapro/administracao"><ShieldCheck size={19} /> Gestão do SaaS</Link> : null}
         <Link href="/orcapro/assinatura">Minha assinatura</Link>
       </nav>
-      <footer><span className={styles.badge}>Sessão protegida · {access.role}</span><Link href="/programas"><Building2 size={16} /> Trocar programa</Link><button onClick={logout}><LogOut size={16} /> Sair</button></footer>
+      <footer><span className={styles.badge}>Sessão protegida · {access.role}</span>{!ORCAPRO_ONLY ? <Link href="/programas"><Building2 size={16} /> Trocar programa</Link> : null}<button disabled={signingOut} onClick={logout}><LogOut size={16} /> {signingOut ? 'Saindo…' : 'Sair'}</button></footer>
     </aside>
     <main className={styles.main}>
-      <header className={styles.topbar}><h1>{view === 'projects' ? 'Meus orçamentos' : view === 'catalog' ? 'Catálogo SINAPI' : 'Base de dados'}</h1><Link href="/programas">Gestão de Prédios / OrçaPro</Link></header>
+      <header className={styles.topbar}><h1>{view === 'projects' ? 'Meus orçamentos' : view === 'catalog' ? 'Catálogo SINAPI' : 'Base de dados'}</h1>{!ORCAPRO_ONLY ? <Link href="/programas">Gestão de Prédios / OrçaPro</Link> : <Link href="/orcapro">Voltar ao editor</Link>}</header>
       <div className={styles.content}>
         {error ? <p className={styles.error} role="alert">{error}</p> : null}
         {notice ? <p className={styles.notice} role="status">{notice}</p> : null}

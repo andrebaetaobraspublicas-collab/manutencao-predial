@@ -52,6 +52,9 @@ jobs:
       - name: Dependency security gate
         run: |
           node --test scripts/validate-dependency-audit.test.mjs
+          node --test apps/api/scripts/maintenance-deploy-seed.test.mjs scripts/verify-deployment-mirror.test.mjs
+          node --test scripts/hostinger/deployment-helpers.test.mjs
+          node --test scripts/frontend/product-config.spec.mjs
           mkdir -p artifacts
           npm audit --omit=dev --json > artifacts/dependency-audit.json || true
           node scripts/validate-dependency-audit.mjs artifacts/dependency-audit.json

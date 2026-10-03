@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
+import { endSession } from '@/lib/end-session';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
@@ -88,6 +89,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<CurrentSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -119,9 +122,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   async function logout() {
-    await apiFetch<void>('/auth/logout', { method: 'POST' }).catch(() => undefined);
-    router.replace('/login');
-    router.refresh();
+    if (signingOut) return;
+    setSigningOut(true); setLogoutError('');
+    try { await endSession(); }
+    catch { setLogoutError('Não foi possível encerrar a sessão. Tente novamente.'); setSigningOut(false); }
   }
 
   if (loading) return <LoadingPanel label="Validando sua sessão…" />;
@@ -216,12 +220,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
             <NotificationBell />
             <span className="badge success topbar-label"><ShieldCheck size={13} /> sessão protegida</span>
-            <button className="btn btn-ghost" type="button" onClick={logout}>
-              <LogOut size={16} /> <span className="topbar-label">Sair</span>
+            <button className="btn btn-ghost" type="button" disabled={signingOut} onClick={logout}>
+              <LogOut size={16} /> <span className="topbar-label">{signingOut ? 'Saindo…' : 'Sair'}</span>
             </button>
           </div>
         </header>
-        <main>{children}</main>
+        <main>{logoutError ? <p className="notice error" role="alert">{logoutError}</p> : null}{children}</main>
       </div>
     </div>
   );

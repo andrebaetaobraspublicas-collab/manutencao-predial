@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
+import { endSession } from '@/lib/end-session';
+import { ORCAPRO_ONLY } from '@/lib/product-config';
 import styles from './editor.module.css';
 import editorManifest from '../../../../public/orcapro-legacy/manifest.json';
 
@@ -13,6 +15,8 @@ export default function OrcaproEditorPage() {
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState('');
   const [admin, setAdmin] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
   useEffect(() => {
     let active = true;
     async function load() {
@@ -50,9 +54,17 @@ export default function OrcaproEditorPage() {
   const statusText = status === 'loading' ? 'Validando acesso…' : status === 'saving' ? 'Salvando…' : status === 'saved' ? 'Salvo no servidor'
     : status === 'conflict' ? 'Conflito de versão: revise antes de salvar' : status === 'error' ? 'Não foi possível salvar ou abrir' : 'Orçamento vinculado à referência SINAPI';
 
+  async function logout() {
+    if (signingOut || status === 'saving') return;
+    setSigningOut(true); setLogoutError('');
+    try { await endSession('/login?next=/orcapro'); }
+    catch { setLogoutError('Não foi possível encerrar a sessão. Tente novamente.'); setSigningOut(false); }
+  }
+
   return <main className={styles.editor}>
-    <header><Link href="/orcapro/gerenciar">← Meus orçamentos</Link><strong>OrçaPro</strong><span role="status" className={status === 'error' || status === 'conflict' ? styles.warning : ''}>{statusText}</span>{admin ? <Link className={styles.adminLink} href="/orcapro/administracao">Gestão do SaaS</Link> : null}<Link href="/orcapro/assinatura">Minha assinatura</Link><Link href="/programas">Trocar programa</Link></header>
+    <header><Link href="/orcapro/gerenciar">← Meus orçamentos</Link><strong>OrçaPro</strong><span role="status" className={status === 'error' || status === 'conflict' ? styles.warning : ''}>{statusText}</span>{admin ? <Link className={styles.adminLink} href="/orcapro/administracao">Gestão do SaaS</Link> : null}<Link href="/orcapro/assinatura">Minha assinatura</Link>{!ORCAPRO_ONLY ? <Link href="/programas">Trocar programa</Link> : null}<button className={styles.logout} type="button" disabled={signingOut || status === 'saving'} onClick={() => void logout()}>{signingOut ? 'Saindo…' : 'Sair'}</button></header>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
+    {logoutError ? <p className={styles.error} role="alert">{logoutError}</p> : null}
     {projectId ? <iframe id="orcapro-editor" title="OrçaPro — editor de orçamento de obras" src={`/orcapro-legacy/editor.html?project=${encodeURIComponent(projectId)}&v=${editorManifest.editorSha256}`} allow="clipboard-write" />
       : <div className={styles.empty}><h1>OrçaPro</h1><p>{statusText}</p><Link href="/orcapro/gerenciar">Abrir lista de orçamentos</Link></div>}
   </main>;

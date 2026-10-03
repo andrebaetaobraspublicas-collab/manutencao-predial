@@ -8,6 +8,12 @@ A hospedagem gerenciada de aplicações Node.js da Hostinger pode ser usada em u
 
 ## 2. Topologia de produção
 
+Desde 03/10/2026, `gestaodepredios.com.br` é o ambiente de **desenvolvimento**.
+A produção comercial OrçaPro usa `sistema.orcaproobras.com.br`, API própria,
+banco novo restaurado e uploads isolados. O diagrama e exemplos anteriores abaixo
+descrevem o piloto original. A configuração atual e o procedimento de migração estão
+em [orcapro-production-migration.md](orcapro-production-migration.md).
+
 ```text
 Internet
   └─ HTTPS
@@ -265,7 +271,7 @@ Fluxo de promoção:
 2. abrir PR para `main` e aguardar a CI de lint, testes e builds;
 3. revisar migration e compatibilidade de rollback quando houver mudança de banco;
 4. mesclar o PR aprovado em `main` e aguardar o auto-deploy dos dois Web Apps;
-5. o workflow `Promote Hostinger runtime` inclui o SHA da versão na branch técnica, confirma que
+5. o workflow `Promote Hostinger development runtime` inclui o SHA da versão na branch técnica, confirma que
    esse marcador chegou ao diretório `current`, grava o SHA no artefato, recicla somente o
    Passenger da API e valida `/health/ready`;
 6. considerar a promoção concluída somente quando `release` for igual ao SHA do merge e o banco
@@ -280,6 +286,10 @@ Segredos/variáveis exigidos no GitHub:
 - variables `HOSTINGER_SSH_HOST`, `HOSTINGER_SSH_PORT` e `HOSTINGER_SSH_USER`;
 - environment `production` (adicionar aprovação obrigatória quando houver outro responsável pelo
   piloto).
+
+O nome GitHub `production` é legado e continua guardando somente as credenciais desse
+ambiente de desenvolvimento. A produção OrçaPro utiliza o environment separado
+`orcapro-production` e o workflow manual `Promote OrçaPro commercial production`.
 
 O recycle é necessário porque o botão `Restart` do hPanel não substituiu o processo Passenger
 legado durante a promoção inicial da v0.9.0. O workflow limita o `pgrep` ao caminho exclusivo de

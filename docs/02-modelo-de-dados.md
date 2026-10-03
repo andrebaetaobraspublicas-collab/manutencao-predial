@@ -452,7 +452,7 @@ Exclusão é lógica no acesso OrçaPro: preserva User, memberships, catálogo e
 | `InfraSetting` | Preferências privadas por usuário/tenant/nome. |
 | `InfraPolicy` | Termos/privacidade globais do produto, texto/versionamento/editor administrativo. |
 | `InfraAudit` | Eventos locais, ator/tenant, entidade e payload sem segredos. Expurgo LGPD anonimiza conteúdo e referências pessoais de seu escopo. |
-| `InfraLoginAttempt` | Bucket HMAC, janela/contadores/bloqueio/datas; não persiste e-mail/IP em claro. Retenção de buckets antigos30dias. |
+| `InfraLoginAttempt` | Bucket HMAC, janela/contadores/bloqueio/datas; não persiste e-mail/IP em claro. Expurgo de buckets inativos por sete dias, preservando bloqueios vigentes. |
 
 Os IDs centrais são referências externas sem FKs entre bancos. O servidor valida User/TenantMembership centrais antes de conceder perfil. Nova identidade recebe `maintenanceAccess=false` e `OrcaproUserAccess(managed=true,enabled=false)`, preservando licenças independentes. A mudança de senha e revogação central incluem `AuditLog` transacional; perfil/password não são duplicados.
 

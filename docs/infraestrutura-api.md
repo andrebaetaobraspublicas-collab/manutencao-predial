@@ -10,6 +10,8 @@ Sessão central em cookies HttpOnly `gp_access` e `gp_refresh`. O servidor deriv
 
 O login específico tem `GET auth/csrf` e `POST auth/login` com `{email,password,tenantSlug?}`. Ambos exigem origem permitida; o POST precisa de `X-Infra-Login-CSRF` recebido no GET e do cookie próprio. Reutiliza a senha central. Mais de um vínculo Infraestrutura ativo exige selecionar organização. Cinco tentativas por minuto por IP/e-mail são persistidas com chaves HMAC; cinco falhas bloqueiam15 minutos. O retorno contém os cookies de sessão central.
 
+Enquanto `INFRA_ENABLED=true`, um interceptor global aplica os mesmos buckets às entradas de senha compartilhadas `/api/v1/auth/login` e `/api/v1/auth/orcapro/login`, incluindo alias `/api/v1/orcapro/auth/login`, maiúsculas e barra final. Trocar de rota não reinicia a quota ou o bloqueio. Esses clientes preservam seus corpos e cookies e precisam de `Origin` permitido; não recebem exigência de um novo cookie CSRF. A rota Infraestrutura já contabiliza a tentativa uma vez e fica fora do interceptor. Erros401 incrementam falhas; outros erros não apagam contadores. Com o produto desativado, o interceptor não consulta seu banco nem altera login dos programas existentes. Buckets HMAC inativos por sete dias são removidos pelo expurgo, preservando bloqueios ainda vigentes.
+
 `GET health` é público e devolve503 se o produto estiver desativado, sem banco disponível ou sem migration registrada. Não expõe nomes, credenciais ou erros SQL. Desabilitar o produto não muda a saúde dos outros módulos.
 
 ## Catálogo global e importação

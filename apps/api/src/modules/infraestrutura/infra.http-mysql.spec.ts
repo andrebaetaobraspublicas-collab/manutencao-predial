@@ -285,8 +285,16 @@ suite('Infraestrutura HTTP/MySQL — autorização, histórico e conflito', () =
     await send(future, 'delete', '/api/v1/infraestrutura/me/data').send({ confirm: 'EXCLUIR MEUS DADOS' }).expect(200);
     await db.query('UPDATE InfraUser SET erasure_requested_at=? WHERE external_user_id=? AND tenant_id=?', [new Date(Date.now() - 31 * 86400000), due.principal.userId, due.principal.tenantId]);
     await db.query('UPDATE InfraUser SET erasure_requested_at=? WHERE external_user_id=? AND tenant_id=?', [new Date(Date.now() - 5 * 86400000), future.principal.userId, future.principal.tenantId]);
+    const staleBucket = sha(`stale-${randomUUID()}`), blockedBucket = sha(`blocked-${randomUUID()}`), recentBucket = sha(`recent-${randomUUID()}`);
+    const eightDaysAgo = new Date(Date.now() - 8 * 86400000), oneDayAgo = new Date(Date.now() - 86400000);
+    for (const fixture of [{ key: staleBucket, seen: eightDaysAgo, block: null }, { key: blockedBucket, seen: eightDaysAgo, block: new Date(Date.now() + 3600000) }, { key: recentBucket, seen: oneDayAgo, block: null }]) {
+      await db.query('INSERT INTO InfraLoginAttempt(bucket_key,window_started_at,attempts,failures,blocked_until,last_seen_at) VALUES(?,?,1,1,?,?)', [fixture.key, fixture.seen, fixture.block, fixture.seen]);
+    }
     const cli = await promisify(execFile)(process.execPath, [join(__dirname, '../../../scripts/infraestrutura-purge.mjs')], { cwd: join(__dirname, '../../..'), windowsHide: true, env: { ...process.env, INFRA_ENV_FILE: '', INFRA_ENABLED: 'true', INFRA_DATABASE_URL: supplied!, DATABASE_URL: 'mysql://unused:unused@127.0.0.1:3308/identity_not_opened', INFRA_DELETED_DATA_RETENTION_DAYS: '30' } });
     expect(JSON.parse(cli.stdout).erasedProfiles).toBeGreaterThanOrEqual(1);
+    expect(JSON.parse(cli.stdout).expiredLoginBuckets).toBeGreaterThanOrEqual(1);
+    const retainedBuckets = await db.query<Array<{ bucket_key: string }>>('SELECT bucket_key FROM InfraLoginAttempt WHERE bucket_key IN (?,?,?)', [staleBucket, blockedBucket, recentBucket]);
+    expect(retainedBuckets.map(row => row.bucket_key).sort()).toEqual([blockedBucket, recentBucket].sort());
     expect(await db.query('SELECT id FROM InfraUser WHERE external_user_id=? AND tenant_id=?', [commonId, due.principal.tenantId])).toHaveLength(0);
     expect(await db.query('SELECT id FROM InfraProject WHERE id=?', [dueProject.id])).toHaveLength(0);
     expect(await db.query('SELECT project_id FROM InfraProjectVersion WHERE project_id=?', [dueProject.id])).toHaveLength(0);

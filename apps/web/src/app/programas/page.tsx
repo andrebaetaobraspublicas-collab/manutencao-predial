@@ -147,7 +147,7 @@ export default function ProgramsPage() {
             <span className={styles.icon}><Building2 size={28} /></span>
             <h2>Gestão de Prédios</h2>
             <p>Organize ordens de serviço, edificações, contratos e a execução da manutenção predial.</p>
-            <span className={styles.status}>{session.maintenanceAccess === false ? 'Este acesso inclui somente o OrçaPro.' : 'Disponível para sua organização.'}</span>
+            <span className={styles.status}>{session.maintenanceAccess === false ? 'Acesso à manutenção não contratado.' : 'Disponível para sua organização.'}</span>
             {session.maintenanceAccess !== false ? <Link className="btn btn-primary" href="/dashboard">
               Acessar Gestão de Prédios <ArrowRight size={16} />
             </Link> : <button className="btn btn-secondary" disabled>Acesso não contratado</button>}

@@ -28,7 +28,10 @@ export async function purgePersonalData(pool,environment = process.env) {
       await db.query('INSERT INTO InfraAudit(id,tenant_id,user_id,action,entity,entity_id,payload) VALUES(?,?,?,?,?,?,?)',[randomUUID(),'00000000-0000-0000-0000-000000000000',anonymous,'lgpd.erasure.completed','anonymous-account',anonymous,JSON.stringify({ retentionDays: days,globalCatalogPreserved: true,sharedIdentityPreserved: true,minimumAnonymousAudit: true })]);
       total++;
     }
-    await db.commit(); return { erasedProfiles: total,retentionDays: days };
+    // Login buckets are ephemeral HMAC metadata. Retain current windows and
+    // every unexpired block; remove only records inactive for seven days.
+    const counters = await db.query('DELETE FROM InfraLoginAttempt WHERE last_seen_at<DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 7 DAY) AND (blocked_until IS NULL OR blocked_until<UTC_TIMESTAMP(3))');
+    await db.commit(); return { erasedProfiles: total,retentionDays: days,expiredLoginBuckets: Number(counters.affectedRows) };
   } catch (error) { await db.rollback().catch(() => {}); throw error; }
   finally { db.release(); }
 }

@@ -19,7 +19,7 @@ test('defaults protege aspas e nunca permite injeção de nova opção', () => {
   assert.ok(ini.includes('password="p\\"\\\\@ss"'));
   assert.throws(() => databaseConfig('mysql://infra:p%0Aevil@localhost/db'), /caracteres/);
   assert.throws(() => databaseConfig('mysql://infra:p@localhost/--all-databases'), /obrigatórios/);
-  assert.throws(() => privateDirectory('C:/hosting/public_html/backups'), /público/);
+  assert.throws(() => privateDirectory(join(tmpdir(), 'infra-hosting-test', 'public_html', 'backups')), /público/);
   assert.throws(() => privateDirectory('relative/backups'), /absoluto/);
 });
 

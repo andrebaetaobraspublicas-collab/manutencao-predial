@@ -295,6 +295,23 @@ O recycle é necessário porque o botão `Restart` do hPanel não substituiu o p
 legado durante a promoção inicial da v0.9.0. O workflow limita o `pgrep` ao caminho exclusivo de
 `api.gestaodepredios.com.br` e falha se o SHA público não corresponder ao merge.
 
+Antes de gravar o marcador e reciclar a API de desenvolvimento, o workflow prepara o startup
+com `scripts/hostinger/prepare-development-runtime.sh`. O helper valida a conta e a resolução
+do runtime dentro de `hbuilds/versions`, exige o arquivo privado `hbuilds/config/.env` regular,
+legível, pertencente à conta e sem acesso de grupo/outros, e cria um link `.env` somente quando
+ausente. Um arquivo ou link conflitante interrompe a promoção. O wrapper
+`orcapro-hostinger-main.cjs` interpreta esse arquivo com dotenv e substitui apenas as chaves
+nele presentes, preservando `PORT` quando fornecida pelo Passenger. Isso evita que aspas
+literais injetadas pelo provedor prevaleçam sobre a configuração. A ausência do arquivo impede
+o startup. A troca afeta somente a diretiva `PassengerStartupFile`, com backup privado da rota;
+nenhum seed, dado ou segredo é alterado pelo helper.
+
+Na promoção comercial, os comandos de build usam dois workers Tokio, um worker libuv e um
+worker V8, conservando outros parâmetros e preloads de `NODE_OPTIONS`. A execução de migrations
+tem limite de dez minutos, com TERM e mais trinta segundos antes de KILL. Uma falha ocorre
+antes da troca do ponteiro do runtime; conferir o ledger e os logs antes de repetir a promoção.
+As conexões SSH enviam keepalive a cada quinze segundos durante os comandos demorados.
+
 Não versionar segredos. As variáveis continuam administradas separadamente em cada Web App. Como
 os dois serviços acompanham a mesma branch, qualquer commit em `main`, inclusive documentação,
 pode iniciar os dois builds. Para rollback de código, usar um novo commit de reversão em `main` ou

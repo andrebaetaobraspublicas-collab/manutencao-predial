@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { LoadingPanel } from '@/components/loading';
 import { apiFetch, ApiError } from '@/lib/api';
-import { exitDestination, loginDestination, ORCAPRO_ONLY, PRODUCT_DOMAIN, PRODUCT_NAME, type LoginDestination } from '@/lib/product-config';
+import { authenticatedLoginDestination, exitDestination, loginConfiguration, loginDestination, ORCAPRO_ONLY, PRODUCT_DOMAIN, PRODUCT_NAME, type LoginDestination } from '@/lib/product-config';
 
 function LoginContent() {
   const router = useRouter();
@@ -20,27 +20,28 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const login = loginConfiguration(destination);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setError('');
     try {
-      const session = await apiFetch<{ user: { maintenanceAccess?: boolean } }>(ORCAPRO_ONLY ? '/auth/orcapro/login' : '/auth/login', {
+      const session = await apiFetch<{ user: { maintenanceAccess?: boolean } }>(login.endpoint, {
         method: 'POST',
-        body: JSON.stringify(ORCAPRO_ONLY ? { email, password } : { tenantSlug, email, password }),
+        body: JSON.stringify(login.requiresOrganization ? { tenantSlug, email, password } : { email, password }),
       });
       setPassword('');
-      let next: string = destination === '/dashboard' && session.user.maintenanceAccess === false ? '/programas' : destination;
-      if (destination === '/orcapro') {
+      let orcaproEnabled = false;
+      if (login.destination === '/orcapro') {
         try {
           const access = await apiFetch<{ enabled: boolean }>('/orcapro/access');
-          if (access.enabled !== true) next = ORCAPRO_ONLY ? '/orcapro/assinatura' : '/programas';
+          orcaproEnabled = access.enabled === true;
         } catch {
-          next = ORCAPRO_ONLY ? '/orcapro/assinatura' : '/programas';
+          orcaproEnabled = false;
         }
       }
-      router.replace(next);
+      router.replace(authenticatedLoginDestination(login.destination, { maintenanceAccess: session.user.maintenanceAccess, orcaproEnabled }));
       router.refresh();
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Não foi possível acessar o sistema.');
@@ -70,11 +71,11 @@ function LoginContent() {
 
       <section className="login-panel">
         <div className="login-card">
-          <h2>{ORCAPRO_ONLY ? 'Entrar no OrçaPro' : 'Acesse sua organização'}</h2>
-          <p>{ORCAPRO_ONLY ? 'Use o e-mail e a senha da sua conta.' : 'Informe o identificador da empresa e suas credenciais pessoais.'}</p>
-          {ORCAPRO_ONLY ? <p>Se você contratou diretamente, use o e-mail e a senha cadastrados pelo administrador.</p> : null}
+          <h2>{login.requiresOrganization ? 'Acesse sua organização' : 'Entrar no OrçaPro'}</h2>
+          <p>{login.requiresOrganization ? 'Informe o identificador da empresa e suas credenciais pessoais.' : 'Use o e-mail e a senha da sua conta. Não é necessário informar a organização.'}</p>
+          {!login.requiresOrganization ? <p>Se você contratou diretamente, use o e-mail e a senha cadastrados pelo administrador.</p> : null}
           <form className="login-form" onSubmit={handleSubmit}>
-            {!ORCAPRO_ONLY ? <><div className="field">
+            {!ORCAPRO_ONLY ? <div className="field">
               <label htmlFor="program">Programa</label>
               <select
                 className="select"
@@ -87,8 +88,8 @@ function LoginContent() {
                 <option value="/orcapro">OrçaPro — orçamentos de obras</option>
                 <option value="/programas">Escolher após entrar</option>
               </select>
-            </div>
-            <div className="field">
+            </div> : null}
+            {login.requiresOrganization ? <div className="field">
               <label htmlFor="tenantSlug">Organização</label>
               <input
                 className="input"
@@ -98,7 +99,7 @@ function LoginContent() {
                 autoComplete="organization"
                 required
               />
-            </div></> : null}
+            </div> : null}
             <div className="field">
               <label htmlFor="email">E-mail</label>
               <input
@@ -140,7 +141,7 @@ function LoginContent() {
               <LogIn size={18} /> {submitting ? 'Entrando…' : 'Entrar'}
             </button>
             <Link className="auth-link" href="/esqueci-senha">Esqueci minha senha</Link>
-            {ORCAPRO_ONLY ? <Link className="auth-link" href="/orcapro/cadastro">Ainda não tenho conta · Assinar o OrçaPro</Link> : null}
+            {!login.requiresOrganization ? <Link className="auth-link" href="/orcapro/cadastro">Ainda não tenho conta · Assinar o OrçaPro</Link> : null}
             {ORCAPRO_ONLY ? <button className="auth-link auth-cancel" type="button" disabled={submitting} onClick={() => window.location.assign(exitDestination())}>Cancelar e voltar ao site</button> : null}
           </form>
         </div>

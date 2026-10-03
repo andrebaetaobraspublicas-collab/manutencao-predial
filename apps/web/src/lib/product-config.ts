@@ -31,6 +31,24 @@ export function loginDestination(value: string | null, orcaproOnly = ORCAPRO_ONL
   return value === '/orcapro' || value === '/programas' ? value : '/dashboard';
 }
 
+export function loginConfiguration(destination: LoginDestination, orcaproOnly = ORCAPRO_ONLY) {
+  const target = loginDestination(destination, orcaproOnly);
+  const requiresOrganization = target !== '/orcapro';
+  return {
+    destination: target,
+    requiresOrganization,
+    endpoint: requiresOrganization ? '/auth/login' : '/auth/orcapro/login',
+  };
+}
+
+export function authenticatedLoginDestination(
+  destination: LoginDestination,
+  access: { maintenanceAccess?: boolean; orcaproEnabled?: boolean },
+): LoginDestination | '/orcapro/assinatura' {
+  if (destination === '/orcapro') return access.orcaproEnabled === true ? '/orcapro' : '/orcapro/assinatura';
+  return destination === '/dashboard' && access.maintenanceAccess === false ? '/programas' : destination;
+}
+
 export function exitDestination(fallback = '/login', config = product): string {
   return config.orcaproOnly && config.marketingUrl ? config.marketingUrl : fallback;
 }

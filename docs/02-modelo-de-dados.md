@@ -393,6 +393,10 @@ Campos extensos BDI/IVA/EAP/cronogramas/memórias permanecem no documento privad
 
 Toda consulta operacional OrçaPro inclui tenant e proprietário autenticados; consultas globais SINAPI não recebem tenant. Imports/publicação/default/clonagem/snapshots usam transações. O contrato e evidências detalhados estão em [orcapro-api.md](orcapro-api.md).
 
+## Análises de riscos OrçaPro no documento versionado
+
+`OrcaproProject.data.risks` guarda análises privadas de Monte Carlo/tornado na forma `{v:1,analyses:[]}`, incluindo fotografia, contexto referência × UF × regime, SHA-256, premissas, semente, resumo, versão do motor e memória do BDI anterior/novo. Usa `OrcaproProjectVersion` e `OrcaproAudit` existentes; não cria tabela, migration ou catálogo SINAPI por usuário. Campo gerenciado exclusivamente pelas rotas de riscos. Custos da fotografia são strings de centavos; contingência e taxa final são reconciliadas com Decimal. [Detalhes e rollback](orcapro-risks.md).
+
 ## 16. Administração SaaS e assinatura individual OrçaPro
 
 Migration aditiva `20261002193000_orcapro_saas_management`, conforme [ADR 0008](adr/0008-orcapro-assinatura-individual.md).

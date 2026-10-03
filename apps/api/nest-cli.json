@@ -5,7 +5,8 @@
   "compilerOptions": {
     "deleteOutDir": true,
     "assets": [
-      { "include": "modules/orcapro/legacy/assets/**/*", "watchAssets": true }
+      { "include": "modules/orcapro/legacy/assets/**/*", "watchAssets": true },
+      { "include": "modules/orcapro/risks/assets/**/*", "watchAssets": true }
     ]
   }
 }

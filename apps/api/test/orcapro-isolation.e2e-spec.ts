@@ -237,4 +237,45 @@ describe('OrçaPro — MySQL, referências e isolamento HTTP', () => {
     await b.agent.post(`/api/v1/orcapro/projects/${projectId}/unarchive`).set('Origin', ORIGIN).send({ expectedVersion: row.version }).expect(201);
     await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
   });
+
+  it('versiona riscos privados, simula e recalcula BDI sem aceitar taxas do cliente',async()=>{
+    const created=await b.agent.post('/api/v1/orcapro/projects').set('Origin',ORIGIN).send({name:'Riscos HTTP',referenceId:ref1,uf:'SP',regime:'SD',data:{bdi:0.25,bdi2:0.1,root:{id:'root',kind:'stage',name:'Obra',children:[{id:'service',kind:'item',code:991003,resourceType:'C',qty:1}]}}}).expect(201);
+    let project=created.body;const path=`/api/v1/orcapro/projects/${project.id}/risks`;
+    await request(app.getHttpServer()).post(path).set('Origin',ORIGIN).send({expectedVersion:1,name:'Risco'}).expect(401);
+    await a.agent.post(path).set('Origin',ORIGIN).send({expectedVersion:1,name:'Risco'}).expect(404);
+    const made=await b.agent.post(path).set('Origin',ORIGIN).send({expectedVersion:1,name:'Análise P80'}).expect(201);project=made.body.project;const riskId=made.body.riskId,route=path+'/'+riskId;
+    expect(project.data.risks.analyses[0].snapshot.baseCents).toBe('700');
+    await b.agent.post(path).set('Origin',ORIGIN).send({expectedVersion:1,name:'Conflito'}).expect(409);
+    await a.agent.post(route+'/simulate').set('Origin',ORIGIN).send({expectedVersion:project.version}).expect(404);
+    await b.agent.post(route+'/simulate').set('Origin','https://untrusted.example').send({expectedVersion:project.version}).expect(403);
+    await b.agent.post(route+'/simulate').set('Origin',ORIGIN).send({expectedVersion:project.version,tenantId:a.tenantId}).expect(400);
+    const cfg=project.data.risks.analyses[0].config;cfg.iterations=1000;cfg.variables[0]={...cfg.variables[0],min:10,mode:10,max:10,distribution:'fixo'};
+    const own=await a.agent.post('/api/v1/orcapro/projects').set('Origin',ORIGIN).send({name:'Mesmo tenant riscos',referenceId:ref1,uf:'SP',regime:'SD',data:created.body.data}).expect(201);
+    await sameTenant.post(`/api/v1/orcapro/projects/${own.body.id}/risks`).set('Origin',ORIGIN).send({expectedVersion:own.body.version,name:'Negado'}).expect(404);
+    const configured=await b.agent.put(route).set('Origin',ORIGIN).send({expectedVersion:project.version,config:cfg}).expect(200);project=configured.body.project;
+    const sim=await b.agent.post(route+'/simulate').set('Origin',ORIGIN).send({expectedVersion:project.version}).expect(201);project=sim.body.project;
+    expect(project.data.risks.analyses[0].result.contingencyCents).toBe('70');expect(Number(project.data.risks.analyses[0].result.rate)).toBe(0.1);
+    const forged=structuredClone(project.data);forged.risks.analyses[0].result.rate='5';
+    await b.agent.put(`/api/v1/orcapro/projects/${project.id}`).set('Origin',ORIGIN).send({expectedVersion:project.version,data:forged}).expect(400);
+    const {loadLegacyRuntime}=await import('../src/modules/orcapro/legacy/legacy-runtime');
+    const runtime=loadLegacyRuntime(),computed=runtime.calculateProject(rawBase('01'),project.data);
+    for(const method of ['param','exato','simples']){
+      const preview=await b.agent.post(route+'/bdi-preview').set('Origin',ORIGIN).send({expectedVersion:project.version,method,mode:'replace'}).expect(201);
+      const bdi=runtime.OP.bdiui,c=bdi.defaultsFor(computed.model.tot);c[method][method==='exato'?'risco':'r']=0.1;
+      expect(preview.body.newBdi).toBe(bdi.valorAplicado(c,bdi.M[method].calc(c).bdi));expect(preview.body.rate).toBe('0.1000000000');
+    }
+    await b.agent.post(route+'/bdi-apply').set('Origin',ORIGIN).send({expectedVersion:project.version,method:'param',mode:'replace'}).expect(400);
+    const applied=await b.agent.post(route+'/bdi-apply').set('Origin',ORIGIN).send({expectedVersion:project.version,method:'param',mode:'replace',reason:'Riscos alocados ao contratado; P80'}).expect(201);project=applied.body.project;
+    expect(project.data.bdiCfg.param.r).toBe(0.1);expect(project.data.bdi2).toBe(0.1);expect(project.data.risks.analyses[0].applications).toHaveLength(1);
+    expect(await prisma.orcaproAudit.count({where:{tenantId:b.tenantId,entityId:project.id,action:'risk.bdi.apply'}})).toBe(1);
+    await b.agent.post(route+'/bdi-preview').set('Origin',ORIGIN).send({expectedVersion:project.version,method:'param',mode:'add'}).expect(409);
+    await b.agent.post(route+'/bdi-preview').set('Origin',ORIGIN).send({expectedVersion:project.version,method:'param',mode:'add',confirmDoubleCounting:true}).expect(201);
+    const changed=structuredClone(project.data);changed.root.children[0].qty=2;
+    const saved=await b.agent.put(`/api/v1/orcapro/projects/${project.id}`).set('Origin',ORIGIN).send({expectedVersion:project.version,data:changed}).expect(200);project=saved.body;
+    await b.agent.post(route+'/bdi-preview').set('Origin',ORIGIN).send({expectedVersion:project.version,method:'param',mode:'replace'}).expect(409);
+    const historic=await b.agent.post(route+'/simulate').set('Origin',ORIGIN).send({expectedVersion:project.version}).expect(201);
+    expect(historic.body.project.data.risks.analyses[0].result.contingencyCents).toBe('70');
+    const cloned=await b.agent.post('/api/v1/orcapro/projects').set('Origin',ORIGIN).send({name:'Cópia sem fotografia órfã',referenceId:ref1,uf:'SP',regime:'SD',data:historic.body.project.data}).expect(201);
+    expect(cloned.body.data.risks).toBeUndefined();
+  });
 });

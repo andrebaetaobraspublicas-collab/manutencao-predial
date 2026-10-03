@@ -19,12 +19,17 @@ test('derived ID/revision sinks escape HTML and preserve safe IDs', () => {
 test('generated editor scripts compile and bridge is outside report template literals', () => {
   const html = fs.readFileSync(path.join(root, 'apps/web/public/orcapro-legacy/editor.html'), 'utf8');
   const bridge = html.lastIndexOf('<script>(function installOrcaProCloud');
+  const risks = html.lastIndexOf('<script>window.installOrcaProRisks');
   const mainStart = html.indexOf('<script>window.OP_FONTS');
-  const mainEnd = html.lastIndexOf('</script>', bridge);
+  const mainEnd = html.lastIndexOf('</script>', risks);
+  const riskEnd = html.lastIndexOf('</script>', bridge);
   const bodyEnd = html.lastIndexOf('</body>');
   assert.ok(mainStart > 0 && mainEnd > mainStart && bridge > mainEnd && bodyEnd > bridge);
   assert.ok(!html.includes('id="op-base"'));
   assert.ok(!html.includes('${r.id}'));
   new vm.Script(html.slice(mainStart + '<script>'.length, mainEnd));
+  assert.ok(risks>mainEnd && riskEnd>risks && bridge>riskEnd);
+  assert.ok(html.includes("['reforma', 'Reforma Tributária', 'pct'], ['risks', 'Riscos e contingências', 'flag'],"));
+  new vm.Script(html.slice(risks + '<script>'.length, riskEnd));
   new vm.Script(html.slice(bridge + '<script>'.length, html.lastIndexOf('</script>')));
 });

@@ -21,7 +21,7 @@ function setup(fetch) {
   OP.app.base = { raw: { ref: '08/2026' }, nComp: 0 };
   const context = { OP, fetch, URL, URLSearchParams, location: { origin: 'https://example.test', search: '?project=' + id },
     document: { addEventListener() {}, getElementById: () => null }, addEventListener() {},
-    parent: { postMessage: (data, origin) => messages.push({ data, origin }) }, localStorage: {}, console };
+    parent: { postMessage: (data, origin) => messages.push({ data, origin }) }, localStorage: {}, console, setTimeout, clearTimeout };
   context.window = context;
   vm.createContext(context);
   vm.runInContext('(' + source + ')("https://api.example.test/api/v1")', context);
@@ -193,4 +193,13 @@ test('own JSON imports reject unsafe fields before mutating the current document
   assert.equal(fixture.OP.cloud.safeUrl('javascript:alert(1)'), '#');
   assert.equal(fixture.OP.cloud.safeUrl('data:text/html,<script>'), '#');
   assert.equal(fixture.OP.cloud.safeUrl('https://reference.example/manual.pdf'), 'https://reference.example/manual.pdf');
+});
+
+test('risk snapshot flush includes debounced edits and server acceptance cancels stale autosaves',async()=>{
+  const bodies=[];const fixture=setup(async(_,options)=>{const body=JSON.parse(options.body);bodies.push(body);return json({id,referenceId:'reference-1',version:body.expectedVersion+1,data:body.data});});
+  attachBase(fixture);const {OP}=fixture;
+  OP.ui.later('pending-cost',()=>{OP.app.pj.name='Edited before snapshot';OP.ui.saveSoon();},10000);
+  await OP.cloud.flush();assert.equal(bodies.length,1);assert.equal(bodies[0].data.name,'Edited before snapshot');
+  OP.cloud.acceptProject({id,referenceId:'reference-1',version:6,data:{...OP.app.pj,risks:{v:1,analyses:[]}}});
+  await OP.cloud.flush();assert.equal(bodies.length,1);assert.equal(OP.cloud.wrapper.version,6);
 });

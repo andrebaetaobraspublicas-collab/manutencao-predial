@@ -7,6 +7,27 @@ function installOrcaProCloud(API_BASE) {
   const state = O.cloud = { access: null, wrapper: null, raw: null, ready: false,
     saving: false, conflict: false, lastSaved: '', error: null, catalog: {}, publication: null, historicalFixedCodes: [], libraryVersions: {} };
   let refreshPromise = null, saveChain = Promise.resolve();
+  let autosaveTimer;
+  const pendingUi = new Map();
+  UI.later = (key,fn,ms=300) => {
+    clearTimeout(pendingUi.get(key)?.timer);
+    const task={fn};task.timer=setTimeout(()=>{pendingUi.delete(key);fn();},ms);pendingUi.set(key,task);
+  };
+  UI.saveSoon = () => {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => persist(projectDocument()).catch(() => {}),500);
+  };
+  state.flush = async () => {
+    // Apply pending quantity/cost/name edits before a financial snapshot.
+    for (const [key,task] of [...pendingUi]) {clearTimeout(task.timer);pendingUi.delete(key);task.fn();}
+    clearTimeout(autosaveTimer);return persist(projectDocument());
+  };
+  state.acceptProject = project => {
+    if (project.id !== projectId || project.referenceId !== state.wrapper.referenceId) throw new Error('Resposta de orçamento divergente.');
+    state.wrapper=project; A.pj=clone(project.data); O.engine.fix(A.pj); A.inputs=[];A.customs=[];N.hydrate(A.pj);
+    A.model=null; O.iva.invalidate(); state.lastSaved=JSON.stringify(projectDocument());
+    state.error=null;A.saveError=false;notifyParent('saved');
+  };
 
   function notifyParent(status, message = '') {
     if (window.parent !== window && typeof window.parent?.postMessage === 'function') {
@@ -596,6 +617,7 @@ function installOrcaProCloud(API_BASE) {
   state.request = request; state.persist = persist; state.mergeRaw = mergeRaw; state.loadCodes = loadCodes;
   state.refreshLibrary = refreshLibrary; state.useLibrary = useLibrary;
   state.loadGroup = loadGroup;
+  if (typeof window.installOrcaProRisks === 'function') window.installOrcaProRisks();
   if (document.getElementById('app')) boot().catch((error) => {
     state.error = error;
     notifyParent('error', error.message);

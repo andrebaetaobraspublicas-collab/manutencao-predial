@@ -412,6 +412,21 @@ O cliente Stripe da assinatura individual é distinto do cliente da organizaçã
 
 Contas anteriores sem assinatura e sem managed preservam acesso. Cadastro administrativo recebe teste individual de 30 dias; nenhum plano pago é criado automaticamente. ACTIVE/MANUAL_CONTRACT admitem validade futura ou sem vencimento; TRIALING exige fim futuro; vencimento e inadimplência bloqueiam rotas operacionais, preservando a área de renovação. Administradores globais configurados são protegidos e dispensados de licença comercial.
 
-Todas as criações de identidade pelas rotas de registro, cadastro e convite da manutenção também criam managed=true e teste individual de 30 dias, sem modificar o contrato da manutenção. Vincular uma conta já existente não reinicia seu período. Novas rotas de criação de User devem preservar essa invariante; ausência de licença/grant fica reservada às contas anteriores e fixtures de seed, sem abrir um cadastro alternativo com acesso comercial ilimitado.
+Todas as criações de identidade pelas rotas de registro, cadastro e convite da manutenção também criam managed=true e teste individual de 30 dias, sem modificar o contrato da manutenção. Vincular uma conta já existente não reinicia seu período. Novas rotas de criação de User devem preservar managed=true e licença explícita; ausência de licença/grant fica reservada às contas anteriores e fixtures de seed, sem abrir um cadastro alternativo com acesso comercial ilimitado. O cadastro online exclusivo usa a licença pendente descrita abaixo.
+
+O cadastro online exclusivo OrçaPro é uma contratação pendente: cria `managed=true`, tenant próprio
+com slug gerado no servidor, vínculo REQUESTER com `maintenanceAccess=false` e assinatura individual
+`UNPAID`, `billingSource=STRIPE`, sem período gratuito. Não cria `TenantSubscription` da manutenção.
+Somente o webhook válido (ou uma concessão manual auditada) libera o orçamento. Falha posterior do
+Checkout preserva a conta para retomada autenticada. Email único e transação impedem duplicatas e
+tenants órfãos. O login por email usa o tenant de origem da licença, sem troca arbitrária de organização.
+Nenhuma alteração de schema é necessária para esse fluxo. Espelhar o banco não autoriza compartilhar
+cobranças: chaves, preços, eventos e recursos Stripe devem corresponder ao TEST/LIVE de cada ambiente.
+O Portal do Cliente também pode usar uma configuração exclusiva por ambiente, identificada pela
+variável `ORCAPRO_STRIPE_PORTAL_CONFIGURATION_ID`, sem nova tabela nem mudança na configuração
+padrão da conta Stripe. O serviço confere o modo e a atividade da configuração e da sessão retornada.
+`ORCAPRO_ONLY=true` na API comercial bloqueia o cadastro público da manutenção antes de qualquer
+mutação. O flag não altera linhas espelhadas, memberships históricos, senhas ou concessões manuais;
+o desenvolvimento com os dois programas mantém `ORCAPRO_ONLY=false`.
 
 Exclusão é lógica no acesso OrçaPro: preserva User, memberships, catálogo e orçamentos. Senha é compartilhada; redefinição administrativa invalida todos os JWT/refresh e tokens de recuperação da conta, com auditoria sem senha/hash. Tenant CANCELED representa cobrança da manutenção: contas OrçaPro contratadas podem autenticar com maintenanceAccess efetivo false. SUSPENDED/DELETED organizacional continua bloqueando ambos.

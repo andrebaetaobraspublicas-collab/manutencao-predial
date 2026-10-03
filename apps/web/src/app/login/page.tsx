@@ -1,26 +1,21 @@
 'use client';
 
-import { Building2, Eye, EyeOff, LogIn } from 'lucide-react';
+import { Building2, Calculator, Eye, EyeOff, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { LoadingPanel } from '@/components/loading';
 import { apiFetch, ApiError } from '@/lib/api';
-
-type LoginDestination = '/dashboard' | '/orcapro' | '/programas';
-
-function safeDestination(value: string | null): LoginDestination {
-  return value === '/orcapro' || value === '/programas' ? value : '/dashboard';
-}
+import { exitDestination, loginDestination, ORCAPRO_ONLY, PRODUCT_DOMAIN, PRODUCT_NAME, type LoginDestination } from '@/lib/product-config';
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [destination, setDestination] = useState<LoginDestination>(
-    () => safeDestination(searchParams.get('next')),
+    () => loginDestination(searchParams.get('next')),
   );
-  const [tenantSlug, setTenantSlug] = useState('demonstracao');
-  const [email, setEmail] = useState('admin@gestaodepredios.com.br');
+  const [tenantSlug, setTenantSlug] = useState(ORCAPRO_ONLY ? '' : 'demonstracao');
+  const [email, setEmail] = useState(ORCAPRO_ONLY ? '' : 'admin@gestaodepredios.com.br');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -31,18 +26,18 @@ function LoginContent() {
     setSubmitting(true);
     setError('');
     try {
-      const session = await apiFetch<{ user: { maintenanceAccess?: boolean } }>('/auth/login', {
+      const session = await apiFetch<{ user: { maintenanceAccess?: boolean } }>(ORCAPRO_ONLY ? '/auth/orcapro/login' : '/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ tenantSlug, email, password }),
+        body: JSON.stringify(ORCAPRO_ONLY ? { email, password } : { tenantSlug, email, password }),
       });
       setPassword('');
-      let next = destination === '/dashboard' && session.user.maintenanceAccess === false ? '/programas' : destination;
+      let next: string = destination === '/dashboard' && session.user.maintenanceAccess === false ? '/programas' : destination;
       if (destination === '/orcapro') {
         try {
           const access = await apiFetch<{ enabled: boolean }>('/orcapro/access');
-          if (access.enabled !== true) next = '/programas';
+          if (access.enabled !== true) next = ORCAPRO_ONLY ? '/orcapro/assinatura' : '/programas';
         } catch {
-          next = '/programas';
+          next = ORCAPRO_ONLY ? '/orcapro/assinatura' : '/programas';
         }
       }
       router.replace(next);
@@ -55,37 +50,37 @@ function LoginContent() {
   }
 
   return (
-    <main className="login-page">
+    <main className={`login-page${ORCAPRO_ONLY ? ' orcapro-auth' : ''}`}>
       <section className="login-visual" aria-label="Apresentação do sistema">
         <div className="login-logo">
-          <div className="brand-mark"><Building2 size={26} /></div>
-          <div><strong>Gestão de Prédios</strong><small>gestaodepredios.com.br</small></div>
+          <div className="brand-mark">{ORCAPRO_ONLY ? <Calculator size={26} /> : <Building2 size={26} />}</div>
+          <div><strong>{PRODUCT_NAME}</strong><small>{PRODUCT_DOMAIN}</small></div>
         </div>
         <div className="login-message">
-          <h1>Uma conta. Dois programas.</h1>
+          <h1>{ORCAPRO_ONLY ? 'Da composição ao planejamento da obra.' : 'Uma conta. Dois programas.'}</h1>
           <p>
-            Gerencie a manutenção no Gestão de Prédios e prepare seus orçamentos de obras
-            no OrçaPro, com os acessos da sua organização.
+            {ORCAPRO_ONLY ? 'Prepare orçamentos com SINAPI, forme o BDI e planeje prazos, equipes e contingências em um só lugar.' : 'Gerencie a manutenção no Gestão de Prédios e prepare seus orçamentos de obras no OrçaPro, com os acessos da sua organização.'}
           </p>
         </div>
         <div className="login-feature-list">
-          <span>Gestão de Prédios</span><span>OrçaPro</span><span>Manutenção</span>
+          {!ORCAPRO_ONLY ? <><span>Gestão de Prédios</span><span>OrçaPro</span><span>Manutenção</span></> : <><span>BDI</span><span>Cronograma</span><span>Riscos e contingências</span></>}
           <span>Orçamentos de obras</span><span>SINAPI</span><span>Auditoria</span>
         </div>
       </section>
 
       <section className="login-panel">
         <div className="login-card">
-          <h2>Acesse sua organização</h2>
-          <p>Informe o identificador da empresa e suas credenciais pessoais.</p>
+          <h2>{ORCAPRO_ONLY ? 'Entrar no OrçaPro' : 'Acesse sua organização'}</h2>
+          <p>{ORCAPRO_ONLY ? 'Use o e-mail e a senha da sua conta.' : 'Informe o identificador da empresa e suas credenciais pessoais.'}</p>
+          {ORCAPRO_ONLY ? <p>Se você contratou diretamente, use o e-mail e a senha cadastrados pelo administrador.</p> : null}
           <form className="login-form" onSubmit={handleSubmit}>
-            <div className="field">
+            {!ORCAPRO_ONLY ? <><div className="field">
               <label htmlFor="program">Programa</label>
               <select
                 className="select"
                 id="program"
                 value={destination}
-                onChange={(event) => setDestination(safeDestination(event.target.value))}
+                onChange={(event) => setDestination(loginDestination(event.target.value))}
                 disabled={submitting}
               >
                 <option value="/dashboard">Gestão de Prédios — manutenção</option>
@@ -103,7 +98,7 @@ function LoginContent() {
                 autoComplete="organization"
                 required
               />
-            </div>
+            </div></> : null}
             <div className="field">
               <label htmlFor="email">E-mail</label>
               <input
@@ -145,6 +140,8 @@ function LoginContent() {
               <LogIn size={18} /> {submitting ? 'Entrando…' : 'Entrar'}
             </button>
             <Link className="auth-link" href="/esqueci-senha">Esqueci minha senha</Link>
+            {ORCAPRO_ONLY ? <Link className="auth-link" href="/orcapro/cadastro">Ainda não tenho conta · Assinar o OrçaPro</Link> : null}
+            {ORCAPRO_ONLY ? <button className="auth-link auth-cancel" type="button" disabled={submitting} onClick={() => window.location.assign(exitDestination())}>Cancelar e voltar ao site</button> : null}
           </form>
         </div>
       </section>

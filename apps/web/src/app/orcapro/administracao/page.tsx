@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { KeyRound, ShieldCheck, Users, CreditCard, ClipboardList, Calculator, Plus, Search, UserPlus, X } from 'lucide-react';
 import { apiFetch, ApiError } from '@/lib/api';
+import { endSession } from '@/lib/end-session';
+import { ORCAPRO_ONLY } from '@/lib/product-config';
 import styles from '../workspace.module.css';
 import css from './saas.module.css';
 
@@ -61,13 +63,14 @@ export default function SaasAdministrationPage() {
   async function saveSubscription(event: FormEvent) { event.preventDefault(); if (!subscriptionUser) return;
     await mutate(() => apiFetch(`/orcapro/admin/saas/users/${subscriptionUser.id}/subscription`, { method: 'PUT', body: JSON.stringify({ ...subscription, planId: subscription.planId || undefined, currentPeriodEnd: subscription.currentPeriodEnd ? `${subscription.currentPeriodEnd}T23:59:59-03:00` : undefined, expectedVersion: subscriptionUser.orcaproSubscription?.version }) }), 'Controle manual de acesso atualizado.', () => setSubscriptionUser(null)); }
   async function savePlan(event: FormEvent) { event.preventDefault(); await mutate(() => apiFetch(`/orcapro/admin/saas/plans${editPlan ? `/${editPlan.id}` : ''}`, { method: editPlan ? 'PUT' : 'POST', body: JSON.stringify({ ...planForm, priceBrl: planForm.priceBrl.replace(',', '.'), stripePriceId: planForm.stripePriceId || undefined, expectedVersion: editPlan?.version }) }), 'Plano salvo.', () => { setPlanOpen(false); setEditPlan(null); setPlanForm(emptyPlan); }); }
+  async function logout() { if (busy) return; setBusy(true); setError(''); try { await endSession('/login?next=/orcapro'); } catch { setError('Não foi possível encerrar a sessão. Tente novamente.'); setBusy(false); } }
 
   if (loading) return <main className={styles.loading} aria-busy="true">Carregando gestão do SaaS…</main>;
   if (!access) return <main className={styles.loading}><h1>Gestão do SaaS</h1><p role="alert">{error}</p><Link href="/orcapro">Voltar ao OrçaPro</Link></main>;
   return <div className={styles.workspace}>
     <aside className={styles.sidebar}><Link href="/orcapro" className={styles.brand}><span><Calculator size={24} /></span><strong>OrçaPro<small>Administração do SaaS</small></strong></Link>
       <nav aria-label="Gestão do SaaS"><button className={tab === 'users' ? styles.active : ''} onClick={() => setTab('users')}><Users size={18} /> Usuários e assinaturas</button><button className={tab === 'plans' ? styles.active : ''} onClick={() => setTab('plans')}><CreditCard size={18} /> Planos e Stripe</button><button className={tab === 'audit' ? styles.active : ''} onClick={() => setTab('audit')}><ClipboardList size={18} /> Auditoria</button></nav>
-      <footer><span className={styles.badge}>Administrador global</span><Link href="/orcapro">Voltar ao editor</Link><Link href="/orcapro/gerenciar">Meus orçamentos e SINAPI</Link><Link href="/programas">Trocar programa</Link></footer>
+      <footer><span className={styles.badge}>Administrador global</span><Link href="/orcapro">Voltar ao editor</Link><Link href="/orcapro/gerenciar">Meus orçamentos e SINAPI</Link>{!ORCAPRO_ONLY ? <Link href="/programas">Trocar programa</Link> : null}<button disabled={busy} onClick={() => void logout()}>Sair</button></footer>
     </aside>
     <main className={styles.main}><header className={styles.topbar}><h1>Gestão do SaaS</h1><ShieldCheck size={22} /></header><div className={`${styles.content} ${css.content}`}>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}{notice ? <p className={styles.notice} role="status">{notice}</p> : null}

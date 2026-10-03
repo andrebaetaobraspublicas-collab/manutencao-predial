@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LoadingPanel } from '@/components/loading';
 import { apiFetch, ApiError } from '@/lib/api';
+import { endSession } from '@/lib/end-session';
+import { ORCAPRO_ONLY, PRODUCT_DOMAIN } from '@/lib/product-config';
 import type { CurrentSession } from '@/lib/types';
 import styles from './programas.module.css';
 
@@ -89,9 +91,7 @@ export default function ProgramsPage() {
   async function logout() {
     setSigningOut(true);
     try {
-      await apiFetch<void>('/auth/logout', { method: 'POST' });
-      router.replace('/login?next=/programas');
-      router.refresh();
+      await endSession('/login?next=/programas');
     } catch {
       setError('Não foi possível encerrar sua sessão. Tente novamente.');
       setSigningOut(false);
@@ -120,8 +120,8 @@ export default function ProgramsPage() {
       <div className={styles.container}>
         <header className={styles.header}>
           <div>
-            <span className={styles.eyebrow}>gestaodepredios.com.br</span>
-            <h1>Escolha seu programa</h1>
+            <span className={styles.eyebrow}>{PRODUCT_DOMAIN}</span>
+            <h1>{ORCAPRO_ONLY ? 'Acessar OrçaPro' : 'Escolha seu programa'}</h1>
             <p>{session.user.name} · {session.tenant.name}</p>
           </div>
           <button className="btn btn-ghost" type="button" disabled={signingOut} onClick={() => void logout()}>
@@ -132,7 +132,7 @@ export default function ProgramsPage() {
         {error ? <p className="notice error" role="alert">{error}</p> : null}
 
         <section className={styles.programs} aria-label="Programas da sua organização">
-          <article className={styles.card}>
+          {!ORCAPRO_ONLY ? <article className={styles.card}>
             <span className={styles.icon}><Building2 size={28} /></span>
             <h2>Gestão de Prédios</h2>
             <p>Organize ordens de serviço, edificações, contratos e a execução da manutenção predial.</p>
@@ -140,7 +140,7 @@ export default function ProgramsPage() {
             {session.maintenanceAccess !== false ? <Link className="btn btn-primary" href="/dashboard">
               Acessar Gestão de Prédios <ArrowRight size={16} />
             </Link> : <button className="btn btn-secondary" disabled>Acesso não contratado</button>}
-          </article>
+          </article> : null}
 
           <article className={styles.card}>
             <span className={`${styles.icon} ${styles.orcaIcon}`}><Calculator size={28} /></span>
@@ -164,7 +164,7 @@ export default function ProgramsPage() {
           </article>
         </section>
 
-        <p className={styles.footer}>A troca de programa mantém sua conta e sua organização. Sair encerra a sessão compartilhada.</p>
+        <p className={styles.footer}>{ORCAPRO_ONLY ? 'Sair encerra sua sessão e retorna ao site do OrçaPro.' : 'A troca de programa mantém sua conta e sua organização. Sair encerra a sessão compartilhada.'}</p>
       </div>
     </main>
   );

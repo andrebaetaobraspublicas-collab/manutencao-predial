@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -22,6 +23,9 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { OrcaproLoginDto } from './dto/orcapro-account.dto';
+import { OrcaproPublicGuard } from '../../common/guards/orcapro-public.guard';
+import { sessionCookieOptions, writeSessionCookies } from './session-cookies';
 
 @ApiTags('Autenticação')
 @Controller('auth')
@@ -33,7 +37,7 @@ export class AuthController {
 
   @Public()
   @Post('register-tenant')
-  @ApiOperation({ summary: 'Cria uma organização trial e seu usuário proprietário' })
+  @ApiOperation({ summary: 'Cria organização trial da manutenção; indisponível no ambiente comercial ORCAPRO_ONLY.' })
   async register(
     @Body() dto: RegisterTenantDto,
     @Req() request: Request,
@@ -56,6 +60,18 @@ export class AuthController {
     const session = await this.auth.login(dto, request);
     this.writeCookies(response, session);
     return { user: session.user };
+  }
+
+  @Public()
+  @HttpCode(200)
+  @UseGuards(OrcaproPublicGuard)
+  @Post('orcapro/login')
+  @ApiOperation({ summary: 'Autentica OrçaPro por e-mail e senha, usando o tenant original da licença, sem conceder manutenção.' })
+  async loginOrcapro(@Body() dto: OrcaproLoginDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    const session = await this.auth.loginOrcapro(dto, request);
+    this.writeCookies(response, session);
+    const { tenant } = await this.auth.me(session.user);
+    return { user: session.user, tenant, role: session.user.role };
   }
 
   @Public()
@@ -143,26 +159,10 @@ export class AuthController {
   }
 
   private writeCookies(response: Response, session: IssuedSession): void {
-    response.cookie(ACCESS_COOKIE, session.accessToken, {
-      ...this.baseCookieOptions(),
-      maxAge: 15 * 60 * 1000,
-    });
-    response.cookie(REFRESH_COOKIE, session.refreshToken, {
-      ...this.baseCookieOptions(),
-      maxAge: session.refreshExpiresAt.getTime() - Date.now(),
-    });
+    writeSessionCookies(response, session, this.config);
   }
 
   private baseCookieOptions(): CookieOptions {
-    const domain = this.config.get<string>('COOKIE_DOMAIN') || undefined;
-    const secure = String(this.config.get('COOKIE_SECURE') ?? 'false') === 'true';
-
-    return {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      domain,
-      path: '/',
-    };
+    return sessionCookieOptions(this.config);
   }
 }

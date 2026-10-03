@@ -1035,6 +1035,41 @@ p {
   background: #eef3f7;
 }
 
+.orcapro-auth .login-visual {
+  background: radial-gradient(circle at 15% 20%, rgba(255, 198, 25, 0.11), transparent 43%), linear-gradient(145deg, #14232d, #263b48);
+}
+
+.orcapro-auth .brand-mark {
+  color: #14232d;
+  background: #ffca1b;
+}
+
+.orcapro-auth .btn-primary {
+  color: #14232d;
+  background: #ffca1b;
+  border-color: #e2ad0a;
+}
+
+.orcapro-auth .btn-primary:hover { background: #ffd64b; }
+.orcapro-auth .input:focus, .orcapro-auth .select:focus { border-color: #b08500; }
+.orcapro-signup .login-panel { padding-block: 40px; }
+.signup-steps { display: grid; gap: 24px; padding: 0; margin-top: 40px; list-style: none; }
+.signup-steps li { display: flex; align-items: center; gap: 16px; }
+.signup-steps li > span { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border: 1px solid rgba(255, 202, 27, .6); border-radius: 50%; color: #ffca1b; }
+.signup-steps strong, .signup-steps small { display: block; }
+.signup-steps small { margin-top: 4px; color: rgba(255, 255, 255, .7); font-size: .8rem; }
+.signup-plan-summary { display: grid; gap: 7px; padding: 15px; border: 1px solid #ecd27c; background: #fffae8; border-radius: 9px; }
+.signup-plan-summary small { color: var(--text-soft); font-size: .75rem; line-height: 1.5; }
+.signup-password { position: relative; }
+.signup-password input { padding-right: 45px; }
+.signup-password button { position: absolute; right: 2px; top: 2px; min-height: 36px; padding: 8px 10px; }
+.signup-payment-note { color: var(--text-soft); font-size: .75rem; line-height: 1.5; margin: 0; }
+.signup-footer { display: grid; gap: 12px; margin-top: 20px; text-align: center; }
+.signup-footer button.auth-link { background: none; border: 0; cursor: pointer; font: inherit; font-size: .8rem; }
+.signup-footer button:disabled { opacity: .6; cursor: wait; }
+.auth-cancel { border: 0; background: none; cursor: pointer; font: inherit; font-size: .8rem; }
+.auth-cancel:disabled { opacity: .6; cursor: wait; }
+
 .login-visual {
   position: relative;
   display: flex;

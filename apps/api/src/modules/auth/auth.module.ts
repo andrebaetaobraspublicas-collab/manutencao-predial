@@ -9,6 +9,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { OperationsModule } from '../operations/operations.module';
+import { OrcaproPublicGuard } from '../../common/guards/orcapro-public.guard';
 
 @Module({
   imports: [
@@ -29,9 +30,11 @@ import { OperationsModule } from '../operations/operations.module';
   controllers: [AuthController],
   providers: [
     AuthService,
+    OrcaproPublicGuard,
     JwtStrategy,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
+  exports: [AuthService, OrcaproPublicGuard],
 })
 export class AuthModule {}

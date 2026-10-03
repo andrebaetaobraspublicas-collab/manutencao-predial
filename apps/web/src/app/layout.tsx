@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
+import { ORCAPRO_ONLY, PRODUCT_NAME } from '@/lib/product-config';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Gestão de Prédios',
-    template: '%s | Gestão de Prédios',
+    default: PRODUCT_NAME,
+    template: `%s | ${PRODUCT_NAME}`,
   },
-  description: 'Gestão integrada de manutenção predial, contratos e ordens de serviço.',
+  description: ORCAPRO_ONLY ? 'Orçamentos de obras com SINAPI, BDI, planejamento e análise de riscos.' : 'Gestão integrada de manutenção predial, contratos e ordens de serviço.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

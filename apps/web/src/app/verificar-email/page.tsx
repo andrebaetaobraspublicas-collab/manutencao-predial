@@ -1,9 +1,11 @@
 'use client';
 
-import { Building2, MailCheck } from 'lucide-react';
+import { MailCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
+import { AuthBrand } from '@/components/auth-brand';
+import { ORCAPRO_ONLY, exitDestination } from '@/lib/product-config';
 
 export default function VerifyEmailPage() {
   const [state, setState] = useState<'loading' | 'done' | 'error'>('loading');
@@ -17,5 +19,5 @@ export default function VerifyEmailPage() {
       .then(() => setState('done'))
       .catch((cause) => { setMessage(cause instanceof ApiError ? cause.message : 'Não foi possível confirmar o e-mail.'); setState('error'); });
   }, []);
-  return <main className="simple-auth-page"><section className="login-card auth-card"><div className="auth-brand"><Building2 size={24} /> Gestão de Prédios</div><MailCheck size={38} className="auth-hero-icon"/><h1>Verificação de e-mail</h1>{state === 'loading' ? <p>Confirmando seu endereço…</p> : state === 'done' ? <div className="notice">E-mail confirmado com sucesso.</div> : <div className="notice error">{message}</div>}<Link className="auth-link" href="/login">Voltar para o acesso</Link></section></main>;
+  return <main className={`simple-auth-page${ORCAPRO_ONLY ? ' orcapro-auth' : ''}`}><section className="login-card auth-card"><AuthBrand /><MailCheck size={38} className="auth-hero-icon"/><h1>Verificação de e-mail</h1>{state === 'loading' ? <p>Confirmando seu endereço…</p> : state === 'done' ? <div className="notice">E-mail confirmado com sucesso.</div> : <div className="notice error">{message}</div>}<Link className="auth-link" href="/login">Voltar para o acesso</Link>{ORCAPRO_ONLY ? <a className="auth-link" href={exitDestination()}>Voltar ao site do OrçaPro</a> : null}</section></main>;
 }

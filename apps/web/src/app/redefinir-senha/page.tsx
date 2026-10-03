@@ -1,9 +1,11 @@
 'use client';
 
-import { Building2, KeyRound } from 'lucide-react';
+import { KeyRound } from 'lucide-react';
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
+import { AuthBrand } from '@/components/auth-brand';
+import { ORCAPRO_ONLY, exitDestination } from '@/lib/product-config';
 
 export default function ResetPasswordPage() {
   const [token, setToken] = useState('');
@@ -28,5 +30,5 @@ export default function ResetPasswordPage() {
     finally { setSubmitting(false); }
   }
 
-  return <main className="simple-auth-page"><section className="login-card auth-card"><div className="auth-brand"><Building2 size={24} /> Gestão de Prédios</div><h1>Criar nova senha</h1><p>Depois da alteração, todas as sessões anteriores serão encerradas.</p>{done ? <><div className="notice">Senha alterada com sucesso. Você já pode entrar novamente.</div><Link className="btn btn-primary" href="/login">Ir para o acesso</Link></> : <form className="login-form" onSubmit={submit}><div className="field"><label htmlFor="password">Nova senha</label><input id="password" className="input" type="password" minLength={10} autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} /><small>Mínimo de 10 caracteres.</small></div><div className="field"><label htmlFor="confirmation">Confirmar nova senha</label><input id="confirmation" className="input" type="password" minLength={10} autoComplete="new-password" required value={confirmation} onChange={(e) => setConfirmation(e.target.value)} /></div>{error ? <div className="notice error">{error}</div> : null}<button className="btn btn-primary" disabled={submitting}><KeyRound size={17} /> {submitting ? 'Alterando…' : 'Redefinir senha'}</button></form>}</section></main>;
+  return <main className={`simple-auth-page${ORCAPRO_ONLY ? ' orcapro-auth' : ''}`}><section className="login-card auth-card"><AuthBrand /><h1>Criar nova senha</h1><p>Depois da alteração, todas as sessões anteriores serão encerradas.</p>{done ? <><div className="notice">Senha alterada com sucesso. Você já pode entrar novamente.</div><Link className="btn btn-primary" href="/login">Ir para o acesso</Link></> : <form className="login-form" onSubmit={submit}><div className="field"><label htmlFor="password">Nova senha</label><input id="password" className="input" type="password" minLength={10} autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} /><small>Mínimo de 10 caracteres.</small></div><div className="field"><label htmlFor="confirmation">Confirmar nova senha</label><input id="confirmation" className="input" type="password" minLength={10} autoComplete="new-password" required value={confirmation} onChange={(e) => setConfirmation(e.target.value)} /></div>{error ? <div className="notice error">{error}</div> : null}<button className="btn btn-primary" disabled={submitting}><KeyRound size={17} /> {submitting ? 'Alterando…' : 'Redefinir senha'}</button></form>}{ORCAPRO_ONLY ? <a className="auth-link" href={exitDestination()}>Voltar ao site do OrçaPro</a> : null}</section></main>;
 }

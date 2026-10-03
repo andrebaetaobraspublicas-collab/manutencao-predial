@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
+import { ORCAPRO_ONLY } from '@/lib/product-config';
 import styles from './editor/editor.module.css';
 
 export default function OrcaproEntryPage() {
@@ -37,6 +38,6 @@ export default function OrcaproEntryPage() {
   }, []);
   return <main className={styles.editor}><div className={styles.empty} aria-busy={!error}>
     <h1>OrçaPro</h1><p role={error ? 'alert' : 'status'}>{error || 'Abrindo seu orçamento…'}</p>
-    {error ? <><Link href="/orcapro/assinatura">Consultar minha assinatura</Link><Link href="/orcapro/gerenciar">Gerenciar meus orçamentos</Link><Link href="/programas">Trocar programa</Link></> : null}
+    {error ? <><Link href="/orcapro/assinatura">Consultar minha assinatura</Link><Link href="/orcapro/gerenciar">Gerenciar meus orçamentos</Link>{!ORCAPRO_ONLY ? <Link href="/programas">Trocar programa</Link> : null}</> : null}
   </div></main>;
 }

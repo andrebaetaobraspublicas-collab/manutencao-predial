@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Patch, Post, Put, Query, RawBodyRequest, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Patch, Post, Put, Query, RawBodyRequest, Req, Res, UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
@@ -8,6 +9,10 @@ import { OrcaproAdmin, OrcaproGuard, OrcaproSubscriptionAccess } from './orcapro
 import { OrcaproSaasService } from './orcapro-saas.service';
 import { OrcaproStripeService } from './orcapro-stripe.service';
 import { CreateSaasUserDto, SaasCheckoutDto, SaasListQuery, SaasPasswordDto, SaasPlanDto, SaasStripeActionDto, SaasSubscriptionDto, SaasUserStatusDto } from './orcapro-saas.dto';
+import { AuthService } from '../auth/auth.service';
+import { RegisterOrcaproDto } from '../auth/dto/orcapro-account.dto';
+import { writeSessionCookies } from '../auth/session-cookies';
+import { OrcaproPublicGuard } from '../../common/guards/orcapro-public.guard';
 
 @ApiTags('OrçaPro — gestão SaaS') @ApiCookieAuth('gp_access')
 @UseGuards(OrcaproGuard) @OrcaproAdmin()
@@ -43,6 +48,32 @@ export class OrcaproCustomerBillingController {
   @Get('plans') plans() { return this.service.plans(); }
   @Post('checkout') checkout(@CurrentUser() user: AuthenticatedUser, @Body() dto: SaasCheckoutDto) { return this.stripe.checkout(user, dto.planId); }
   @Post('portal') portal(@CurrentUser() user: AuthenticatedUser) { return this.stripe.portal(user); }
+}
+
+@ApiTags('OrçaPro — contratação online') @Controller('orcapro/billing/public')
+@Public() @UseGuards(OrcaproPublicGuard)
+export class OrcaproPublicBillingController {
+  constructor(private readonly service: OrcaproSaasService, private readonly stripe: OrcaproStripeService, private readonly auth: AuthService, private readonly config: ConfigService) {}
+  @Get('plans') @ApiOperation({ summary: 'Lista pública dos planos individuais disponíveis para contratação online, sem identificadores ou segredos Stripe.' })
+  async plans() {
+    const integration = this.stripe.integration();
+    const ready = integration.keyConfigured && integration.webhookConfigured && ['TEST', 'LIVE'].includes(integration.mode ?? '');
+    const plans = ready ? (await this.service.plans()).filter(plan => !!plan.stripePriceId).map(({ id, name, billingInterval, priceBrl }) => ({ id, name, billingInterval, priceBrl })) : [];
+    return { plans, integration: { keyConfigured: integration.keyConfigured, webhookConfigured: integration.webhookConfigured, mode: integration.mode } };
+  }
+  @Post('register') @ApiOperation({ summary: 'Cria conta exclusiva OrçaPro pendente de pagamento, autentica e inicia Checkout; acesso ao orçamento somente após webhook válido.' })
+  async register(@Body() dto: RegisterOrcaproDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    await this.stripe.checkoutPlan(dto.planId);
+    const session = await this.auth.registerOrcapro(dto, request);
+    writeSessionCookies(response, session, this.config);
+    let checkoutUrl: string | null = null;
+    try { checkoutUrl = (await this.stripe.checkout(session.user, dto.planId)).url; }
+    catch {
+      // Account and cookies remain usable to resume payment. No trial or entitlement is granted.
+      return { user: session.user, tenant: session.tenant, role: session.user.role, checkoutUrl, checkoutError: 'Sua conta foi criada, mas não foi possível abrir o pagamento. Entre em Minha assinatura para tentar novamente.' };
+    }
+    return { user: session.user, tenant: session.tenant, role: session.user.role, checkoutUrl };
+  }
 }
 
 @ApiTags('OrçaPro — webhook Stripe') @Controller('orcapro/billing/webhooks')

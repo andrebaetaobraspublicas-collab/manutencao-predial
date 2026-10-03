@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -18,6 +20,7 @@ import {
   SubscriptionStatus,
   TenantStatus,
   UserStatus,
+  Prisma,
 } from '../../generated/prisma/client';
 import { MailService } from '../../common/mail/mail.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -30,6 +33,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { OperationsService } from '../operations/operations.service';
 import { hasOrcaproAccount } from './product-session';
+import { OrcaproLoginDto, RegisterOrcaproDto } from './dto/orcapro-account.dto';
 
 export type IssuedSession = {
   accessToken: string;
@@ -343,6 +347,7 @@ export class AuthService {
   }
 
   async registerTenant(dto: RegisterTenantDto, request: Request): Promise<IssuedSession> {
+    if (this.config.get<string>('ORCAPRO_ONLY') === 'true') throw new ForbiddenException('O cadastro neste ambiente é exclusivo do OrçaPro. Escolha um plano para criar sua conta.');
     const email = dto.email.trim().toLowerCase();
     const slug = dto.tenantSlug.trim().toLowerCase();
 
@@ -427,6 +432,48 @@ export class AuthService {
     });
 
     return this.issueSession(created.user, created.membership, created.tenant, request);
+  }
+
+  async registerOrcapro(dto: RegisterOrcaproDto, request: Request) {
+    this.requireOrcapro();
+    if (dto.name.trim().length < 2) throw new BadRequestException('Informe seu nome.');
+    if (Buffer.byteLength(dto.password, 'utf8') > 72) throw new BadRequestException('A senha deve ter no máximo 72 bytes.');
+    const email = dto.email.trim().toLowerCase();
+    if (await this.prisma.user.findUnique({ where: { email }, select: { id: true } })) throw new ConflictException('Este e-mail já possui conta. Entre para retomar sua assinatura.');
+    const passwordHash = await hash(dto.password, 12);
+    const userId = randomUUID();
+    try {
+      const created = await this.prisma.$transaction(async db => {
+        const plan = await db.orcaproPlan.findFirst({ where: { id: dto.planId, active: true, stripePriceId: { not: null } } });
+        if (!plan) throw new BadRequestException('Plano indisponível para contratação online.');
+        const tenant = await db.tenant.create({ data: { name: dto.name.trim(), slug: `orcapro-${userId}`, status: 'ACTIVE' } });
+        const user = await db.user.create({ data: { id: userId, name: dto.name.trim(), email, passwordHash, status: 'ACTIVE', orcaproAccess: { create: { managed: true, enabled: true, updatedByUserId: userId } }, orcaproSubscription: { create: { tenantId: tenant.id, planId: plan.id, status: 'UNPAID', billingSource: 'STRIPE' } } } });
+        const membership = await db.tenantMembership.create({ data: { tenantId: tenant.id, userId, role: 'REQUESTER', status: 'ACTIVE', maintenanceAccess: false, acceptedAt: new Date() } });
+        await db.orcaproAudit.create({ data: { tenantId: tenant.id, actorUserId: userId, entityId: userId, action: 'saas.user.self-register', metadata: { planId: plan.id, pendingPayment: true, maintenanceAccess: false } } });
+        return { tenant, user, membership };
+      });
+      const session = await this.issueSession(created.user, created.membership, created.tenant, request);
+      return { ...session, tenant: { id: created.tenant.id, name: created.tenant.name, slug: created.tenant.slug } };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('Este e-mail já possui conta. Entre para retomar sua assinatura.');
+      throw error;
+    }
+  }
+
+  private requireOrcapro() {
+    if (this.config.get<string>('ORCAPRO_ENABLED') !== 'true') throw new ServiceUnavailableException('OrçaPro ainda não habilitado neste ambiente.');
+  }
+
+  async loginOrcapro(dto: OrcaproLoginDto, request: Request): Promise<IssuedSession> {
+    this.requireOrcapro();
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email.trim().toLowerCase() }, include: { orcaproAccess: true, orcaproSubscription: { select: { tenantId: true } } } });
+    if (!user || user.status !== 'ACTIVE' || user.deletedAt || user.orcaproAccess?.enabled === false || user.orcaproAccess?.deletedAt || !(await compare(dto.password, user.passwordHash))) throw new UnauthorizedException('Credenciais inválidas ou acesso suspenso.');
+    // The licence's original tenant wins. Never silently switch to another organization.
+    // Historical accounts without a licence use their oldest valid membership.
+    const membership = await this.prisma.tenantMembership.findFirst({ where: { userId: user.id, ...(user.orcaproSubscription ? { tenantId: user.orcaproSubscription.tenantId } : {}), status: 'ACTIVE', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }], tenant: { deletedAt: null, status: { in: ['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELED'] } } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], include: { tenant: true } });
+    if (!membership || (membership.tenant.status === 'CANCELED' && !(await hasOrcaproAccount(user.id, this.prisma, this.config)))) throw new UnauthorizedException('Credenciais inválidas ou acesso suspenso.');
+    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    return this.issueSession(user, membership, membership.tenant, request);
   }
 
   async login(dto: LoginDto, request: Request): Promise<IssuedSession> {

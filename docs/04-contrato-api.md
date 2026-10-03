@@ -32,6 +32,7 @@ Exemplo de erro:
 |---|---|---|
 | POST | `/auth/register-tenant` | cria tenant trial e proprietário |
 | POST | `/auth/login` | autentica por tenant, e-mail e senha |
+| POST | `/auth/orcapro/login` | autentica OrçaPro por e-mail e senha; usa tenant original da licença |
 | POST | `/auth/refresh` | rotaciona sessão |
 | POST | `/auth/logout` | revoga refresh e limpa cookies |
 | GET | `/auth/me` | retorna usuário, tenant e papel atuais |
@@ -411,6 +412,58 @@ original, aditivos, reajustes/repactuações e apostilamentos financeiros ativos
 | POST | `/billing/webhooks/stripe` | recebe eventos Stripe assinados |
 
 O endpoint de webhook usa corpo bruto e não exige sessão de usuário, mas exige assinatura Stripe válida.
+
+### Contratação individual online OrçaPro
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| GET | `/orcapro/billing/public/plans` | catálogo público de planos ativos vinculados ao Stripe |
+| POST | `/orcapro/billing/public/register` | cria conta privada pendente e inicia Checkout |
+| GET | `/orcapro/billing` | licença individual autenticada e disponibilidade da integração |
+| GET | `/orcapro/billing/plans` | planos ativos para renovação autenticada |
+| POST | `/orcapro/billing/checkout` | inicia/retoma Checkout com `{planId}` |
+| POST | `/orcapro/billing/portal` | portal do cliente Stripe individual |
+| POST | `/orcapro/billing/webhooks/stripe` | webhook exclusivo, assinado e idempotente |
+
+O catálogo público retorna `{plans:[{id,name,billingInterval,priceBrl}],integration:{keyConfigured,webhookConfigured,mode}}`.
+`priceBrl` é decimal em reais; `billingInterval` é `MONTH`/`YEAR`; `mode` é `TEST`/`LIVE` ou null. Sem
+integração completa, a lista online fica vazia. Identificadores e segredos Stripe não são publicados.
+
+O cadastro recebe `{name,email,password,planId}` e devolve cookies HttpOnly mais
+`{user,tenant:{id,name,slug},role,checkoutUrl}`. O slug é gerado pelo servidor. O tenant e o vínculo
+não são recebidos do cliente. A licença inicial é `UNPAID`, sem teste ou acesso aos orçamentos;
+o vínculo tem `maintenanceAccess=false`. A confirmação visual do Checkout não concede acesso.
+Somente webhook verificado ou concessão administrativa manual ativa a licença.
+
+Se o Checkout falhar depois da criação, a resposta HTTP 201 mantém a sessão e retorna
+`checkoutUrl:null` e `checkoutError`: o usuário retoma pela área de assinatura. Repetir um cadastro
+com e-mail existente recebe 409 com orientação para entrar; tentativas concorrentes não criam
+organizações órfãs. A senha segue os limites de 10 a 72 caracteres e no máximo 72 bytes UTF-8.
+
+O login específico recebe `{email,password}`. O tenant original da licença é escolhido no servidor;
+contas anteriores sem licença usam seu vínculo válido mais antigo. Suspensão do tenant da licença
+não permite fallback para outro vínculo. A resposta inclui `{user,tenant,role}` e cookies de sessão.
+O login por organização da manutenção permanece disponível. POSTs de cadastro/login OrçaPro
+exigem `Origin` da lista `CORS_ORIGINS` e têm limite de dez tentativas por IP por minuto.
+Na API comercial, `ORCAPRO_ONLY=true` bloqueia `/auth/register-tenant` com HTTP 403 antes de
+criar qualquer identidade/tenant. Isso impede usar o trial público da manutenção para contornar
+a contratação OrçaPro pendente. Desenvolvimento usa `ORCAPRO_ONLY=false`; contas históricas,
+login, convites existentes e cadastros/concessões pelo administrador permanecem preservados.
+
+`ORCAPRO_STRIPE_MODE` deve corresponder à chave, aos preços, aos eventos e às assinaturas remotas.
+Use TEST no desenvolvimento e LIVE na produção. `ORCAPRO_MARKETING_URL` define o retorno HTTPS
+ao cancelar Checkout; a confirmação volta a `WEB_BASE_URL/orcapro/assinatura?checkout=success`.
+O portal de cobrança volta à área de assinatura. `ORCAPRO_STRIPE_PORTAL_CONFIGURATION_ID` é opcional
+e seleciona uma configuração `bpc_` exclusiva do OrçaPro, validada como ativa e do mesmo modo TEST/LIVE
+antes de abrir a sessão. Sem essa variável, mantém-se o padrão existente da conta Stripe. A configuração
+comercial preparada permite atualizar o meio de pagamento, consultar faturas e cancelar a renovação
+no fim do período; a troca de planos está desativada para não oferecer preços de validação. Configurar
+o Portal exclusivo não altera o Portal padrão utilizado por outros sistemas na mesma conta.
+A administração manual, senhas e vendas diretas
+permanecem independentes da integração Stripe; eventos externos preservam `billingSource=MANUAL`.
+Uma sessão de Checkout aberta é reutilizada somente para o mesmo preço. Selecionar outro plano
+expira a sessão não paga e abre a contratação no novo preço; uma assinatura já concluída deve
+ser alterada pelo portal, evitando duas cobranças simultâneas.
 
 ## 8.1 Piloto operacional e homologação
 

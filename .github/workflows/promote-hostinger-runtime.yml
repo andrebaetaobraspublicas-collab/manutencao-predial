@@ -63,7 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           remote="${SSH_USER}@${SSH_HOST}"
-          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=20)
+          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=20)
           preserved=false
 
           for attempt in $(seq 1 8); do
@@ -101,7 +101,7 @@ jobs:
           remote="${SSH_USER}@${SSH_HOST}"
           release_marker="${APP_ROOT}/apps/api/hostinger-release-sha.txt"
           ready=false
-          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10)
+          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=20)
 
           for attempt in $(seq 1 90); do
             deployed_release="$(ssh "${ssh_args[@]}" "$remote" "cat '$release_marker' 2>/dev/null || true" 2>/dev/null || true)"
@@ -117,13 +117,24 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare the private environment and parsed startup wrapper
+        run: |
+          set -euo pipefail
+          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=20)
+          scp_args=(-i ~/.ssh/id_ed25519 -P "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=20)
+          remote="${SSH_USER}@${SSH_HOST}"
+          helper_root="$DOMAIN_ROOT/hbuilds/incoming/runtime-${RELEASE_SHA}"
+          ssh "${ssh_args[@]}" "$remote" "set -eu; test -d '$DOMAIN_ROOT/hbuilds'; mkdir -p '$helper_root'; chmod 700 '$helper_root'"
+          scp "${scp_args[@]}" scripts/hostinger/deploy-common.sh scripts/hostinger/prepare-development-runtime.sh "$remote:$helper_root/"
+          ssh "${ssh_args[@]}" "$remote" "bash '$helper_root/prepare-development-runtime.sh' '$DOMAIN_ROOT' '$APP_ROOT' '$RELEASE_SHA'"
+
       - name: Stamp release and recycle Passenger
         run: |
           set -euo pipefail
           remote="${SSH_USER}@${SSH_HOST}"
           release_file="${APP_ROOT}/apps/api/dist/release-sha.txt"
           process_pattern="^lsnode:/home/${SSH_USER}/domains/api\\.gestaodepredios\\.com\\.br/(\\.builds|hbuilds)/(cur|curr|curre|curren|current)(/.*)?$"
-          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10)
+          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=20)
           stamped=false
 
           for attempt in $(seq 1 12); do

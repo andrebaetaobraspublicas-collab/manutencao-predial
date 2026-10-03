@@ -2,6 +2,43 @@
 
 deployment_fail() { printf '%s\n' "$1" >&2; return 1; }
 
+validate_private_api_configuration() {
+  local domain_root="$1" configuration="$1/hbuilds/config/.env" parent mode
+  for parent in "$domain_root" "$domain_root/hbuilds" "$domain_root/hbuilds/config"; do
+    [[ -d "$parent" && ! -L "$parent" && "$(realpath "$parent")" == "$parent" ]] || deployment_fail 'Private configuration directory resolves outside the application.' || return
+  done
+  [[ -f "$configuration" && ! -L "$configuration" && -r "$configuration" ]] || deployment_fail 'Private API configuration must be a readable regular file.' || return
+  [[ "$(stat -c '%u' "$configuration")" == "$(id -u)" ]] || deployment_fail 'Private API configuration belongs to another account.' || return
+  mode="$(stat -c '%a' "$configuration")"
+  [[ "$mode" =~ ^[0-7]{3,4}$ && $((8#$mode & 077)) == 0 ]] || deployment_fail 'Private API configuration is accessible to other accounts.' || return
+}
+
+ensure_private_runtime_environment() {
+  local domain_root="$1" runtime_path="$2" versions_root runtime_root relative configuration runtime_env
+  validate_private_api_configuration "$domain_root" || return
+  configuration="$domain_root/hbuilds/config/.env"
+  versions_root="$domain_root/hbuilds/versions"
+  [[ -d "$versions_root" && ! -L "$versions_root" && "$(realpath "$versions_root")" == "$versions_root" ]] || deployment_fail 'Managed runtime versions directory is invalid.' || return
+  runtime_root="$(realpath -e "$runtime_path")" || return
+  [[ -d "$runtime_root" && "$runtime_root" == "$versions_root/"* ]] || deployment_fail 'Runtime resolves outside the application versions.' || return
+  relative="${runtime_root#"$versions_root/"}"
+  [[ "$relative" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*/nodejs$ ]] || deployment_fail 'Runtime must be the nodejs directory of one managed version.' || return
+  runtime_env="$runtime_root/.env"
+  if [[ -e "$runtime_env" || -L "$runtime_env" ]]; then
+    [[ -L "$runtime_env" && "$(realpath -e "$runtime_env")" == "$configuration" ]] || deployment_fail 'Runtime configuration conflicts with the private application configuration.' || return
+  else
+    ln -s "$configuration" "$runtime_env" || return
+  fi
+  [[ "$(realpath -e "$runtime_env")" == "$configuration" ]] || deployment_fail 'Runtime environment link verification failed.'
+}
+
+configure_hostinger_build_resources() {
+  # CPU count reported by the host exceeds this account's available threads.
+  export TOKIO_WORKER_THREADS=2
+  export UV_THREADPOOL_SIZE=1
+  export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--v8-pool-size=1"
+}
+
 validate_deployment_paths() {
   local account="$1" domain_root="$2" domain="$3" sha="$4" release_id="$5" archive="$6" kind="$7"
   [[ "$account" =~ ^u[0-9]+$ ]] || deployment_fail 'Invalid Hostinger account.' || return

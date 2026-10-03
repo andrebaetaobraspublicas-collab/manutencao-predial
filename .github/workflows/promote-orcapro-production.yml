@@ -103,8 +103,8 @@ jobs:
         run: |
           set -euo pipefail
           remote="${SSH_USER}@${SSH_HOST}"
-          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20)
-          scp_args=(-i ~/.ssh/id_ed25519 -P "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20)
+          ssh_args=(-i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=20)
+          scp_args=(-i ~/.ssh/id_ed25519 -P "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=20)
           ssh "${ssh_args[@]}" "$remote" "set -eu; test -f '$API_ROOT/hbuilds/config/.env'; test -d '$WEB_ROOT/hbuilds'; mkdir -p '$API_ROOT/hbuilds/incoming/$RELEASE_ID' '$WEB_ROOT/hbuilds/incoming/$RELEASE_ID'; chmod 700 '$API_ROOT/hbuilds/incoming/$RELEASE_ID' '$WEB_ROOT/hbuilds/incoming/$RELEASE_ID'"
           artifact_root="$RUNNER_TEMP/orcapro-artifacts-${RELEASE_ID}"
           scp "${scp_args[@]}" "$artifact_root/api-source.tar.gz" scripts/hostinger/deploy-common.sh scripts/hostinger/promote-api-release.sh scripts/hostinger/promote-web-release.sh scripts/hostinger/verify-deployment-archive.py "$remote:$API_ROOT/hbuilds/incoming/$RELEASE_ID/"
@@ -113,7 +113,7 @@ jobs:
       - name: Build and activate only the private production API
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 "${SSH_USER}@${SSH_HOST}" \
+          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=20 "${SSH_USER}@${SSH_HOST}" \
             "bash '$API_ROOT/hbuilds/incoming/$RELEASE_ID/promote-api-release.sh' '$API_ROOT' '$RELEASE_SHA' '$RELEASE_ID' '$API_ROOT/hbuilds/incoming/$RELEASE_ID/api-source.tar.gz' '$API_ARTIFACT_SHA256'"
 
       - name: Verify production API and database before publishing the frontend
@@ -131,7 +131,7 @@ jobs:
       - name: Wait for managed static frontend and activate its artifact
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 "${SSH_USER}@${SSH_HOST}" \
+          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=20 "${SSH_USER}@${SSH_HOST}" \
             "bash '$API_ROOT/hbuilds/incoming/$RELEASE_ID/promote-web-release.sh' '$WEB_ROOT' '$RELEASE_SHA' '$RELEASE_ID' '$WEB_ROOT/hbuilds/incoming/$RELEASE_ID/frontend.tar.gz' '$WEB_ARTIFACT_SHA256'"
 
       - name: Verify production frontend marker and cloud editor origin

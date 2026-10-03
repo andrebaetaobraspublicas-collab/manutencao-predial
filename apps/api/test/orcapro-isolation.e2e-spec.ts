@@ -238,6 +238,23 @@ describe('OrçaPro — MySQL, referências e isolamento HTTP', () => {
     await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
   });
 
+  it('cria e reproduz riscos HTTP com custo unitário fracionário sem mudar o orçamento',async()=>{
+    const created=await b.agent.post('/api/v1/orcapro/projects').set('Origin',ORIGIN).send({name:'Riscos com frações de centavo',referenceId:ref1,uf:'SP',regime:'SD',data:{bdi:0.25,root:{id:'root',kind:'stage',name:'Obra',children:[{id:'fractional',kind:'item',code:991003,resourceType:'C',qty:2.75,custo:1.23456}]}}}).expect(201);
+    const path=`/api/v1/orcapro/projects/${created.body.id}/risks`;
+    const made=await b.agent.post(path).set('Origin',ORIGIN).send({expectedVersion:created.body.version,name:'Análise fracionária'}).expect(201);
+    let project=made.body.project;
+    const analysis=project.data.risks.analyses[0],route=path+'/'+made.body.riskId;
+    expect(analysis.snapshot.baseCents).toBe('340');
+    expect(Number(analysis.snapshot.rows[0].unitCostCents)).toBeCloseTo(123.456,8);
+    expect(project.data.root.children[0].custo).toBe(1.23456);
+    const cfg=analysis.config;cfg.iterations=1000;cfg.variables[0]={...cfg.variables[0],min:10,mode:10,max:10,distribution:'fixo'};
+    const configured=await b.agent.put(route).set('Origin',ORIGIN).send({expectedVersion:project.version,config:cfg}).expect(200);project=configured.body.project;
+    const simulated=await b.agent.post(route+'/simulate').set('Origin',ORIGIN).send({expectedVersion:project.version}).expect(201);project=simulated.body.project;
+    expect(project.data.risks.analyses[0].result.contingencyCents).toBe('34');
+    const preview=await b.agent.post(route+'/bdi-preview').set('Origin',ORIGIN).send({expectedVersion:project.version,method:'param',mode:'replace'}).expect(201);
+    expect(preview.body.rate).toBe('0.1000000000');
+  });
+
   it('versiona riscos privados, simula e recalcula BDI sem aceitar taxas do cliente',async()=>{
     const created=await b.agent.post('/api/v1/orcapro/projects').set('Origin',ORIGIN).send({name:'Riscos HTTP',referenceId:ref1,uf:'SP',regime:'SD',data:{bdi:0.25,bdi2:0.1,root:{id:'root',kind:'stage',name:'Obra',children:[{id:'service',kind:'item',code:991003,resourceType:'C',qty:1}]}}}).expect(201);
     let project=created.body;const path=`/api/v1/orcapro/projects/${project.id}/risks`;

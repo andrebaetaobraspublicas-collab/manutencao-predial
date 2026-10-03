@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import test from 'node:test';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
-import { exitDestination, loginDestination, resolveProductConfig, stripeDestination } from '../../apps/web/src/lib/product-config.ts';
+import { authenticatedLoginDestination, exitDestination, loginConfiguration, loginDestination, resolveProductConfig, stripeDestination } from '../../apps/web/src/lib/product-config.ts';
 import { stripeSubscriptionConfirmed } from '../../apps/web/src/lib/stripe-status.ts';
 
 test('checkout confirmation requires a current effective Stripe period, without treating a manual grant as online payment', () => {
@@ -27,6 +30,80 @@ test('development preserves existing program destinations and local logout even 
   assert.equal(loginDestination('/programas', false), '/programas');
   assert.equal(loginDestination('/orcapro', false), '/orcapro');
   assert.equal(loginDestination('/dashboard', false), '/dashboard');
+});
+
+test('development OrçaPro login uses email authentication while maintenance and general selection require an organization', () => {
+  assert.deepEqual(loginConfiguration('/orcapro', false), {
+    destination: '/orcapro', requiresOrganization: false, endpoint: '/auth/orcapro/login',
+  });
+  for (const destination of ['/dashboard', '/programas']) {
+    assert.deepEqual(loginConfiguration(destination, false), {
+      destination, requiresOrganization: true, endpoint: '/auth/login',
+    });
+  }
+  for (const destination of ['/dashboard', '/orcapro', '/programas']) {
+    assert.deepEqual(loginConfiguration(destination, true), {
+      destination: '/orcapro', requiresOrganization: false, endpoint: '/auth/orcapro/login',
+    });
+  }
+});
+
+test('OrçaPro login can resume an unpaid checkout without being sent to the other program selector', () => {
+  for (const orcaproOnly of [false, true]) {
+    const { destination } = loginConfiguration('/orcapro', orcaproOnly);
+    for (const maintenanceAccess of [false, true, undefined]) {
+      for (const orcaproEnabled of [false, undefined]) {
+        assert.equal(authenticatedLoginDestination(destination, { maintenanceAccess, orcaproEnabled }), '/orcapro/assinatura');
+      }
+      assert.equal(authenticatedLoginDestination(destination, { maintenanceAccess, orcaproEnabled: true }), '/orcapro');
+    }
+  }
+  assert.equal(authenticatedLoginDestination('/dashboard', { maintenanceAccess: false }), '/programas');
+  assert.equal(authenticatedLoginDestination('/dashboard', { maintenanceAccess: true }), '/dashboard');
+  assert.equal(authenticatedLoginDestination('/programas', { maintenanceAccess: false }), '/programas');
+});
+
+function renderLogin(orcaproOnly, next) {
+  const source = readFileSync(fileURLToPath(new URL('../../apps/web/src/app/login/page.tsx', import.meta.url)), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
+  const runtimeRequire = createRequire(import.meta.url);
+  const module = { exports: {} };
+  const require = path => {
+    if (path === 'next/navigation') return { useRouter: () => ({ replace() {}, refresh() {} }), useSearchParams: () => ({ get: () => next }) };
+    if (path === 'next/link') return { __esModule: true, default: props => React.createElement('a', props) };
+    if (path === '@/components/loading') return { LoadingPanel: () => null };
+    if (path === '@/lib/api') return { apiFetch: () => { throw new Error('Rendering must not authenticate'); }, ApiError: Error };
+    if (path === '@/lib/product-config') return {
+      ORCAPRO_ONLY: orcaproOnly,
+      PRODUCT_NAME: orcaproOnly ? 'OrçaPro' : 'Gestão de Prédios',
+      PRODUCT_DOMAIN: orcaproOnly ? 'orcaproobras.com.br' : 'gestaodepredios.com.br',
+      loginDestination: value => loginDestination(value, orcaproOnly),
+      loginConfiguration: value => loginConfiguration(value, orcaproOnly),
+      authenticatedLoginDestination,
+      exitDestination: () => 'https://orcaproobras.com.br/',
+    };
+    return runtimeRequire(path);
+  };
+  vm.runInNewContext(compiled, { module, exports: module.exports, require });
+  return renderToStaticMarkup(React.createElement(module.exports.default));
+}
+
+test('development login renders the program selector and hides the organization only for OrçaPro', () => {
+  const orcapro = renderLogin(false, '/orcapro');
+  assert.match(orcapro, /id="program"/);
+  assert.doesNotMatch(orcapro, /id="tenantSlug"/);
+  assert.match(orcapro, /Entrar no OrçaPro/);
+  assert.match(orcapro, /Não é necessário informar a organização/);
+  assert.match(orcapro, /href="\/orcapro\/cadastro"/);
+  for (const next of ['/dashboard', '/programas']) {
+    const organization = renderLogin(false, next);
+    assert.match(organization, /id="program"/);
+    assert.match(organization, /id="tenantSlug"[^>]*required=""/);
+    assert.match(organization, /Acesse sua organização/);
+  }
+  const production = renderLogin(true, '/programas');
+  assert.doesNotMatch(production, /id="program"|id="tenantSlug"/);
+  assert.match(production, /Entrar no OrçaPro/);
 });
 
 test('production exit goes to marketing and login cannot be redirected to another program or arbitrary URL', () => {

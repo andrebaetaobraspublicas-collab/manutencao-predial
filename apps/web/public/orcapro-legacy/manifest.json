@@ -1,7 +1,7 @@
 {
   "sourceSha256": "b0144a95f4ddd1c900196fa5aff41d085e854d3f9d833a2d565b4429f0c68a15",
   "bridgeSha256": "9f8d7e542967c46e0cbaf889e0011e0df8bddd7af40523dc26c97e48c35674db",
-  "editorSha256": "18e3e33596d00adf1654db3107000cfa7287544349a94cad74791c79759556f9",
+  "editorSha256": "1dd12c1323bdadfa6cc0fb799751435945e602c6b02ed9ff89673b5064d290bc",
   "sourceVersion": "1.8.3",
   "apiBase": "https://api.gestaodepredios.com.br/api/v1",
   "riskUiSha256": "6b8c882c28e57c53cfd47deda15ccf0932922d61e913812b8f7cf0fd099ed3ae",
@@ -11,6 +11,6 @@
   "manualReviewedAt": "03/10/2026",
   "manualContentSha256": "0ace615c37286dd40cbe569beb4a25e64a4b708578fe1e1d6140d10e0fbf4a09",
   "manualUiSha256": "c1a5255542faa91592fbe3652067e972c69059bdbe97c894c83db8a994cceb87",
-  "manualCssSha256": "a9dedb3b3bf9fb672622172da7c5869a916722335bfaf51ace5aeb5ec5098bfa",
+  "manualCssSha256": "dcc5b8e00c1e80f044130460ae1ecf671d2159a1b43521b2a2c2d944b17abf22",
   "catalog": "authenticated sparse project closure + lazy bundles"
 }

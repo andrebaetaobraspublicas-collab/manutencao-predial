@@ -8,13 +8,22 @@ import { randomUUID } from 'node:crypto';
 import { Worker } from 'node:worker_threads';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import mariadb from 'mariadb';
-import { connectionOptions, digest, seedInfra, processQueued,safeFailure,InfraImportError } from './infraestrutura-import-lib.mjs';
+import { connectionOptions, digest, seedInfra, processQueued,safeFailure,InfraImportError,exampleTemplate } from './infraestrutura-import-lib.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const legacy = resolve(here,'../../../legacy/infraestrutura-1.8.3');
 const require = createRequire(import.meta.url);
 const runtime = require(resolve(here,'../src/modules/infraestrutura/assets/legacy-runtime.cjs'));
 const configured = process.env.INFRA_IMPORT_TEST_DATABASE_URL;
+test('marcador example do raw SICRO não substitui o documento do orçamento',async () => {
+  const raw = JSON.parse(gunzipSync(await readFile(resolve(legacy,'base.json.gz'))));
+  const example = JSON.parse(await readFile(resolve(legacy,'example-road.json'),'utf8'));
+  assert.equal(raw.example,true);
+  assert.deepEqual(exampleTemplate(raw,{ example }),example);
+  assert.equal(typeof exampleTemplate(raw),'object');
+  assert.deepEqual(exampleTemplate({ raw,example }),example);
+  assert.throws(() => exampleTemplate({ raw,example: true }),/objeto JSON/);
+});
 const tableOrder = ['InfraLoginAttempt','InfraAudit','InfraPolicy','InfraSetting','InfraOwnRecord','InfraProjectVersion','InfraProject','InfraPemSnapshot','InfraPem','InfraCycleCharge','InfraCycleTransportItem','InfraCycleEquipmentPart','InfraCycleItem','InfraCycleComposition','InfraCycleInput','InfraCycleSnapshot','InfraCycleChunk','InfraCycle','InfraUser'];
 test('pipeline SQL independente preserva 6.619 custos, 3.673 PEM e histórico do catálogo', { skip: !configured,timeout: 180000 },async t => {
   const options = connectionOptions(configured);
@@ -45,6 +54,8 @@ test('pipeline SQL independente preserva 6.619 custos, 3.673 PEM e histórico do
     assert.equal(calculated.workDays,172); assert.equal(calculated.items.length,64);
     assert.equal(calculated.totals.direct,2964114491); assert.equal(calculated.totals.price,3563786534);
     const repeated = await seedInfra(pool,seed); assert.equal(repeated.id,initial.id); assert.equal(repeated.reused,true);
+    const storedExample = (await pool.query('SELECT example_json FROM InfraCycle WHERE id=?',[initial.id]))[0].example_json;
+    assert.deepEqual(typeof storedExample === 'string' ? JSON.parse(storedExample) : storedExample,project);
     await t.test('lotes conferem checksum e rejeitam mudança numérica mesmo com hash atualizado',async () => {
       const modified = JSON.parse(rawBytes); modified.ref = '08/2026'; modified.comp.o[0] += 1;
       const payload = Buffer.from(JSON.stringify({ raw: modified,pem })), id = randomUUID();

@@ -33,6 +33,9 @@ test('development preserves existing program destinations and local logout even 
 });
 
 test('development OrçaPro login uses email authentication while maintenance and general selection require an organization', () => {
+  assert.deepEqual(loginConfiguration('/orcapro-infraestrutura', false), {
+    destination: '/orcapro-infraestrutura', requiresOrganization: false, endpoint: '/infraestrutura/auth/login',
+  });
   assert.deepEqual(loginConfiguration('/orcapro', false), {
     destination: '/orcapro', requiresOrganization: false, endpoint: '/auth/orcapro/login',
   });
@@ -41,7 +44,7 @@ test('development OrçaPro login uses email authentication while maintenance and
       destination, requiresOrganization: true, endpoint: '/auth/login',
     });
   }
-  for (const destination of ['/dashboard', '/orcapro', '/programas']) {
+  for (const destination of ['/dashboard', '/orcapro', '/orcapro-infraestrutura', '/programas']) {
     assert.deepEqual(loginConfiguration(destination, true), {
       destination: '/orcapro', requiresOrganization: false, endpoint: '/auth/orcapro/login',
     });

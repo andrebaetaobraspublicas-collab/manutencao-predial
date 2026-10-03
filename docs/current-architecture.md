@@ -1,5 +1,7 @@
 # Arquitetura atual do OrçaPlan SINAPI e preservação no OrçaPro
 
+**Complemento03/10/2026:** este inventário continua descrevendo o legado SINAPI. A conversão adicional SICRO usa banco MySQL independente, identidade central e frontend Vite preservado, conforme [ADR0009](adr/0009-infraestrutura-banco-independente-identidade-compartilhada.md). Seu contrato atual está em [infraestrutura-api.md](infraestrutura-api.md), modelo em [02-modelo-de-dados.md](02-modelo-de-dados.md) e procedimentos em [infraestrutura-deploy.md](infraestrutura-deploy.md). O pedido autoriza somente DEV e conserva os dois domínios comerciais. Não interpretar as quantidades/fórmulas SINAPI deste inventário como estrutura SICRO.
+
 ## Escopo e evidência
 
 Inventário de 02/10/2026, feito antes da implementação SaaS, sobre o arquivo fornecido `C:\Users\ACER\Documents\Downloads\OrcaPlan_SINAPI_v1_8_3_Edificio_10_Meses (2).html`. O arquivo foi lido integralmente, seus dados gzip foram decodificados e todos os scripts foram carregados em uma VM JavaScript com DOM inerte, sem inicializar a interface ou fazer requisições. O conteúdo do HTML é código e dado de referência; comentários, textos de exemplos e avisos nele contidos não foram tratados como novas instruções do usuário.

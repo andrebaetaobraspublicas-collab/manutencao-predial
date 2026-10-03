@@ -27,8 +27,11 @@ function LoginContent() {
     setSubmitting(true);
     setError('');
     try {
+      const infraCsrf = login.destination === '/orcapro-infraestrutura'
+        ? await apiFetch<{ csrfToken: string }>('/infraestrutura/auth/csrf') : null;
       const session = await apiFetch<{ user: { maintenanceAccess?: boolean } }>(login.endpoint, {
         method: 'POST',
+        ...(infraCsrf ? { headers: { 'X-Infra-Login-CSRF': infraCsrf.csrfToken } } : {}),
         body: JSON.stringify(login.requiresOrganization ? { tenantSlug, email, password } : { email, password }),
       });
       setPassword('');
@@ -58,20 +61,20 @@ function LoginContent() {
           <div><strong>{PRODUCT_NAME}</strong><small>{PRODUCT_DOMAIN}</small></div>
         </div>
         <div className="login-message">
-          <h1>{ORCAPRO_ONLY ? 'Da composição ao planejamento da obra.' : 'Uma conta. Dois programas.'}</h1>
+          <h1>{ORCAPRO_ONLY ? 'Da composição ao planejamento da obra.' : 'Uma conta. Três programas.'}</h1>
           <p>
-            {ORCAPRO_ONLY ? 'Prepare orçamentos com SINAPI, forme o BDI e planeje prazos, equipes e contingências em um só lugar.' : 'Gerencie a manutenção no Gestão de Prédios e prepare seus orçamentos de obras no OrçaPro, com os acessos da sua organização.'}
+            {ORCAPRO_ONLY ? 'Prepare orçamentos com SINAPI, forme o BDI e planeje prazos, equipes e contingências em um só lugar.' : 'Gerencie a manutenção no Gestão de Prédios, orce edificações com SINAPI no OrçaPro e planeje obras com SICRO no OrçaPro Infraestrutura.'}
           </p>
         </div>
         <div className="login-feature-list">
-          {!ORCAPRO_ONLY ? <><span>Gestão de Prédios</span><span>OrçaPro</span><span>Manutenção</span></> : <><span>BDI</span><span>Cronograma</span><span>Riscos e contingências</span></>}
+          {!ORCAPRO_ONLY ? <><span>Gestão de Prédios</span><span>OrçaPro</span><span>OrçaPro Infraestrutura</span></> : <><span>BDI</span><span>Cronograma</span><span>Riscos e contingências</span></>}
           <span>Orçamentos de obras</span><span>SINAPI</span><span>Auditoria</span>
         </div>
       </section>
 
       <section className="login-panel">
         <div className="login-card">
-          <h2>{login.requiresOrganization ? 'Acesse sua organização' : 'Entrar no OrçaPro'}</h2>
+          <h2>{login.requiresOrganization ? 'Acesse sua organização' : destination === '/orcapro-infraestrutura' ? 'Entrar no OrçaPro Infraestrutura' : 'Entrar no OrçaPro'}</h2>
           <p>{login.requiresOrganization ? 'Informe o identificador da empresa e suas credenciais pessoais.' : 'Use o e-mail e a senha da sua conta. Não é necessário informar a organização.'}</p>
           {!login.requiresOrganization ? <p>Se você contratou diretamente, use o e-mail e a senha cadastrados pelo administrador.</p> : null}
           <form className="login-form" onSubmit={handleSubmit}>
@@ -86,6 +89,7 @@ function LoginContent() {
               >
                 <option value="/dashboard">Gestão de Prédios — manutenção</option>
                 <option value="/orcapro">OrçaPro — orçamentos de obras</option>
+                <option value="/orcapro-infraestrutura">OrçaPro Infraestrutura — SICRO</option>
                 <option value="/programas">Escolher após entrar</option>
               </select>
             </div> : null}
@@ -141,7 +145,7 @@ function LoginContent() {
               <LogIn size={18} /> {submitting ? 'Entrando…' : 'Entrar'}
             </button>
             <Link className="auth-link" href="/esqueci-senha">Esqueci minha senha</Link>
-            {!login.requiresOrganization ? <Link className="auth-link" href="/orcapro/cadastro">Ainda não tenho conta · Assinar o OrçaPro</Link> : null}
+            {!login.requiresOrganization && destination !== '/orcapro-infraestrutura' ? <Link className="auth-link" href="/orcapro/cadastro">Ainda não tenho conta · Assinar o OrçaPro</Link> : null}
             {ORCAPRO_ONLY ? <button className="auth-link auth-cancel" type="button" disabled={submitting} onClick={() => window.location.assign(exitDestination())}>Cancelar e voltar ao site</button> : null}
           </form>
         </div>

@@ -6,6 +6,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { createServer } from 'node:http';
+import { json } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -47,6 +48,9 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, adapter, {
     rawBody: true,
   });
+  // An Infraestrutura project accepts 20 MiB of data plus a small JSON envelope.
+  // Its services enforce the data limit; other application routes keep their limit.
+  app.use('/api/v1/infraestrutura', json({ limit: '22mb' }));
   app.useBodyParser('json', { limit: `${Number(process.env.MAX_JSON_MB ?? 20)}mb` });
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.use(helmet());
@@ -70,7 +74,7 @@ async function bootstrap() {
     origin: origins,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    exposedHeaders: ['Content-Disposition'],
+    exposedHeaders: ['Content-Disposition', 'ETag', 'Cache-Control'],
   });
 
   const swaggerConfig = new DocumentBuilder()

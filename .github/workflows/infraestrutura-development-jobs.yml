@@ -1,0 +1,51 @@
+name: Infraestrutura development operations
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Development operation
+        type: choice
+        options: [imports, backup]
+        default: imports
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infraestrutura-development-operations
+  cancel-in-progress: false
+
+jobs:
+  operate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Historical environment: SSH credentials are for development only.
+    # The separate orcapro-production environment is never used here.
+    environment: production
+    env:
+      SSH_HOST: ${{ vars.HOSTINGER_SSH_HOST }}
+      SSH_PORT: ${{ vars.HOSTINGER_SSH_PORT }}
+      SSH_USER: ${{ vars.HOSTINGER_SSH_USER }}
+      OPERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.operation || (github.event.schedule == '17 6 * * *' && 'backup' || 'imports') }}
+    steps:
+      - name: Configure existing pinned development SSH access
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          [[ "$SSH_HOST" == '82.180.153.142' && "$SSH_PORT" == '65002' && "$SSH_USER" == 'u296746636' ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+      - name: Run finite operation in Hostinger development
+        run: |
+          set -euo pipefail
+          [[ "$OPERATION" == imports || "$OPERATION" == backup ]]
+          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=20 "$SSH_USER@$SSH_HOST" \
+            "if test -f /home/u296746636/domains/api.gestaodepredios.com.br/.builds/current/nodejs/scripts/infraestrutura/hostinger-jobs.mjs; then /opt/alt/alt-nodejs22/root/usr/bin/node /home/u296746636/domains/api.gestaodepredios.com.br/.builds/current/nodejs/scripts/infraestrutura/hostinger-jobs.mjs '$OPERATION'; else printf '%s\\n' 'Infraestrutura runtime pending deployment; no database operation.'; fi"

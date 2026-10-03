@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="OrçaPro Infraestrutura — orçamento e planejamento de obras de infraestrutura com composições SICRO/DNIT: momento de transporte (DMT), FIC, equipes e produção, CPM/Gantt/PERT, histogramas, Curva S, BDI, eventograma e reforma tributária. Funciona offline, em um único arquivo.">
+<title>OrçaPro Infraestrutura · SICRO SP 07/2026 — orçamento e planejamento de obras de infraestrutura</title>
+
+
+<script type="module" src="/src/entry.js"></script>
+</head>
+<body>
+<div id="boot" role="status" aria-label="Iniciando o OrçaPro">
+  <div class="op-entry-card">
+    <section class="op-entry-copy">
+      <span class="op-entry-eyebrow">Orçamento e planejamento de obras</span>
+      <div class="op-entry-brand"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="4" fill="#FFC21A"/><path d="M6 9h11M9 15h12M13 21h13" stroke="#15202B" stroke-width="3.2"/><path d="M6 25h20" stroke="#15202B" stroke-width="1.6"/></svg><div><b>OrçaPro Infraestrutura</b><small>ENGENHARIA DE CUSTOS</small></div></div>
+      <h1>Cada insumo conta.<br><em>Cada detalhe, também.</em></h1>
+      <p>Composições SICRO, transporte, orçamento, planejamento e crédito de IVA em uma mesma ferramenta.</p>
+      <div class="op-entry-features"><span>Analítico SICRO A–F</span><span>Momento de transporte</span><span>Reforma Tributária</span></div>
+      <div class="op-entry-progress"><p>Preparando seu ambiente de trabalho…</p><div class="op-entry-track" aria-hidden="true"><i></i></div></div>
+    </section>
+    <section class="op-entry-art" aria-hidden="true">
+      <div class="op-sheet-title"><div><small>Da composição à planilha</small><b>Orçamento em elaboração</b></div><span>PRÉVIA</span></div>
+      <div class="op-sheet-table">
+        <div class="op-sheet-row op-sheet-head"><div>Serviço</div><div>Und.</div><div>Quant.</div><div>Total · R$</div></div>
+        <div class="op-sheet-row" style="--d:.3s"><div>Escavação 1ª cat.</div><div>m³</div><div>185.000,00</div><div>1.387.500,00</div></div>
+        <div class="op-sheet-row op-sheet-selected" style="--d:.8s"><div>Base de BGS</div><div>m³</div><div>11.340,00</div><div>3.358.681,20</div></div>
+        <div class="op-sheet-row" style="--d:1.3s"><div>Concreto asfáltico</div><div>kg</div><div>4.234,00</div><div>979.959,30</div></div>
+        <div class="op-sheet-row" style="--d:1.8s"><div>Sarjeta STC</div><div>m²</div><div>7.200,00</div><div>492.768,00</div></div>
+      </div>
+      <div class="op-sheet-formula"><b>ƒx</b><span>Quantidade × custo unitário</span></div>
+      <div class="op-sheet-totals"><div><small>Custo direto · R$</small><b>6.218.908,50</b></div><div><small>BDI · 20,97% · R$</small><b>1.304.105,11</b></div><div class="op-sheet-grand"><small>Preço total · R$</small><b>7.523.013,61</b></div></div>
+      <small class="op-entry-caption">Composição visual com valores ilustrativos, não vinculados ao projeto aberto.</small>
+    </section>
+  </div>
+</div>
+<div id="legalGate" class="legal-gate" hidden aria-modal="true" role="dialog" aria-labelledby="legalTitle">
+  <div class="legal-card">
+    <div class="legal-head"><div><h2 id="legalTitle">Avisos legais e premissas de uso</h2><p>Leia atentamente as advertências abaixo. O uso do sistema depende da concordância expressa do usuário com estas premissas.</p></div><span class="legal-stamp">Leitura obrigatória</span></div>
+    <div class="legal-body">
+      <div class="legal-grid">
+        <div class="legal-item"><b>1. Natureza da ferramenta</b><p>O sistema é um instrumento de apoio técnico para orçamento, planejamento e simulação econômica da reforma tributária. Os resultados não substituem apuração fiscal, parecer jurídico, laudo pericial, medição contratual ou julgamento profissional.</p></div>
+        <div class="legal-item"><b>2. Dados, bases e referências</b><p>Os preços e composições utilizados decorrem da base SICRO/DNIT carregada, de bases importadas pelo usuário ou de custos informados manualmente. A consistência, a atualidade e a adequação das referências utilizadas devem ser verificadas no caso concreto.</p></div>
+        <div class="legal-item"><b>3. Crédito de IVA e transição</b><p>Os créditos de IBS e CBS são estimados segundo hipóteses configuráveis sobre alíquotas, remanescentes de ICMS/ISS, combustíveis, anexos setoriais, ano do cenário e regras de aproveitamento. Trata-se de simulação econômica, não de homologação tributária.</p></div>
+        <div class="legal-item"><b>4. Responsabilidade de uso</b><p>O usuário é responsável por interpretar os resultados, validar premissas, documentar as fontes aplicadas, conferir a aderência normativa e registrar as adaptações necessárias à sua contratação, obra ou estudo técnico.</p></div>
+      </div>
+      <div class="legal-note"><p><b>Atenção:</b> o armazenamento é local ao navegador. Recomenda-se salvar periodicamente o projeto em arquivo JSON e exportar relatórios relevantes. Em especial, cotações próprias, composições sem detalhamento completo e enquadramentos tributários especiais exigem conferência específica.</p></div>
+      <label class="check legal-check"><input type="checkbox" id="legalAccept"> Li os avisos legais, compreendo as limitações da ferramenta e concordo em utilizar o sistema sob minha responsabilidade técnica e profissional.</label>
+      <div class="legal-actions"><button class="btn pri" id="legalEnter" disabled>Entrar no sistema</button></div>
+    </div>
+  </div>
+</div>
+<div class="app" id="app" inert>
+  <aside class="side"><div class="brand"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="4" fill="#FFC21A"/><path d="M6 9h11M9 15h12M13 21h13" stroke="#15202B" stroke-width="3.2" stroke-linecap="square"/><path d="M6 25h20" stroke="#15202B" stroke-width="1.6"/></svg><div class="brand-t"><b>OrçaPro</b><small>SICRO · INFRAESTRUTURA</small></div></div>
+    <nav class="nav" id="nav" aria-label="Seções"></nav><div class="side-f" id="sidef"></div></aside>
+  <div class="page"><header class="top" id="top"></header><main class="main" id="main"></main></div>
+</div>
+<aside id="drawer" class="drawer" hidden aria-label="Detalhes da composição"></aside>
+<div id="overlay"></div><div id="toasts" class="toasts" aria-live="polite"></div>
+
+
+
+
+
+
+<script type="application/octet-stream" id="op-base"></script>
+<script type="application/octet-stream" id="orcapro-risk-engine"></script>
+</body>
+</html>

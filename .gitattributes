@@ -1,3 +1,6 @@
 legacy/** -text
 apps/api/src/modules/orcapro/legacy/assets/** -text
 apps/web/public/orcapro-legacy/** -text
+legacy/infraestrutura-1.8.3/original.html -diff
+apps/infraestrutura/src/modules/** -text
+apps/api/src/modules/infraestrutura/assets/** -text

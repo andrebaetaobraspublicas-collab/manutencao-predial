@@ -430,3 +430,32 @@ mutação. O flag não altera linhas espelhadas, memberships históricos, senhas
 o desenvolvimento com os dois programas mantém `ORCAPRO_ONLY=false`.
 
 Exclusão é lógica no acesso OrçaPro: preserva User, memberships, catálogo e orçamentos. Senha é compartilhada; redefinição administrativa invalida todos os JWT/refresh e tokens de recuperação da conta, com auditoria sem senha/hash. Tenant CANCELED representa cobrança da manutenção: contas OrçaPro contratadas podem autenticar com maintenanceAccess efetivo false. SUSPENDED/DELETED organizacional continua bloqueando ambos.
+
+## 17. OrçaPro Infraestrutura — MySQL independente
+
+[ADR0009](adr/0009-infraestrutura-banco-independente-identidade-compartilhada.md) fixa banco separado em `INFRA_DATABASE_URL`; não há migration destas tabelas no Prisma principal. `apps/api/infraestrutura-migrations/001_infraestrutura.sql` é aplicada pelo CLI com ledger `InfraMigration(name,sha256,applied_at)`. Alterar uma migration já aplicada interrompe a execução. O driver recusa o banco principal como destino.
+
+| Entidade | Escopo e invariantes |
+| --- | --- |
+| `InfraUser` | Perfil local UNIQUE usuário externo/tenant, ADMIN/USER e ACTIVE/PENDING/BLOCKED. Apenas IDs/metadados centrais; sem senha. `deleted_at` recuperável e `erasure_requested_at` distingue pedido LGPD de bloqueio administrativo. |
+| `InfraCycle` | Global SICRO, UNIQUE fonte/UF/referência; DRAFT/PUBLISHED/ARCHIVED, hash/tamanho/autoria, estado de importação, relatório e exemplo. Publicado imutável. |
+| `InfraCycleChunk` | Staging global por ciclo/seq; SHA-256 e bytes UTF-8 do fragmento. Reenvio idêntico, exclusão após conferência. |
+| `InfraCycleSnapshot`, `InfraPemSnapshot` | Gzip global imutável e ETag do JSON servido; raw SICRO/PEM íntegros, sem cópias por usuário. |
+| `InfraCycleInput` | Código/classificação/unidade e preços SD/CD/SE DECIMAL(24,8), NULL distinto de zero; documento original complementar. |
+| `InfraCycleComposition` | Estrutura por ciclo/código; produção/FIC DECIMAL e custo oficial contextual de comparação. Não há preço corrente universal. |
+| `InfraCycleItem` | Linhas A/B/C/D/E/T/X, seq, código referenciado e coeficiente DECIMAL(30,12), documento bruto preservado. |
+| `InfraCycleEquipmentPart`, `InfraCycleTransportItem`, `InfraCycleCharge` | Demonstrativos de equipamento SD/CD, transportes e encargos globais associados ao ciclo. |
+| `InfraPem` | Ficha global por ciclo e código real da composição PEM; nomes compartilhados na validação/snapshot, não duplicados em cada ficha. |
+| `InfraProject` | UUID, proprietário+tenant, FK ciclo RESTRICT, UF/regime, BDI DECIMAL e documento20MB; versão otimista e lixeira. Não compartilha projetos entre usuários do mesmo tenant. |
+| `InfraProjectVersion` | UNIQUE projeto/versão; snapshot/contexto gzip privado, autoria e retenção100versões padrão. Restore cria nova versão. |
+| `InfraOwnRecord` | UNIQUE usuário/tenant/tipo/código, INPUT/COMPOSITION, documento privado e revisão otimista; não altera o catálogo global. |
+| `InfraSetting` | Preferências privadas por usuário/tenant/nome. |
+| `InfraPolicy` | Termos/privacidade globais do produto, texto/versionamento/editor administrativo. |
+| `InfraAudit` | Eventos locais, ator/tenant, entidade e payload sem segredos. Expurgo LGPD anonimiza conteúdo e referências pessoais de seu escopo. |
+| `InfraLoginAttempt` | Bucket HMAC, janela/contadores/bloqueio/datas; não persiste e-mail/IP em claro. Retenção de buckets antigos30dias. |
+
+Os IDs centrais são referências externas sem FKs entre bancos. O servidor valida User/TenantMembership centrais antes de conceder perfil. Nova identidade recebe `maintenanceAccess=false` e `OrcaproUserAccess(managed=true,enabled=false)`, preservando licenças independentes. A mudança de senha e revogação central incluem `AuditLog` transacional; perfil/password não são duplicados.
+
+O raw é a entrada exata do motor legado; colunas DECIMAL normalizadas servem consulta e conferência, sem substituir escalas, arredondamento ou custos ausentes do original. Projetos históricos mantêm ciclo fixo; migração compara versões e cria nova revisão. Snapshot de catálogo nunca é incorporado a cada usuário/projeto. Somente dados próprios aparecem no documento privado.
+
+Exclusão ordinária usa lixeira. Pedido expresso de eliminação LGPD encerra acesso local e, após30dias por padrão, o CLI remove projetos/versões/próprios/configurações/perfil e anonimiza auditoria. Preserva outro tenant do mesmo usuário, identidade central, outros produtos e catálogo global. Backups anteriores expiram em14dias. Esse descarte específico é documentado e não autoriza exclusão física genérica dos produtos existentes. [Contratos/limites](infraestrutura-api.md), [migrations/rollback](infraestrutura-deploy.md).

@@ -24,20 +24,20 @@ export const MARKETING_URL = product.marketingUrl;
 export const PRODUCT_NAME = ORCAPRO_ONLY ? 'OrçaPro' : 'Gestão de Prédios';
 export const PRODUCT_DOMAIN = ORCAPRO_ONLY ? 'orcaproobras.com.br' : 'gestaodepredios.com.br';
 
-export type LoginDestination = '/dashboard' | '/orcapro' | '/programas';
+export type LoginDestination = '/dashboard' | '/orcapro' | '/orcapro-infraestrutura' | '/programas';
 
 export function loginDestination(value: string | null, orcaproOnly = ORCAPRO_ONLY): LoginDestination {
   if (orcaproOnly) return '/orcapro';
-  return value === '/orcapro' || value === '/programas' ? value : '/dashboard';
+  return value === '/orcapro' || value === '/programas' || value === '/orcapro-infraestrutura' ? value : '/dashboard';
 }
 
 export function loginConfiguration(destination: LoginDestination, orcaproOnly = ORCAPRO_ONLY) {
   const target = loginDestination(destination, orcaproOnly);
-  const requiresOrganization = target !== '/orcapro';
+  const requiresOrganization = target !== '/orcapro' && target !== '/orcapro-infraestrutura';
   return {
     destination: target,
     requiresOrganization,
-    endpoint: requiresOrganization ? '/auth/login' : '/auth/orcapro/login',
+    endpoint: target === '/orcapro-infraestrutura' ? '/infraestrutura/auth/login' : requiresOrganization ? '/auth/login' : '/auth/orcapro/login',
   };
 }
 

@@ -1,8 +1,11 @@
 {
   "sourceSha256": "b0144a95f4ddd1c900196fa5aff41d085e854d3f9d833a2d565b4429f0c68a15",
-  "bridgeSha256": "42d930a850f3edff4ad8d5c1988b6f61564c524fc9226a6b938bf0567bc79324",
-  "editorSha256": "d0c9c581b46b891cc70e37181fb3e6ed2f6dde273cc7cb9c94cf5b113aa6bf8f",
+  "bridgeSha256": "2115ae802c3369c668307878b4f612610090bf399f985955038e8057fff381b9",
+  "editorSha256": "d4054e34457bc1613080b7cf82ebe6ceadc0ee02ad3b95a09871d21336be6b18",
   "sourceVersion": "1.8.3",
   "apiBase": "https://api.gestaodepredios.com.br/api/v1",
+  "riskUiSha256": "6b8c882c28e57c53cfd47deda15ccf0932922d61e913812b8f7cf0fd099ed3ae",
+  "riskCssSha256": "f75b80e951be8d32411b48891d165080d9c70699b56bef7772ecfb31baa9d458",
+  "riskEngineVersion": "orcapro-risk-1.0.0",
   "catalog": "authenticated sparse project closure + lazy bundles"
 }

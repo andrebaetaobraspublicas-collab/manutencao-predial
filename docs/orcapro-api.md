@@ -72,6 +72,20 @@ Todos os IDs internos e o contexto do documento são canonizados no servidor. Do
 
 Um código de outra base não é convertido em SINAPI por coincidência. Itens históricos com custo explícito, descrição e memórias mantêm o preço informado quando não há registro oficial; o contexto relata `historicalFixedCodes`. Quando o analítico existe, é hidratado para preservar produtividade, recursos e relatórios. Uma raiz sem preço explícito ausente é rejeitada; relações analíticas pendentes nunca são ignoradas.
 
+## Análises privadas de riscos
+
+Prefixo `/projects/:projectId/risks`, sob `/api/v1/orcapro`; mesmas regras de autenticação, Origin, licença, tenant e proprietário do orçamento. Swagger atualizado. Leituras vêm do documento privado do projeto. Todos os corpos exigem `expectedVersion`.
+
+| Método / rota | Corpo e regra |
+| --- | --- |
+| `POST /` | `{expectedVersion,name}`; fotografia autoritativa da versão atual |
+| `PUT /:riskId` | `{expectedVersion,config}`; valida premissas e invalida resultado |
+| `POST /:riskId/simulate` | `{expectedVersion}`; reproduz versão histórica em worker |
+| `POST /:riskId/bdi-preview` | `{expectedVersion,method,mode,confirmDoubleCounting?}`; reexecuta e calcula prévia sem mutação |
+| `POST /:riskId/bdi-apply` | Mesma prévia e `reason` obrigatório; aplica BDI com snapshot e auditoria |
+
+`method`: param/exato/simples; `mode`: replace/add. Fotografias desatualizadas bloqueiam BDI com 409. O PUT geral não aceita alterações em `data.risks`. Clone/importação como novo projeto inicia sem fotografias do projeto original. Matemática, configuração, limites e reprodução: [orcapro-risks.md](orcapro-risks.md).
+
 ## Templates e cadastros privados
 
 - `GET /templates` retorna os exemplos públicos `DEMO_SMALL` e `EDIFICIO_4_PAVIMENTOS`.

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
 import styles from './editor.module.css';
+import editorManifest from '../../../../public/orcapro-legacy/manifest.json';
 
 type Status = 'loading' | 'ready' | 'saving' | 'saved' | 'error' | 'conflict';
 
@@ -52,7 +53,7 @@ export default function OrcaproEditorPage() {
   return <main className={styles.editor}>
     <header><Link href="/orcapro/gerenciar">← Meus orçamentos</Link><strong>OrçaPro</strong><span role="status" className={status === 'error' || status === 'conflict' ? styles.warning : ''}>{statusText}</span>{admin ? <Link className={styles.adminLink} href="/orcapro/administracao">Gestão do SaaS</Link> : null}<Link href="/orcapro/assinatura">Minha assinatura</Link><Link href="/programas">Trocar programa</Link></header>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
-    {projectId ? <iframe id="orcapro-editor" title="OrçaPro — editor de orçamento de obras" src={`/orcapro-legacy/editor.html?project=${encodeURIComponent(projectId)}`} allow="clipboard-write" />
+    {projectId ? <iframe id="orcapro-editor" title="OrçaPro — editor de orçamento de obras" src={`/orcapro-legacy/editor.html?project=${encodeURIComponent(projectId)}&v=${editorManifest.editorSha256}`} allow="clipboard-write" />
       : <div className={styles.empty}><h1>OrçaPro</h1><p>{statusText}</p><Link href="/orcapro/gerenciar">Abrir lista de orçamentos</Link></div>}
   </main>;
 }

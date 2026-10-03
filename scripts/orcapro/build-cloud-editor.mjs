@@ -29,11 +29,16 @@ const originalBoot = /^\s*if \(typeof document !== 'undefined' && document\.getE
 if (!originalBoot.test(html)) throw new Error('Original auto-boot boundary missing');
 html = html.replace(originalBoot, '\n  // Authenticated cloud bridge owns initialization.\n');
 html = html.replaceAll('OrçaPlan', 'OrçaPro').replaceAll('OrcaPlan', 'OrcaPro');
+const navMarker = "['reforma', 'Reforma Tributária', 'pct'],";
+if (!html.includes(navMarker)) throw new Error('Original navigation boundary missing');
+html = html.replace(navMarker, navMarker + " ['risks', 'Riscos e contingências', 'flag'],");
 html = html.replace('o armazenamento é local ao navegador. Recomenda-se salvar periodicamente o projeto em arquivo JSON e exportar relatórios relevantes.',
   'o orçamento é salvo no servidor quando a gravação é confirmada. Em caso de falha ou conflito, preserve suas alterações em arquivo JSON antes de reabrir o projeto. Recomenda-se exportar os relatórios relevantes.');
 html = html.replace(/<meta name="description"[^>]*>/, '<meta name="description" content="OrçaPro — orçamento, SINAPI versionado e planejamento de obras.">');
 html = sanitizeDerivedHtml(html);
-const bridge = fs.readFileSync(path.join(root, 'scripts/orcapro/cloud-bridge.js'), 'utf8');
+const bridge = fs.readFileSync(path.join(root, 'scripts/orcapro/cloud-bridge.js'), 'utf8').replaceAll('\r\n','\n');
+const riskUi = fs.readFileSync(path.join(root,'scripts/orcapro/risk-ui.js'),'utf8').replaceAll('\r\n','\n');
+const riskCss = fs.readFileSync(path.join(root,'scripts/orcapro/risk-ui.css'),'utf8').replaceAll('\r\n','\n');
 const literal = JSON.stringify(apiBase).replaceAll('<', '\\u003c');
 const csp = `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' ${api.origin}; object-src 'none'; base-uri 'none'; form-action 'none'`;
 html = html.replace('<title>', `<meta http-equiv="Content-Security-Policy" content="${csp}">\n<title>`);
@@ -41,13 +46,14 @@ html = html.replace('<title>', `<meta http-equiv="Content-Security-Policy" conte
 // the document's final closing body, otherwise the browser terminates JS early.
 const bodyEnd = html.lastIndexOf('</body>');
 if (bodyEnd < html.lastIndexOf('</script>')) throw new Error('Original final body boundary missing');
-html = html.slice(0, bodyEnd) + `<script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
+html = html.slice(0, bodyEnd) + `<style>${riskCss}</style><script>${riskUi}</script><script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
 if (html.includes('id="op-base"') || /M\.boot\(\)\.catch/.test(html)) throw new Error('Offline catalog or bootstrap survived cloud derivation');
 const output = path.join(root, 'apps/web/public/orcapro-legacy');
 fs.mkdirSync(output, { recursive: true });
 fs.writeFileSync(path.join(output, 'editor.html'), html);
 fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify({ sourceSha256: originalHash,
   bridgeSha256: sha(bridge), editorSha256: sha(html), sourceVersion: '1.8.3', apiBase,
+  riskUiSha256:sha(riskUi),riskCssSha256:sha(riskCss),riskEngineVersion:'orcapro-risk-1.0.0',
   catalog: 'authenticated sparse project closure + lazy bundles',
 }, null, 2) + '\n');
 console.log(`Cloud editor generated with ${apiBase}; embedded catalog removed; original source unchanged.`);

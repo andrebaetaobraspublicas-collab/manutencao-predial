@@ -255,6 +255,8 @@ export class OrcaproService {
     const id = randomUUID();
     const initial = dto.data ?? { root: { id: 'root', kind: 'stage', name: '', children: [] }, bdi: 0.25, bdi2: null, round: 'round', links: [], seq: 'escalonado', start: new Date().toISOString().slice(0,10), calendar: { workdays: [1,2,3,4,5], hpd: 8.8, holidays: true, carnaval: false, corpus: false, extra: [] }, created: Date.now(), updated: Date.now(), v: 1 };
     const data = this.canonicalData(initial, { id, name: dto.name.trim(), referenceId, uf: dto.uf, regime: dto.regime });
+    // Snapshots refer to versions of their original project, never a new clone.
+    delete data.risks;
     const codes = projectOfficialCodes(data);
     await this.graph(referenceId, codes.compositions, codes.inputs, dto.uf, dto.regime, db, false, new Set(codes.optional));
     const project = await db.orcaproProject.create({ data: { id, ...this.owner(user), name: dto.name.trim(), referenceId, uf: dto.uf, regime: dto.regime, data: json(data), templateId } });
@@ -271,7 +273,7 @@ export class OrcaproService {
     const project = await this.project(user, id);
     return { format: 'orcapro-project', version: 1, referenceId: project.referenceId, uf: project.uf, regime: project.regime, project: project.data };
   }
-  async saveProject(user: AuthenticatedUser, id: string, dto: SaveProjectDto, restoringHistoricalVersion = false) {
+  async saveProject(user: AuthenticatedUser, id: string, dto: SaveProjectDto, restoringHistoricalVersion = false, operation?: { action: string; metadata: unknown }) {
     return this.prisma.$transaction(async db => {
       const current = await this.project(user, id, db);
       if (current.version !== dto.expectedVersion) throw new ConflictException('Projeto alterado em outra sessão. Recarregue antes de salvar.');
@@ -280,12 +282,16 @@ export class OrcaproService {
       const ref = await this.reference(referenceId, db);
       if (referenceId !== current.referenceId && ref.status !== OrcaproReferenceStatus.PUBLISHED && !restoringHistoricalVersion) throw new BadRequestException('Mudança explícita exige referência publicada.');
       const data = this.canonicalData(dto.data, { id, name, referenceId, uf, regime });
+      if (!restoringHistoricalVersion && !operation && stableJson(data.risks ?? null) !== stableJson((current.data as JsonRecord).risks ?? null)) {
+        throw new BadRequestException('Análises de riscos devem ser alteradas pelo menu Riscos e contingências.');
+      }
       const codes = projectOfficialCodes(data); await this.graph(referenceId, codes.compositions, codes.inputs, uf, regime, db, false, new Set(codes.optional));
       const updated = await db.orcaproProject.updateMany({ where: { id, ...this.owner(user), version: dto.expectedVersion, archivedAt: null }, data: { name, referenceId, uf, regime, data: json(data), version: { increment: 1 } } });
       if (updated.count !== 1) throw new ConflictException('Conflito de versão do projeto.');
       const project = await this.project(user, id, db);
       await this.snapshot(db, user, project);
       await this.audit(db, user, 'project.save', id, { version: project.version, referenceId, uf, regime });
+      if (operation) await this.audit(db,user,operation.action,id,{ version:project.version,details:operation.metadata });
       return project;
     }, { timeout: 30000 });
   }

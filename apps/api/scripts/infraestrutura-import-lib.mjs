@@ -47,6 +47,14 @@ async function transaction(pool, fn) {
 }
 const decimal = (value,scale = 8) => value == null ? null : (typeof value === 'number' && Number.isFinite(value) ? value.toFixed(scale) : (() => { throw new InfraImportError('Valor decimal SICRO inválido.'); })());
 const amount = cents => cents == null ? null : decimal(cents / 100);
+export function exampleTemplate(bundle,options = {}) {
+  // raw-v1 has example:true as metadata, not a project document.
+  const raw = bundle.raw ?? bundle;
+  const supplied = (bundle.raw ? bundle.example : undefined) ?? options.example;
+  const template = supplied ?? runtime.exampleProject(raw,{ pem: bundle.raw ? bundle.pem : options.pem });
+  if (!template || typeof template !== 'object' || Array.isArray(template)) throw new InfraImportError('O projeto de exemplo deve ser um objeto JSON.');
+  return template;
+}
 function checkShape(raw) {
   if (!raw || raw.fonte !== 'SICRO' || !Array.isArray(raw.ufs) || !raw.ufs.length || !Array.isArray(raw.ins?.c) || !Array.isArray(raw.comp?.c)) throw new InfraImportError('Snapshot SICRO raw-v1 inválido.');
   // The preserved SICRO motor deliberately uses UF vector index zero. A cycle
@@ -124,7 +132,7 @@ async function materialize(pool,cycle,payload,options = {}) {
   const checked = runtime.validateRaw(raw);
   if (!checked.total || checked.ok !== checked.total || checked.mismatch?.length) throw new InfraImportError('Conferência numérica diverge do relatório SICRO.');
   const rawBytes = bundle.raw ? Buffer.from(stringify(raw)) : payload;
-  const template = bundle.example ?? options.example ?? runtime.exampleProject(raw,{ pem });
+  const template = exampleTemplate(bundle,options);
   const validation = { ...checked,status: 'PASSED',ufs: raw.ufs,regimes: raw.regimes,pemNames: pem?.names ?? [],checkedAll: true,sampled: Math.min(200,checked.total),validatedAt: new Date().toISOString(),method: 'Código JavaScript original; r4/r2 e FIC preservados; conferência integral inclui a amostra mínima de 200.' };
   await transaction(pool,async db => {
     const locked = await db.query('SELECT import_status FROM InfraCycle WHERE id=? FOR UPDATE',[cycle.id]);

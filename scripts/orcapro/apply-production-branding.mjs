@@ -35,8 +35,8 @@ export function brandExport(directory) {
           return part.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi, (_,attrs,css)=>`<style${attrs}>${bluePalette(css)}</style>`)
             .replace(/(fill|stroke)="(#ffc21a)"/gi,'$1="#2f5bff"');
         }).join('');
-        const paletteLink=file.includes(`${path.sep}orcapro-legacy${path.sep}`)?'':'<link rel="stylesheet" href="/orcapro-brand/react-palette.css?v=20261006-2">';
-        if (!html.includes('/orcapro-brand/production.css')) html=html.replace('</head>',paletteLink+'<link rel="stylesheet" href="/orcapro-brand/production.css?v=20261006-2"><link rel="icon" type="image/svg+xml" href="/orcapro-brand/icon.svg"></head>');
+        const paletteLink=file.includes(`${path.sep}orcapro-legacy${path.sep}`)?'':'<link rel="stylesheet" href="/orcapro-brand/react-palette.css?v=20261006-auth3">';
+        if (!html.includes('/orcapro-brand/production.css')) html=html.replace('</head>',paletteLink+'<link rel="stylesheet" href="/orcapro-brand/production.css?v=20261006-auth3"><link rel="icon" type="image/svg+xml" href="/orcapro-brand/icon.svg?v=20261006-auth3"></head>');
         fs.writeFileSync(file,html); pages++;
       }
     }

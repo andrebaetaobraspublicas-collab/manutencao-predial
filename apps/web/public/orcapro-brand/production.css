@@ -1,7 +1,9 @@
 /* OrçaPro production identity. Kept last in the document cascade. */
+.orcapro-brand-scope:not(.login-page){display:contents}
 :root{--accent:#2f5bff!important;--accent-2:#e9eeff!important;--accent-ink:#fff!important;--yellow:#2f5bff!important}
 [data-theme=dark]{--accent-2:rgba(47,91,255,.18)!important}
 [class*="workspace_workspace__"]{--yellow:#2f5bff!important}
+[class*="workspace_topbar__"],[class*="_editor__"]>header{border-bottom-color:#2f5bff!important}
 [class*="workspace_sidebar__"] nav button[class*="_active__"]{color:#fff!important;box-shadow:inset 3px 0 #2f5bff!important}
 .btn.primary,.btn-primary,[class*="_primary__"],a[class*="_adminLink__"]{background:#2f5bff!important;border-color:#2f5bff!important;color:#fff!important}
 .btn.primary:hover,.btn-primary:hover,[class*="_primary__"]:hover,a[class*="_adminLink__"]:hover{background:#2549cf!important;color:#fff!important}
@@ -20,3 +22,7 @@
 @media(max-width:1100px){.side .brand{padding:12px 5px}.side .brand::before{width:48px;height:40px;background-size:185px 40px;background-position:left center}}
 @media(max-width:640px){[class*="workspace_brand__"]::before{width:180px;height:39px}[class*="_editor__"]>header>strong{width:105px;height:23px}.op-entry-brand::before{width:200px;height:44px}}
 @media(max-width:900px){.orcapro-auth .login-card::before{content:"";display:block;width:204px;height:63px;margin-bottom:24px;border-radius:6px;background:#15202b url('/orcapro-brand/logo.png') center/180px 39px no-repeat}}
+.orcapro-infra-brand .brand,.orcapro-infra-brand [class*="workspace_brand__"],.orcapro-infra-brand .login-logo{flex-wrap:wrap}
+.orcapro-infra-brand .brand::after,.orcapro-infra-brand [class*="workspace_brand__"]::after,.orcapro-infra-brand .login-logo::after{content:"INFRAESTRUTURA · SICRO";display:block;width:100%;font:600 10px/1.4 Arial,sans-serif;color:#b7c8ff;letter-spacing:.08em}
+[fill="#FFC21A"],[fill="#ffc21a"]{fill:#2f5bff}
+@media(max-width:1100px){.orcapro-infra-brand .side .brand::after{display:none}}

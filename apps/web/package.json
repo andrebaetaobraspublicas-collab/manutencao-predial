@@ -3,7 +3,7 @@
   "version": "0.20.0",
   "private": true,
   "scripts": {
-    "prebuild": "node ../../scripts/orcapro/build-cloud-editor.mjs && node ../infraestrutura/scripts/build-static.mjs",
+    "prebuild": "node ../../scripts/orcapro/build-brand-assets.mjs && node ../../scripts/orcapro/build-cloud-editor.mjs && node ../infraestrutura/scripts/build-static.mjs",
     "dev": "next dev --port 3000",
     "build": "next build --webpack",
     "postbuild": "node ../../scripts/orcapro/apply-production-branding.mjs",

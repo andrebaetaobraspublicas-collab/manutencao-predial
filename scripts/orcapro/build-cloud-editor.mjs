@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import nextEnv from '@next/env';
 import { sanitizeDerivedHtml } from './sanitize-derived-html.mjs';
+import { bluePalette } from './apply-production-branding.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 // Match Next's env resolution. App-specific values win over shared root files.
@@ -52,6 +53,8 @@ html = html.replace('<title>', `<meta http-equiv="Content-Security-Policy" conte
 const bodyEnd = html.lastIndexOf('</body>');
 if (bodyEnd < html.lastIndexOf('</script>')) throw new Error('Original final body boundary missing');
 html = html.slice(0, bodyEnd) + `<style>${riskCss}</style><script>${riskUi}</script><style>${manualCss}</style><script>window.ORCAPRO_MANUAL=${manualData};</script><script>${manualUi}</script><script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
+html=html.split(/(<script\b[^>]*>[\s\S]*?<\/script>)/gi).map(part=>/^<script\b/i.test(part)?part:part.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi,(_,attrs,css)=>`<style${attrs}>${bluePalette(css)}</style>`)).join('');
+html=html.replace('</head>','<link rel="stylesheet" href="/orcapro-brand/production.css?v=20261006-dev1"><link rel="icon" href="/orcapro-brand/icon.svg"></head>');
 if (html.includes('id="op-base"') || /M\.boot\(\)\.catch/.test(html)) throw new Error('Offline catalog or bootstrap survived cloud derivation');
 const output = path.join(root, 'apps/web/public/orcapro-legacy');
 fs.mkdirSync(output, { recursive: true });

@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowRight, Building2, Calculator, Route, LogOut, RefreshCw } from 'lucide-react';
+import { ArrowRight, Building2, LogOut, RefreshCw } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -154,7 +155,7 @@ export default function ProgramsPage() {
           </article> : null}
 
           <article className={styles.card}>
-            <span className={`${styles.icon} ${styles.orcaIcon}`}><Calculator size={28} /></span>
+            <Image src="/orcapro-brand/logo.png" alt="OrçaPro" width={180} height={39} className={styles.appLogo} />
             <h2>OrçaPro</h2>
             <p>Prepare orçamentos de obras com o catálogo SINAPI e a referência de cada projeto.</p>
             <span className={styles.status} role="status">{availability.message}</span>
@@ -174,7 +175,7 @@ export default function ProgramsPage() {
             {availability.admin ? <Link className="btn btn-secondary" href="/orcapro/administracao">Gestão do SaaS</Link> : null}
           </article>
           {!ORCAPRO_ONLY ? <article className={styles.card}>
-            <span className={styles.icon}><Route size={28} /></span>
+            <Image src="/orcapro-brand/logo.png" alt="OrçaPro Infraestrutura" width={180} height={39} className={styles.appLogo} />
             <h2>OrçaPro Infraestrutura</h2>
             <p>Orçamentos e planejamento com SICRO, DMT, FIT, FIC, administração local, canteiro, mobilização e riscos.</p>
             <span className={styles.status}>{infraAvailability.message}</span>

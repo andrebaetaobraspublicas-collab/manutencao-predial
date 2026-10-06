@@ -21,6 +21,7 @@ function LoginContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const login = loginConfiguration(destination);
+  const orcaLogin = destination === '/orcapro' || destination === '/orcapro-infraestrutura';
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,11 +55,12 @@ function LoginContent() {
   }
 
   return (
-    <main className={`login-page${ORCAPRO_ONLY ? ' orcapro-auth' : ''}`}>
+    <main className={`login-page${ORCAPRO_ONLY || orcaLogin ? ' orcapro-auth orcapro-brand-scope' : ''}${destination === '/orcapro-infraestrutura' ? ' orcapro-infra-brand' : ''}`}>
+      {!ORCAPRO_ONLY && orcaLogin ? <link rel="icon" href="/orcapro-brand/icon.svg?v=20261006-dev1" /> : null}
       <section className="login-visual" aria-label="Apresentação do sistema">
         <div className="login-logo">
           <div className="brand-mark">{ORCAPRO_ONLY ? <Calculator size={26} /> : <Building2 size={26} />}</div>
-          <div><strong>{PRODUCT_NAME}</strong><small>{PRODUCT_DOMAIN}</small></div>
+          <div><strong>{orcaLogin ? destination === '/orcapro-infraestrutura' ? 'OrçaPro Infraestrutura' : 'OrçaPro' : PRODUCT_NAME}</strong><small>{PRODUCT_DOMAIN}</small></div>
         </div>
         <div className="login-message">
           <h1>{ORCAPRO_ONLY ? 'Da composição ao planejamento da obra.' : 'Uma conta. Três programas.'}</h1>

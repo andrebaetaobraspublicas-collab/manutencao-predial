@@ -20,3 +20,6 @@ apps/web/public/infraestrutura-editor/
 .vscode/
 .idea/
 *.tsbuildinfo
+
+apps/web/public/orcapro-brand/development.css
+apps/web/public/orcapro-brand/icon.svg

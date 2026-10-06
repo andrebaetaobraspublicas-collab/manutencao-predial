@@ -33,6 +33,11 @@ printf '%s\n' 'OrçaPro static document root' > "$release_root/public_html/.orca
 cat > "$release_root/public_html/.htaccess" <<'HTACCESS'
 Options -Indexes
 DirectoryIndex index.html
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|txt|json)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
 <FilesMatch "^\.">
   Require all denied
 </FilesMatch>

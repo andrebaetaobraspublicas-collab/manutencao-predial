@@ -8,6 +8,7 @@
 .btn.primary,.btn-primary,[class*="_primary__"],a[class*="_adminLink__"]{background:#2f5bff!important;border-color:#2f5bff!important;color:#fff!important}
 .btn.primary:hover,.btn-primary:hover,[class*="_primary__"]:hover,a[class*="_adminLink__"]:hover{background:#2549cf!important;color:#fff!important}
 .orcapro-auth .input:focus,.orcapro-auth .select:focus{border-color:#2f5bff}
+.orcapro-auth .login-visual{background:radial-gradient(circle at 5% 7%,rgba(47,91,255,.11),transparent 43%),linear-gradient(145deg,#14232d,#253b47)}
 .orcapro-auth .signup-plan-summary{background:#e9eeff;border-color:#2f5bff}
 .orcapro-auth .signup-steps li>span{color:#92abff;border-color:#2f5bff}
 .brand,.op-entry-brand,[class*="workspace_brand__"],.orcapro-auth .login-logo{position:relative;min-height:62px;background-color:#15202b;border-radius:6px}

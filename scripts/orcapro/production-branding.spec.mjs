@@ -10,7 +10,7 @@ test('export changes only presentation and keeps engine/data and source provenan
   try {
     fs.mkdirSync(path.join(root,'login'),{recursive:true});
     fs.mkdirSync(path.join(root,'orcapro-legacy'),{recursive:true});
-    const engine='<script>const total=qty*cost; const statusColor="#ffc21a";</script>';
+    const engine='<script>const total=qty*cost; const report=`<style>mark{color:#ffc21a}</style><svg fill="#ffc21a"></svg>`;</script>';
     const page='<html><head><style>:root{--accent:#FFC21A}</style></head><body>'+engine+'</body></html>';
     fs.writeFileSync(path.join(root,'login/index.html'),page);
     fs.writeFileSync(path.join(root,'orcapro-legacy/editor.html'),page);

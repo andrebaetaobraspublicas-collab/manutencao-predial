@@ -24,7 +24,7 @@ export function brandExport(directory) {
     for (const item of fs.readdirSync(dir,{withFileTypes:true})) {
       const file=path.join(dir,item.name);
       if (item.isDirectory()) { walk(file); continue; }
-      if (file.endsWith('.css') && !file.endsWith('production.css')) {
+      if (file.endsWith('.css') && !file.endsWith('production.css') && !file.endsWith('react-palette.css')) {
         const css=bluePalette(fs.readFileSync(file,'utf8'));
         fs.writeFileSync(file,css); paletteStyles.push(css); styles++;
       }
@@ -35,7 +35,8 @@ export function brandExport(directory) {
           return part.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi, (_,attrs,css)=>`<style${attrs}>${bluePalette(css)}</style>`)
             .replace(/(fill|stroke)="(#ffc21a)"/gi,'$1="#2f5bff"');
         }).join('');
-        if (!html.includes('/orcapro-brand/production.css')) html=html.replace('</head>','<link rel="stylesheet" href="/orcapro-brand/production.css?v=20261006-2"><link rel="icon" type="image/svg+xml" href="/orcapro-brand/icon.svg"></head>');
+        const paletteLink=file.includes(`${path.sep}orcapro-legacy${path.sep}`)?'':'<link rel="stylesheet" href="/orcapro-brand/react-palette.css?v=20261006-2">';
+        if (!html.includes('/orcapro-brand/production.css')) html=html.replace('</head>',paletteLink+'<link rel="stylesheet" href="/orcapro-brand/production.css?v=20261006-2"><link rel="icon" type="image/svg+xml" href="/orcapro-brand/icon.svg"></head>');
         fs.writeFileSync(file,html); pages++;
       }
     }
@@ -43,7 +44,7 @@ export function brandExport(directory) {
   walk(target);
   // Next serves hashed CSS as immutable. Reapply the palette through a fresh
   // stylesheet URL as well, including clients with the previous CSS cached.
-  fs.writeFileSync(path.join(brand,'production.css'),paletteStyles.join('\n')+'\n'+fs.readFileSync(path.join(repo,'apps/web/public/orcapro-brand/production.css'),'utf8'));
+  fs.writeFileSync(path.join(brand,'react-palette.css'),paletteStyles.join('\n'));
   const logoData=fs.readFileSync(path.join(brand,'logo.png')).toString('base64');
   fs.writeFileSync(path.join(brand,'icon.svg'),`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 216"><rect width="280" height="216" rx="24" fill="#15202b"/><image href="data:image/png;base64,${logoData}" width="1000" height="216"/></svg>`);
   const manifest=path.join(target,'orcapro-legacy/manifest.json');

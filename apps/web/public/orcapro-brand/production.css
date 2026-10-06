@@ -1,0 +1,21 @@
+/* OrçaPro production identity. Kept last in the document cascade. */
+:root{--accent:#2f5bff!important;--accent-2:#e9eeff!important;--accent-ink:#fff!important;--yellow:#2f5bff!important}
+[data-theme=dark]{--accent-2:rgba(47,91,255,.18)!important}
+[class*="workspace_workspace__"]{--yellow:#2f5bff!important}
+.btn.primary,.btn-primary,[class*="_primary__"],a[class*="_adminLink__"]{background:#2f5bff!important;border-color:#2f5bff!important;color:#fff!important}
+.btn.primary:hover,.btn-primary:hover,[class*="_primary__"]:hover,a[class*="_adminLink__"]:hover{background:#2549cf!important;color:#fff!important}
+.orcapro-auth .input:focus,.orcapro-auth .select:focus{border-color:#2f5bff}
+.signup-plan-summary{background:#e9eeff;border-color:#2f5bff}
+.signup-steps li>span{color:#92abff;border-color:#2f5bff}
+.brand,.op-entry-brand,[class*="workspace_brand__"],.orcapro-auth .login-logo{position:relative;min-height:62px;background-color:#15202b;border-radius:6px}
+.brand::before,.op-entry-brand::before,[class*="workspace_brand__"]::before,.orcapro-auth .login-logo::before{content:"";display:block;flex:none;width:180px;height:39px;background:url('/orcapro-brand/logo.png') center/contain no-repeat}
+.brand>svg,.op-entry-brand>svg,[class*="workspace_brand__"]>span,.orcapro-auth .login-logo>.brand-mark{display:none!important}
+.brand-t,.op-entry-brand>div,[class*="workspace_brand__"]>strong,.orcapro-auth .login-logo>div:last-child{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}
+.orcapro-auth .login-logo{padding:12px;width:fit-content;max-width:100%}
+[class*="_editor__"]>header>strong{display:block;width:125px;height:27px;background:url('/orcapro-brand/logo.png') center/contain no-repeat;font-size:0!important}
+.op-entry-brand{padding:12px;width:fit-content}
+.op-entry-brand::before{width:240px;height:52px}
+.badge.partial,.tax-partial{background:#e9eeff;color:#2446bf}
+@media(max-width:1100px){.side .brand{padding:12px 5px}.side .brand::before{width:48px;height:40px;background-size:185px 40px;background-position:left center}}
+@media(max-width:640px){[class*="workspace_brand__"]::before{width:180px;height:39px}[class*="_editor__"]>header>strong{width:105px;height:23px}.op-entry-brand::before{width:200px;height:44px}}
+@media(max-width:900px){.orcapro-auth .login-card::before{content:"";display:block;width:204px;height:63px;margin-bottom:24px;border-radius:6px;background:#15202b url('/orcapro-brand/logo.png') center/180px 39px no-repeat}}

@@ -2,6 +2,15 @@
 
 Base local: `/api/v1`. Em produção: `https://api.gestaodepredios.com.br/api/v1`.
 
+A busca administrativa `GET /infraestrutura/admin/accounts?search=...` localiza
+contas da identidade compartilhada por trecho literal do nome ou e-mail (sem
+diferenciar maiúsculas ou acentos). A comparação normaliza a collation UTF-8
+somente na consulta, sem alterar o cadastro. Retorna apenas usuários e vínculos
+ativos em organizações não excluídas e com situação TRIAL, ACTIVE ou PAST_DUE;
+paginação de 30 vínculos. Continua restrita ao administrador do Infraestrutura.
+Procurar uma conta não concede acesso: a concessão exige a ação administrativa
+separada, validando novamente o vínculo e registrando auditoria no banco Infraestrutura.
+
 A documentação executável fica em `/docs` via Swagger. Este arquivo registra o contrato conceitual e deve ser atualizado com mudanças incompatíveis.
 
 ## 1. Convenções

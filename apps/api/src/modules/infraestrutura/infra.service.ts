@@ -9,6 +9,7 @@ import { Worker } from 'node:worker_threads';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '../../generated/prisma/client';
 import { InfraDatabase, type InfraSql } from './infra-db';
 import { InfraAccess } from './infra.guard';
 import { context, digest, fields, integer, json, object, page, parsed, reference, sha, text, uuid, type InfraObject } from './infra-domain';
@@ -382,7 +383,15 @@ export class InfraService {
   async accounts(query: InfraObject) {
     const search = typeof query.search === 'string' ? text(query.search,'Busca',200,true) : '';
     const current = page(query.page), limit = 30;
-    const where = { status: 'ACTIVE' as const,user: { deletedAt: null,status: 'ACTIVE' as const,...(search ? { OR: [{ name: { contains: search } },{ email: { contains: search } }] } : {}) },tenant: { deletedAt: null,status: { in: ['TRIAL','ACTIVE','PAST_DUE'] as ('TRIAL'|'ACTIVE'|'PAST_DUE')[] } } };
+    // Prisma's MariaDB contains filter can compare a unicode column to a binary
+    // parameter (MySQL 1267). Normalize only this comparison, without changing
+    // stored identity data or weakening the membership eligibility filters.
+    const matches = search ? await this.primary.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT id FROM User WHERE deletedAt IS NULL AND status = 'ACTIVE' AND (
+        LOCATE(CONVERT(${search} USING utf8mb4) COLLATE utf8mb4_unicode_ci, name COLLATE utf8mb4_unicode_ci) > 0 OR
+        LOCATE(CONVERT(${search} USING utf8mb4) COLLATE utf8mb4_unicode_ci, email COLLATE utf8mb4_unicode_ci) > 0
+      )`) : null;
+    const where = { status: 'ACTIVE' as const,...(matches ? { userId: { in: matches.map(row => row.id) } } : {}),user: { deletedAt: null,status: 'ACTIVE' as const },tenant: { deletedAt: null,status: { in: ['TRIAL','ACTIVE','PAST_DUE'] as ('TRIAL'|'ACTIVE'|'PAST_DUE')[] } } };
     const [memberships,total] = await Promise.all([this.primary.tenantMembership.findMany({ where,select: { userId: true,tenantId: true,user: { select: { name: true,email: true } },tenant: { select: { name: true,slug: true } } },orderBy: [{ createdAt: 'asc' },{ id: 'asc' }],skip: (current - 1) * limit,take: limit }),this.primary.tenantMembership.count({ where })]);
     return { items: memberships.map(row => ({ userId: row.userId,tenantId: row.tenantId,name: row.user.name,email: row.user.email,organizationName: row.tenant.name,organizationSlug: row.tenant.slug })),total,page: current,pageSize: limit };
   }

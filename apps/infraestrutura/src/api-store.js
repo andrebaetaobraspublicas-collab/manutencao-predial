@@ -316,7 +316,7 @@ async function afterModules(O) {
     view.render = (...args) => {
       const html = saasText(render.apply(view, args));
       if (name !== 'manual') return html;
-      return '<section class="panel"><h3>UF, data-base e preços no SaaS</h3><p>Seus orçamentos, análises de risco e cadastros próprios são privados e são gravados no servidor. SICRO e PEM são catálogos globais; alterações próprias não modificam referências oficiais.</p><ol><li>Nos menus Catálogo SICRO, Insumos, Composições e Orçamento, use <b>UF</b> e <b>Data-base</b> no cabeçalho. Aparecem apenas referências publicadas.</li><li>Confira o comparativo de custo direto, preço com BDI e crédito estimado de IVA. Abra a lista de serviços para revisar as diferenças. Cancelar conserva a referência atual.</li><li>Clique <b>Aplicar ao orçamento</b> para criar uma versão e recarregar toda a estrutura analítica e seus preços. Custos unitários, recursos e créditos de IBS/CBS passam a usar o novo contexto; não há desconto automático dos créditos no preço.</li><li>Revise cotações próprias, custos manuais, DMT/FIT/FIC e análises de risco. Valores próprios vinculados a outra UF/mês não são transferidos. Preços ausentes bloqueiam a atualização.</li><li>Para comparar sem alterar, abra uma composição e escolha <b>Preços por UF</b>. A aba mostra custos sem BDI, calculados com as DMT/FIT e regras de FIC do projeto, para cada estado na mesma data-base e regime. Clique num estado para abrir o comparativo antes de aplicar.</li></ol><p><b>Ano do IVA</b> é o ano do cenário tributário (2026–2033), distinto da <b>data-base SICRO</b> dos preços. Histórico: Arquivo → Histórico de versões. Duas abas editando a mesma versão geram conflito, sem perda silenciosa.</p><button class="btn" data-act="openProjects">Meus orçamentos e versões</button></section>' + html;
+      return '<section class="panel"><h3>UF, data-base e preços no SaaS</h3><p>Seus orçamentos, análises de risco e cadastros próprios são privados e são gravados no servidor. SICRO e PEM são catálogos globais; alterações próprias não modificam referências oficiais.</p><ol><li>Nos menus <b>Catálogo SICRO, Insumos e Composições</b>, UF, data-base e regime selecionam apenas a consulta. Os valores são referenciais, sem DMT/FIT ou ajustes de FIC da obra; o orçamento permanece na sua referência. Ao adicionar um código, seu custo usa a referência do orçamento.</li><li>Para atualizar toda a obra, abra o menu <b>Orçamento</b> e selecione UF/data-base. Confira o comparativo de custo direto, preço com BDI e crédito estimado de IVA. Abra a lista de serviços para revisar as diferenças. Cancelar conserva a referência atual.</li><li>Clique <b>Aplicar ao orçamento</b> para criar uma versão e recarregar toda a estrutura analítica e seus preços. Custos unitários, recursos e créditos de IBS/CBS passam a usar o novo contexto; não há desconto automático dos créditos no preço.</li><li>Revise cotações próprias, custos manuais, DMT/FIT/FIC e análises de risco. Valores próprios vinculados a outra UF/mês não são transferidos. Preços ausentes bloqueiam a atualização.</li><li>Para comparar sem alterar, abra uma composição e escolha <b>Preços por UF</b>. A aba mostra custos referenciais sem BDI e sem ajustes da obra, para cada estado na mesma data-base e regime. Clique num estado para consultar seu catálogo; isso não migra o orçamento. O custo SD publicado é lido diretamente. Analíticos e custos CD usam o motor original somente para as composições consultadas e suas auxiliares.</li></ol><p><b>Ano do IVA</b> é o ano do cenário tributário (2026–2033), distinto da <b>data-base SICRO</b> dos preços. Histórico: Arquivo → Histórico de versões. Duas abas editando a mesma versão geram conflito, sem perda silenciosa.</p><button class="btn" data-act="openProjects">Meus orçamentos e versões</button></section>' + html;
     };
   }
   const fileMenu = UI.act.fileMenu;
@@ -340,6 +340,42 @@ async function afterModules(O) {
 const config = window.ORCAPRO_INFRA_CONFIG = { prepare, loadSnapshot: snapshot, loadPem: pem, installAdapter, afterModules };
 
 // Each immutable cycle is one UF/month; never relabel SP's price vector.
+function consultationPricing(base) {
+  if (!base.nComp) return base;
+  // Report SD totals are already stored. Analytical/CD queries use the original
+  // exact arithmetic, visiting only the requested composition and its auxiliaries.
+  // This instance belongs exclusively to consultation; budget tables stay intact.
+  const tables = new Map();
+  base.costTable = (_uf, regime) => {
+    const rg = regime === 'CD' ? 'CD' : 'SD';
+    if (tables.has(rg)) return tables.get(rg);
+    const n = base.nComp, done = new Uint8Array(n), cost = Array(n).fill(null), detail = Array(n).fill(null);
+    const ensure = seed => {
+      const stack = [seed];
+      while (stack.length) {
+        const j = stack.at(-1);
+        if (done[j] === 2) { stack.pop(); continue; }
+        done[j] = 1;
+        let pending = false;
+        for (const d of base._deps(j, true)) if (d >= 0 && done[d] === 0) { stack.push(d); pending = true; }
+        if (pending) continue;
+        const r = base._calc(j, rg, d => d >= 0 && done[d] === 2 ? cost[d] : null, true);
+        detail[j] = r; cost[j] = r ? Number(r.totalC) : null; done[j] = 2; stack.pop();
+      }
+    };
+    const vector = (values, analytic) => new Proxy(values, { get(target, prop, receiver) {
+      if (typeof prop === 'string' && /^(0|[1-9]\d*)$/.test(prop) && +prop < n) {
+        const j = +prop;
+        if (!analytic && rg === 'SD') return base.raw.comp.o[j] ?? null;
+        ensure(j);
+      }
+      return Reflect.get(target, prop, receiver);
+    } });
+    const table = { cost: vector(cost, false), as: Array(n).fill(0), detail: vector(detail, true) };
+    tables.set(rg, table); return table;
+  };
+  return base;
+}
 function installReferences(O, checkEditors) {
   const A = O.app, UI = O.ui, U = O.util;
   const month = value => /^\d{4}-\d{2}$/.test(value || '') ? value : O.register.month(value);
@@ -353,8 +389,131 @@ function installReferences(O, checkEditors) {
     return [...result.values()];
   };
   state.referenceChoices = choices;
+  const consultationViews = new Set(['catalog', 'inputs', 'compositions']);
+  const consulting = () => consultationViews.has(A.view);
+  const consultation = state.consultation = { cycle: null, base: null, project: null, signature: '', loading: false };
+  const selected = () => consulting() ? consultation.cycle || current() : current();
+  const bases = new Map();
+  const ownKey = () => JSON.stringify([A.inputs || [], A.customs || []]);
+  const makeConsultationBase = (raw, cycle) => consultationPricing(O.register.makeBase(clone(raw), cycle.id, A.inputs || [], A.customs || [], []));
+  let frame = null, selectionRun = 0, budgetSource = false;
+  const withBudget = fn => {
+    if (!frame) return fn();
+    const old = { base: A.base, pj: A.pj };
+    A.base = frame.base; A.pj = frame.pj;
+    try { return fn(); } finally { frame.base = A.base; frame.pj = A.pj; A.base = old.base; A.pj = old.pj; }
+  };
+  const withConsultation = fn => {
+    if (!consulting() || O.register.editor || budgetSource) return fn();
+    if (frame) {
+      const old = { base: A.base, pj: A.pj }; A.base = consultation.base; A.pj = consultation.project;
+      try { return fn(); } finally { A.base = old.base; A.pj = old.pj; }
+    }
+    const cycle = consultation.cycle || current(), signature = ownKey();
+    if (!consultation.base || consultation.signature !== signature) {
+      const raw = consultation.base?.officialRaw || A.base?.officialRaw || A.base?.raw;
+      if (!raw?.comp) return fn();
+      consultation.base = makeConsultationBase(raw, cycle); consultation.signature = signature;
+    }
+    const contextKey = JSON.stringify([A.pj.iva, A.pj.calendar, A.pj.bdi, A.pj.rg]);
+    if (!consultation.project || consultation.contextKey !== contextKey) {
+      consultation.project = clone(A.pj); consultation.contextKey = contextKey;
+    }
+    consultation.project.uf = cycle.uf; consultation.project.rg = consultation.regime || A.pj.rg;
+    frame = { base: A.base, pj: A.pj };
+    A.base = consultation.base; A.pj = consultation.project;
+    try { return fn(); } finally { A.base = frame.base; A.pj = frame.pj; frame = null; }
+  };
+  state.withConsultation = withConsultation;
+  // Render/read scopes are synchronous. Saves, edits and the complete budget model
+  // always see the real project, even when requested by a consultation component.
+  for (const name of ['render', 'renderNav', 'commit', 'saveSoon']) {
+    const original = UI[name]; if (original) UI[name] = (...args) => withBudget(() => original(...args));
+  }
+  const model = UI.model; let budgetModel;
+  if (model) UI.model = (...args) => withBudget(() => {
+    const signature = JSON.stringify(A.pj.iva);
+    // The legacy IVA module has one active DB. Reusing the already decorated
+    // budget model avoids rebuilding all budget credits while browsing another DB.
+    if (consulting() && budgetModel?.model === A.model && budgetModel.base === A.base && budgetModel.project === A.pj && budgetModel.signature === signature) return budgetModel.model;
+    const result = model(...args);
+    budgetModel = { model: result, base: A.base, project: A.pj, signature: JSON.stringify(A.pj.iva) }; return result;
+  });
+  const notice = () => `<div class="notice" style="margin-bottom:12px"><b>Consulta SICRO ${U.esc(selected().uf)} ${label(selected().ref)}</b> · valores referenciais, sem DMT/FIT ou ajustes de FIC da obra. <b>Orçamento: ${U.esc(current().uf)} ${label(current().ref)}</b>. Consultar não altera o orçamento; adicionar um serviço usa a referência do orçamento.</div>`;
+  for (const name of consultationViews) {
+    const view = UI.views[name]; if (!view) continue;
+    const render = view.render, after = view.after;
+    view.render = (...args) => {
+      const html = withConsultation(() => render(...args));
+      return name === 'catalog' ? html.replace(/(<section class="catc"[^>]*>)/, '$1' + notice()) : notice() + html;
+    };
+    if (after) view.after = (...args) => withConsultation(() => after(...args));
+  }
+  for (const [group, names] of [[UI.act, ['pickFam', 'treeReset', 'fpick', 'treeOf', 'regPage', 'regCSV', 'regInspectInput', 'ivaIns']], [UI.chg, ['regFilter']]]) {
+    for (const name of names) { const original = group?.[name]; if (original) group[name] = (...args) => withConsultation(() => original(...args)); }
+  }
+  const later = UI.later;
+  UI.later = (key, fn, delay) => later(key, key === 'register-filter' ? () => withConsultation(fn) : fn, delay);
+  const results = O.catalog?.resultsHTML;
+  if (results) O.catalog.resultsHTML = (...args) => A.target ? withBudget(() => results(...args)) : withConsultation(() => results(...args));
+  // Capture just the source draft in consultation context; its editor and save
+  // operate on the user's real catalog, without changing the budget reference.
+  for (const name of ['cloneInput', 'cloneComp']) {
+    const original = O.register[name]; if (original) O.register[name] = (...args) => withConsultation(() => original(...args));
+  }
+  const openBudget = O.register.openBudget;
+  if (openBudget) O.register.openBudget = (...args) => {
+    budgetSource = true; try { return withBudget(() => openBudget(...args)); } finally { budgetSource = false; }
+  };
+  for (const name of ['validateInput', 'validateComp']) {
+    const original = O.register[name]; if (!original) continue;
+    O.register[name] = (...args) => {
+      const base = A.base; A.base = Object.assign(Object.create(base), { ufs: [...new Set(choices().map(c => c.uf))] });
+      try { return original(...args); } finally { A.base = base; }
+    };
+  }
+  const modal = UI.modal;
+  UI.modal = (title, html, options) => {
+    if (options?.registerEditor && O.register.editor) {
+      const draft = O.register.editor.draft;
+      html = html.replace(/(<select data-reg-field="(prices\.(\d+)\.uf|quoteUF)"[^>]*>)[\s\S]*?(<\/select>)/g, (_all, start, field, index, end) => {
+        const value = field === 'quoteUF' ? draft.quoteUF || '*' : draft.prices[index].uf;
+        return start + ['*', ...new Set(choices().map(c => c.uf))].sort().map(uf => `<option value="${uf}" ${uf === value ? 'selected' : ''}>${uf === '*' ? 'Todas as UFs' : uf}</option>`).join('') + end;
+      });
+    }
+    return modal(title, html, options);
+  };
+  for (const name of ['quickAdd', 'nativeInputAdd', 'addFromCard']) {
+    const original = UI.act[name]; if (!original) continue;
+    UI.act[name] = (...args) => withBudget(() => {
+      const code = UI.code(args[0].dataset.code), found = name === 'nativeInputAdd' ? A.base.ins(code) : A.base.comp(code);
+      if (!found) return UI.toast('Este código não existe na referência do orçamento. Atualize a referência no menu Orçamento antes de adicioná-lo.', 'warn');
+      if (consulting() && selected().id !== current().id) UI.toast(`Adicionado/selecionado usando SICRO ${current().uf} ${label(current().ref)}, referência do orçamento.`);
+      return original(...args);
+    });
+  }
+  const consult = async target => {
+    if (!target) return;
+    if (O.register.editor) throw new Error('Salve ou cancele o cadastro próprio aberto antes de mudar a consulta.');
+    const token = ++selectionRun; consultation.loading = true; UI.renderTop?.();
+    try {
+      const raw = await cycleSnapshot(target.id);
+      if (token !== selectionRun) return;
+      if (raw.ufs?.length !== 1 || raw.ufs[0] !== target.uf || month(raw.ref) !== target.ref) throw new Error('Snapshot divergente da UF/data-base.');
+      const key = target.id + ownKey();
+      let base = bases.get(key);
+      if (!base) { base = makeConsultationBase(raw, target); bases.set(key, base); if (bases.size > 3) bases.delete(bases.keys().next().value); }
+      consultation.cycle = target; consultation.base = base; consultation.signature = ownKey(); consultation.project = null;
+      A.drawer = null;
+      const drawer = document.getElementById('drawer'); if (drawer) { drawer.hidden = true; drawer.innerHTML = ''; }
+      A.sel ||= {}; A.trees ||= {}; A.sel.gi = null; A.sel.fam = null; A.trees.main = null;
+      UI.render();
+    } finally { if (token === selectionRun) { consultation.loading = false; UI.renderTop?.(); } }
+  };
+  state.consultReference = consult;
   let pending = null, busy = false;
   const change = async target => {
+    if (A.view !== 'budget') { UI.toast('Atualize UF e data-base pelo menu Orçamento. As demais telas são consultas.', 'warn'); return; }
     if (!target || target.id === state.project.cycleId || busy) return;
     checkEditors(); busy = true; pending = null;
     try {
@@ -382,6 +541,7 @@ function installReferences(O, checkEditors) {
   UI.act.infraApplyReference = async () => {
     const preview = pending;
     if (!preview || busy) return;
+    if (A.view !== 'budget') { pending = null; UI.closeModal(); UI.toast('Confirme a atualização somente no menu Orçamento.', 'warn'); return; }
     checkEditors(); busy = true;
     try {
       await state.flush();
@@ -396,49 +556,71 @@ function installReferences(O, checkEditors) {
   };
   const renderTop = UI.renderTop;
   UI.renderTop = () => {
-    renderTop?.();
-    const top = document.getElementById('top'), active = current(), available = choices();
+    withBudget(() => renderTop?.());
+    const top = document.getElementById('top'), active = selected(), available = choices();
     if (!top) return;
     const select = top.querySelector('[data-ch="uf"]'); if (!select) return;
-    select.dataset.ch = 'infraUF'; select.setAttribute('aria-label', 'UF do SICRO');
+    select.dataset.ch = 'infraUF'; select.setAttribute('aria-label', consulting() ? 'UF da consulta SICRO' : 'UF do orçamento');
     select.innerHTML = [...new Set(available.filter(c => c.ref === active.ref).map(c => c.uf))].sort().map(uf => `<option ${uf === active.uf ? 'selected' : ''}>${U.esc(uf)}</option>`).join('');
     const refs = [...new Set(available.map(c => c.ref))].sort().reverse();
     const field = document.createElement('label'); field.className = 'fld sm';
-    field.innerHTML = `<span>Data-base</span><select data-ch="infraReference" aria-label="Data-base do SICRO">${refs.map(ref => `<option value="${ref}" ${ref === active.ref ? 'selected' : ''}>${label(ref)}</option>`).join('')}</select>`;
+    field.innerHTML = `<span>${consulting() ? 'Consulta' : 'Data-base'}</span><select data-ch="infraReference" aria-label="${consulting() ? 'Data-base da consulta SICRO' : 'Data-base do orçamento'}">${refs.map(ref => `<option value="${ref}" ${ref === active.ref ? 'selected' : ''}>${label(ref)}</option>`).join('')}</select>`;
     select.closest('label').before(field);
-    top.querySelectorAll('[data-ch="infraUF"], [data-ch="infraReference"]').forEach(el => { el.disabled = busy; });
+    top.querySelectorAll('[data-ch="infraUF"], [data-ch="infraReference"]').forEach(el => { el.disabled = busy || consultation.loading || !consulting() && A.view !== 'budget'; });
+    const regime = top.querySelector('[data-ch="rg"]');
+    if (consulting() && regime) { regime.dataset.ch = 'infraConsultRegime'; regime.value = consultation.regime || A.pj.rg; regime.setAttribute('aria-label', 'Regime da consulta SICRO'); }
   };
-  const choose = (uf, ref) => {
+  const choose = (uf, ref, consultationOnly = false) => {
+    const querying = consultationOnly || consulting();
     const target = choices().find(c => c.uf === uf && c.ref === ref);
     if (!target) {
       UI.renderTop?.(); const alternatives = choices().filter(c => c.ref === ref);
-      if (alternatives.length) return UI.modal('Selecionar UF da nova data-base', `<p>SICRO ${label(ref)} ainda não está publicado para ${U.esc(uf)}. Escolha uma UF disponível para comparar; a referência atual permanece até confirmar.</p><div class="dr-a">${alternatives.map(c => `<button class="btn" data-act="infraSelectCycle" data-id="${c.id}">${U.esc(c.uf)}</button>`).join('')}</div>`, { wide: true });
+      if (alternatives.length) return UI.modal('Selecionar UF da nova data-base', `<p>SICRO ${label(ref)} ainda não está publicado para ${U.esc(uf)}. ${querying ? 'Escolha uma UF para consultar sem alterar o orçamento.' : 'Escolha uma UF para comparar; o orçamento permanece até confirmar.'}</p><div class="dr-a">${alternatives.map(c => `<button class="btn" data-act="infraSelectCycle" data-query="${querying ? '1' : '0'}" data-id="${c.id}">${U.esc(c.uf)}</button>`).join('')}</div>`, { wide: true });
       return UI.toast('Não há referência SICRO publicada para esta UF e data-base.', 'warn');
     }
-    return change(target);
+    return querying ? consult(target) : change(target);
   };
-  const safely = task => Promise.resolve(task).catch(e => { UI.toast(e.message, 'warn'); UI.renderTop?.(); });
+  const safely = fn => Promise.resolve().then(fn).catch(e => { UI.toast(e.message, 'warn'); UI.renderTop?.(); });
   UI.chg ||= {};
-  UI.chg.infraUF = el => safely(choose(el.value, current().ref));
-  UI.chg.infraReference = el => safely(choose(current().uf, el.value));
+  UI.chg.infraUF = el => safely(() => choose(el.value, selected().ref));
+  UI.chg.infraReference = el => safely(() => choose(selected().uf, el.value));
+  UI.chg.infraConsultRegime = el => { consultation.regime = el.value; UI.render(); };
   UI.chg.uf = UI.chg.infraUF;
-  UI.act.setUF = el => safely(choose(el.dataset.uf, current().ref));
-  UI.act.infraSelectCycle = el => safely(change(choices().find(c => c.id === el.dataset.id)));
-  UI.act.useBase = el => safely(change(choices().find(c => c.id === el.dataset.id)));
+  UI.act.setUF = el => safely(() => { const ref = selected().ref; A.view = 'catalog'; return choose(el.dataset.uf, ref, true); });
+  UI.act.infraSelectCycle = el => safely(() => { UI.closeModal(); const c = choices().find(c => c.id === el.dataset.id); return el.dataset.query === '1' || consulting() ? consult(c) : change(c); });
+  UI.act.useBase = () => { A.view = 'budget'; UI.render(); UI.toast('Selecione UF e data-base do orçamento e confira o comparativo antes de aplicar.'); };
 
   if (!O.drawer) return;
   const renderDrawer = O.drawer.render;
+  const consultationDrawer = () => consulting() && A.drawer && !A.drawer.fromBudgetId && !A.drawer.ivaItemId;
   O.drawer.render = () => {
-    renderDrawer();
+    if (consultationDrawer()) withConsultation(() => renderDrawer()); else withBudget(() => renderDrawer());
     const tabs = document.getElementById('drawer')?.querySelector('.tabs');
     if (tabs && !tabs.querySelector('[data-t="uf"]')) tabs.querySelector('[data-t="prod"]')?.insertAdjacentHTML('afterend', `<button class="tab ${A.drawer?.tab === 'uf' ? 'on' : ''}" data-act="drTab" data-t="uf">Preços por UF</button>`);
+    const box = document.getElementById('drawer');
+    if (box && consultationDrawer()) {
+      box.querySelector('.dr-b')?.insertAdjacentHTML('afterbegin', notice());
+      // Tax premises belong to the project. Inspection never edits that scenario.
+      box.querySelectorAll('[data-iva-path], [data-iva-option], [data-iva-year]').forEach(el => { el.disabled = true; });
+      box.querySelectorAll('[data-iva-action]').forEach(el => { if (!['export-memory', 'export-memory-json', 'export-years', 'print'].includes(el.dataset.ivaAction)) el.disabled = true; });
+      if (A.drawer.tab === 'ivaprem') box.querySelector('.dr-b')?.insertAdjacentHTML('afterbegin', '<p class="note">Premissas somente para leitura nesta consulta. Edite o cenário do orçamento em Reforma Tributária.</p>');
+    }
   };
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-iva-action]');
+    if (!button?.closest('#drawer') || !consultationDrawer()) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (['export-memory', 'export-memory-json', 'export-years', 'print'].includes(button.dataset.ivaAction)) {
+      withConsultation(() => O.iva.ui.actions(button.dataset.ivaAction)).catch(error => UI.toast(error.message, 'warn'));
+    }
+  }, true);
   const prices = new Map(); let run = 0;
-  const keyFor = code => JSON.stringify([code, current().ref, projectData(O)]);
+  const keyFor = code => JSON.stringify([code, selected().ref, consulting() ? consultation.regime || A.pj.rg : A.pj.rg, ownKey()]);
   state.pricesByUF = async code => {
     const key = keyFor(code), cached = prices.get(key); if (cached) return cached;
     const token = ++run, entry = { key, code, rows: [], loading: true }; prices.clear(); prices.set(key, entry);
-    const project = projectData(O), cycles = choices().filter(c => c.ref === current().ref).sort((a, b) => a.uf.localeCompare(b.uf));
+    const ref = selected().ref, regime = consulting() ? consultation.regime || A.pj.rg : A.pj.rg;
+    const cycles = choices().filter(c => c.ref === ref).sort((a, b) => a.uf.localeCompare(b.uf));
     const redraw = () => { if (A.drawer?.tab === 'uf' && String(A.drawer.code) === String(code) && keyFor(code) === key) O.drawer.render(); };
     for (const cycle of cycles) {
       if (token !== run || keyFor(code) !== key) break;
@@ -446,11 +628,8 @@ function installReferences(O, checkEditors) {
       try {
         const raw = await cycleSnapshot(cycle.id);
         if (!raw.ufs?.includes(cycle.uf) || raw.ufs.length !== 1 || month(raw.ref) !== cycle.ref) throw new Error('Snapshot divergente da UF/data-base.');
-        const base = O.register.makeBase(raw, cycle.id, project.catalog?.inputs || [], project.catalog?.compositions || [], project.sicroPriceQuotes || []);
-        const context = { ...project, uf: cycle.uf };
-        base.setTransport(O.fit?.effective(context) || context.dmt || null); base.setPem('', null);
-        const fic = O.fic?.overrides(context, base); if (fic) base.setFic(fic.sig, fic.arr);
-        row.value = base.compCost(code, cycle.uf, project.rg);
+        const base = makeConsultationBase(raw, cycle);
+        row.value = base.compCost(code, cycle.uf, regime);
         if (row.value == null) row.error = 'Composição ou preço ausente nesta referência';
       } catch (error) { row.error = error.message; }
       entry.rows.push(row); redraw();
@@ -463,9 +642,9 @@ function installReferences(O, checkEditors) {
     const known = entry.rows.map(r => r.value).filter(v => v != null).sort((a, b) => a - b), max = known.at(-1), min = known[0];
     const median = known.length ? (known[Math.floor((known.length - 1) / 2)] + known[Math.floor(known.length / 2)]) / 2 : null;
     return `<div class="kv"><div><small>Mínimo</small><b>${UI.money(min)}</b></div><div><small>Mediana</small><b>${UI.money(median)}</b></div><div><small>Máximo</small><b>${UI.money(max)}</b></div></div>
-      <p class="note">SICRO ${label(current().ref)} · ${U.esc(O.sicro.REGIMES[A.pj.rg])} · custo unitário sem BDI, com DMT/FIT e regras de FIC do projeto. Próprias usam suas cotações por UF/data-base. Consultar esta aba não altera o orçamento.</p>
-      ${entry.loading ? `<p role="status">Consultando estados: ${entry.rows.length}/${choices().filter(x => x.ref === current().ref).length}…</p>` : ''}
-      <div class="ufb">${entry.rows.map(row => `<button class="ufr ${row.uf === A.pj.uf ? 'on' : ''}" data-act="setUF" data-uf="${row.uf}" title="${U.esc(row.error || 'Comparar atualização do orçamento')}" style="width:100%"><span>${row.uf}</span><i style="width:${max && row.value != null ? (row.value / max * 100).toFixed(1) : 0}%"></i><b>${row.value == null ? 'Indisponível' : U.num(row.value / 100, 2)}</b></button>`).join('')}</div>
-      <p class="note">Clique numa UF para comparar e confirmar a atualização de todo o orçamento. Valores indisponíveis não são substituídos pelos de SP.</p>`;
+      <p class="note">SICRO ${label(selected().ref)} · ${U.esc(O.sicro.REGIMES[A.pj.rg])} · custo unitário referencial sem BDI e sem DMT/FIT ou ajustes de FIC da obra. Próprias usam suas cotações por UF/data-base. Consultar esta aba não altera o orçamento.</p>
+      ${entry.loading ? `<p role="status">Consultando estados: ${entry.rows.length}/${choices().filter(x => x.ref === selected().ref).length}…</p>` : ''}
+      <div class="ufb">${entry.rows.map(row => `<button class="ufr ${row.uf === selected().uf ? 'on' : ''}" data-act="setUF" data-uf="${row.uf}" title="${U.esc(row.error || 'Consultar esta UF sem alterar o orçamento')}" style="width:100%"><span>${row.uf}</span><i style="width:${max && row.value != null ? (row.value / max * 100).toFixed(1) : 0}%"></i><b>${row.value == null ? 'Indisponível' : U.num(row.value / 100, 2)}</b></button>`).join('')}</div>
+      <p class="note">Clique numa UF para consultar o catálogo desse estado. Para atualizar o orçamento, use seus seletores no menu Orçamento e confirme o comparativo. Valores indisponíveis não são substituídos pelos de SP.</p>`;
   };
 }

@@ -19,3 +19,17 @@ test('Runtime de migração compara fotografias sem mutar o projeto e o catálog
  assert.equal(result.items.length,64);assert.ok(result.items.every(item=>item.deltaDirectCents===0));
  assert.equal(JSON.stringify(project),original);assert.equal(JSON.stringify(raw),base);
 });
+
+test('Créditos de IBS/CBS no comparativo usam o mesmo motor da interface e a nova UF/data-base',()=>{
+ const H=require('./harness.cjs'),ctx=H.loadExtracted();
+ ctx.OP.app.pj.iva.year=2033;ctx.OP.iva.invalidate();
+ const current=ctx.OP.iva.budget(ctx.OP.ui.model());
+ const input=JSON.parse(JSON.stringify(ctx.OP.app.pj));
+ const actual=runtime.calculateProject(raw,input,{pem});
+ assert.equal(actual.iva.creditCents,current.total.creditCents);assert.equal(actual.iva.ibsCents,current.total.ibsCents);assert.equal(actual.iva.cbsCents,current.total.cbsCents);
+ const changed=JSON.parse(JSON.stringify(raw));changed.ufs=['RJ'];changed.ref='08/2026';
+ for(const key of ['v','vcd'])changed.ins[key]=changed.ins[key].map((v,i)=>changed.ins.k[i]===0&&v!=null?v*2:v);
+ const next=runtime.calculateProject(changed,{...input,uf:'RJ'},{pem});
+ assert.notEqual(next.totals.direct,actual.totals.direct);assert.notEqual(next.iva.creditCents,actual.iva.creditCents);
+ assert.equal(next.iva.creditCents,next.iva.ibsCents+next.iva.cbsCents);assert.equal(next.iva.year,2033);
+});

@@ -242,7 +242,7 @@ export class InfraService {
       const token = text(body.confirmationToken,'Confirmação da comparação',100), pieces = token.split('.');
       if (pieces.length !== 2 || !/^\d{13}$/.test(pieces[0]) || !/^[a-f0-9]{64}$/.test(pieces[1]) || Number(pieces[0]) < Date.now() || Number(pieces[0]) > Date.now() + 10 * 60000 || !timingSafeEqual(Buffer.from(pieces[1]),Buffer.from(sign(pieces[0])))) throw new ConflictException('Faça a comparação novamente antes de confirmar a migração.');
       if (report.items.some((item: any) => item.newUnitCostCents == null || item.newDirectCents == null)) throw new ConflictException('A referência de destino contém preços ausentes. Resolva as pendências antes de confirmar.');
-      const result = await this.update(db,user,row,{ version: row.version,name: row.name,uf: targetUf,regime: row.regime,data: parsed(row.data) },'project.migrate-cycle',targetId);
+      const result = await this.update(db,user,row,{ version: row.version,name: row.name,uf: targetUf,regime: row.regime,data: { ...parsed(row.data),sicroCycleId: targetId } },'project.migrate-cycle',targetId);
       await this.audit(db,user,'project.migration.comparison','project',id,{ sourceCycleId: row.cycle_id,targetCycleId: targetId,fingerprint,report });
       return { ...result,report };
     });

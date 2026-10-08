@@ -33,7 +33,7 @@ function validateRaw(raw){
 
 function calculateProject(raw,project,options={}){
  const ctx=runtime(raw,project,options);
- vm.runInContext(`(() => { const m=OP.ui.model();globalThis.__calculated={totals:m.tot,workDays:m.T,start:m.start,end:m.end,
+ vm.runInContext(`(() => { const m=OP.ui.model(),tax=OP.iva.budget(m);globalThis.__calculated={totals:m.tot,workDays:m.T,start:m.start,end:m.end,iva:{year:tax.year,...tax.total},
    items:m.items.map(row=>({id:row.id,code:row.node.code,description:row.desc,unit:row.unit,quantity:row.qty,unitCostCents:row.unitCost,directCents:row.direct,priceCents:row.price})),project:OP.app.pj};
  })()`,ctx,{filename:'calculate-project.js',timeout:30000});
  return clone(ctx.__calculated);

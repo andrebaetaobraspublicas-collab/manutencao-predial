@@ -11,5 +11,5 @@ const mobilizationSeed=JSON.parse(await fs.readFile(path.join(root,'public/data/
 const template=await fs.readFile(path.join(root,'scripts/runtime-template.cjs'),'utf8');
 await fs.mkdir(apiAssets,{recursive:true});
 const header=`/* Generated from the approved OrçaPro Infraestrutura modules; do not edit formulas here. */\nconst SOURCE_SHA256=${JSON.stringify(manifest.sourceSha256)};\nconst MODULES=${JSON.stringify(sources)};\nconst DATA=${JSON.stringify({alSeed,mobilizationSeed})};\n`;
-await fs.writeFile(path.join(apiAssets,'legacy-runtime.cjs'),header+template);
+await fs.writeFile(path.join(apiAssets,'legacy-runtime.cjs'),header+template.replace(/\r\n/g,'\n'));
 console.log('Infraestrutura legacy-runtime.cjs generated.');

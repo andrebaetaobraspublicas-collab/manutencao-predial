@@ -541,6 +541,7 @@ function installReferences(O, checkEditors) {
   UI.act.infraApplyReference = async () => {
     const preview = pending;
     if (!preview || busy) return;
+    if (A.view !== 'budget') { pending = null; UI.closeModal(); UI.toast('Confirme a atualização somente no menu Orçamento.', 'warn'); return; }
     checkEditors(); busy = true;
     try {
       await state.flush();

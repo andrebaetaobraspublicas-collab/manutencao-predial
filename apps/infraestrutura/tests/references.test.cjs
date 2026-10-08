@@ -70,6 +70,13 @@ test('Preços por UF consultam o relatório e calculam CD sob demanda, sem DMT/F
   const missing = await O.infra.pricesByUF('CP-NOT-FOUND'); assert.ok(missing.rows.every(x => x.value == null));
 });
 
+test('Sair do Orçamento invalida a aplicação de um comparativo pendente', async () => {
+  const f = await fixture({ cycles }); dialogs(f.O); f.O.app.view = 'budget';
+  await f.O.infra.compareReference(rj); f.O.app.view = 'catalog'; await f.O.ui.act.infraApplyReference();
+  assert.equal(f.project().cycleId, cycleId);
+  assert.equal(f.requests.filter(x => x.route.endsWith('/migrate-cycle') && x.body.dryRun === false).length, 0);
+});
+
 test('Catálogo, Insumos e Composições têm consulta independente, inclusive mês, regime, filtros e IVA', async () => {
   const ctx = H.loadExtracted(), O = ctx.OP, raw = copy(O.app.base.officialRaw), rawRJ = copy(raw);
   rawRJ.ufs = ['RJ']; rawRJ.cidades = ['Rio de Janeiro']; rawRJ.comp.o[0] += 123;

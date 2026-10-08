@@ -49,6 +49,7 @@ export class InfraController {
   @Post('projects/:id/duplicate') duplicate(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string,@Body() body: InfraObject) { return this.service.duplicate(user,id,body); }
   @Get('projects/:id/versions') versions(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string) { return this.service.versions(user,id); }
   @Post('projects/:id/restore/:version') restore(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string,@Param('version') version: string,@Body() body: InfraObject) { return this.service.restoreVersion(user,id,version,body); }
+  @ApiOperation({ summary: 'Comparar/aplicar UF e referência SICRO', description: 'dryRun:true retorna custos, prazo e créditos de IBS/CBS/IVA com indicação de parcelas incompletas. A aplicação exige confirmationToken HMAC vinculado ao usuário, tenant, ciclos e versão; gera histórico e auditoria.' })
   @Post('projects/:id/migrate-cycle') migrate(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string,@Body() body: InfraObject) { return this.service.migrateProject(user,id,body); }
   @Get('me/inputs') inputs(@CurrentUser() user: AuthenticatedUser) { return this.service.ownRecords(user,'INPUT'); }
   @Get('me/compositions') ownCompositions(@CurrentUser() user: AuthenticatedUser) { return this.service.ownRecords(user,'COMPOSITION'); }

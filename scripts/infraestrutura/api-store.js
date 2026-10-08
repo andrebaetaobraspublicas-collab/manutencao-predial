@@ -65,16 +65,16 @@ function pruneDerived() {
 }
 const draftId = () => `${state.access.userId}:${state.access.tenantId}:${state.project.id}`;
 const listOf = value => Array.isArray(value) ? value : value.items || [];
-async function snapshot() {
-  const id = state.project.cycleId, key = `cycle:${id}`;
+async function cycleSnapshot(id) {
+  const key = `cycle:${id}`;
   const cached = await local('catalog', key).catch(() => null);
   // Authorization is checked on every load, including 304; cache never grants access.
   const result = await request(`/infraestrutura/cycles/${id}/snapshot`, { headers: cached?.etag ? { 'If-None-Match': cached.etag } : {} });
-  if (result.notModified) { if (!cached?.raw) throw new Error('O cache da referência SICRO está incompleto.'); state.catalogHash = await digest(cached.raw); return clone(cached.raw); }
-  state.catalogHash = await digest(result.raw);
+  if (result.notModified) { if (!cached?.raw) throw new Error('O cache da referência SICRO está incompleto.'); return clone(cached.raw); }
   await local('catalog', key, { etag: result.etag, raw: result.raw }).catch(() => {});
   return result.raw;
 }
+async function snapshot() { const raw = await cycleSnapshot(state.project.cycleId); state.catalogHash = await digest(raw); return raw; }
 async function pem() { const value = await request(`/infraestrutura/cycles/${state.project.cycleId}/pem`); state.pemHash = await digest(value); return value; }
 async function digest(value) {
   if (!window.crypto?.subtle) return null;
@@ -316,7 +316,7 @@ async function afterModules(O) {
     view.render = (...args) => {
       const html = saasText(render.apply(view, args));
       if (name !== 'manual') return html;
-      return '<section class="panel"><h3>Como funciona esta versão SaaS</h3><p>Seus orçamentos, análises de risco e cadastros próprios são privados e são gravados no servidor. O catálogo SICRO e a biblioteca PEM são compartilhados; alterações próprias não modificam as referências oficiais.</p><p>Cada projeto conserva sua UF, referência e histórico. Para trocar a referência, compare os custos em Meus orçamentos → Versões e migração e confirme a alteração. Se duas abas editarem a mesma versão, o programa preserva o rascunho e permite salvar uma cópia.</p><button class="btn" data-act="openProjects">Meus orçamentos e versões</button></section>' + html;
+      return '<section class="panel"><h3>UF, data-base e preços no SaaS</h3><p>Seus orçamentos, análises de risco e cadastros próprios são privados e são gravados no servidor. SICRO e PEM são catálogos globais; alterações próprias não modificam referências oficiais.</p><ol><li>Nos menus Catálogo SICRO, Insumos, Composições e Orçamento, use <b>UF</b> e <b>Data-base</b> no cabeçalho. Aparecem apenas referências publicadas.</li><li>Confira o comparativo de custo direto, preço com BDI e crédito estimado de IVA. Abra a lista de serviços para revisar as diferenças. Cancelar conserva a referência atual.</li><li>Clique <b>Aplicar ao orçamento</b> para criar uma versão e recarregar toda a estrutura analítica e seus preços. Custos unitários, recursos e créditos de IBS/CBS passam a usar o novo contexto; não há desconto automático dos créditos no preço.</li><li>Revise cotações próprias, custos manuais, DMT/FIT/FIC e análises de risco. Valores próprios vinculados a outra UF/mês não são transferidos. Preços ausentes bloqueiam a atualização.</li><li>Para comparar sem alterar, abra uma composição e escolha <b>Preços por UF</b>. A aba mostra custos sem BDI, calculados com as DMT/FIT e regras de FIC do projeto, para cada estado na mesma data-base e regime. Clique num estado para abrir o comparativo antes de aplicar.</li></ol><p><b>Ano do IVA</b> é o ano do cenário tributário (2026–2033), distinto da <b>data-base SICRO</b> dos preços. Histórico: Arquivo → Histórico de versões. Duas abas editando a mesma versão geram conflito, sem perda silenciosa.</p><button class="btn" data-act="openProjects">Meus orçamentos e versões</button></section>' + html;
     };
   }
   const fileMenu = UI.act.fileMenu;
@@ -334,6 +334,138 @@ async function afterModules(O) {
     // The new project is already confirmed by the server. The old conflicting version cannot be flushed.
     await navigate('/orcapro-infraestrutura/editor?id=' + encodeURIComponent(created.id), true);
   };
+  installReferences(O, checkEditors);
   window.addEventListener('beforeunload', event => { if (state.saving || state.error || state.conflict || edits.size || JSON.stringify(projectData(O)) !== state.lastSaved) { event.preventDefault(); event.returnValue = ''; } });
 }
 const config = window.ORCAPRO_INFRA_CONFIG = { prepare, loadSnapshot: snapshot, loadPem: pem, installAdapter, afterModules };
+
+// Each immutable cycle is one UF/month; never relabel SP's price vector.
+function installReferences(O, checkEditors) {
+  const A = O.app, UI = O.ui, U = O.util;
+  const month = value => /^\d{4}-\d{2}$/.test(value || '') ? value : O.register.month(value);
+  const label = ref => ref ? `${ref.slice(5)}/${ref.slice(0, 4)}` : '—';
+  const current = () => state.cycles.find(c => c.id === state.project.cycleId) || { id: state.project.cycleId, uf: A.pj?.uf, ref: month(A.base?.raw.ref) };
+  const choices = () => {
+    const result = new Map();
+    // API order puts the latest published revision first for each UF/month.
+    for (const c of state.cycles) if (c.status === 'PUBLISHED' && !result.has(`${c.uf}:${c.ref}`)) result.set(`${c.uf}:${c.ref}`, c);
+    const active = current(); if (active.ref) result.set(`${active.uf}:${active.ref}`, active);
+    return [...result.values()];
+  };
+  state.referenceChoices = choices;
+  let pending = null, busy = false;
+  const change = async target => {
+    if (!target || target.id === state.project.cycleId || busy) return;
+    checkEditors(); busy = true; pending = null;
+    try {
+      await state.flush();
+      UI.modal('Comparando referências SICRO', '<p role="status">Calculando custos e créditos de IVA com o motor do orçamento…</p>', { wide: true });
+      const preview = await request(`/infraestrutura/projects/${state.project.id}/migrate-cycle`, { method: 'POST', body: JSON.stringify({ cycleId: target.id, version: state.project.version, dryRun: true }) });
+      const r = preview.report, money = UI.money, old = current();
+      const absent = r.items.filter(x => x.newUnitCostCents == null || x.newDirectCents == null);
+      const credit = v => v ? money(v.creditCents) + (v.complete ? '' : ' · parcial') : '—';
+      UI.modal('Atualizar UF e data-base do orçamento', `<p><b>SICRO ${U.esc(old.uf)} ${label(old.ref)} → ${U.esc(target.uf)} ${label(target.ref)}</b></p>
+        <p>Todos os serviços referenciais serão recalculados. Quantidades, equipes, DMT, FIT, regras de FIC, BDI e premissas tributárias serão mantidos. Cotações próprias e custos informados manualmente continuam conforme suas memórias; preços próprios específicos de outra UF/mês não são transferidos.</p>
+        <div class="tblw"><table class="tbl sm"><thead><tr><th>Comparativo</th><th class="r">Atual</th><th class="r">Nova referência</th></tr></thead><tbody>
+        <tr><td>Custo direto</td><td class="r">${money(r.before.totals.direct)}</td><td class="r">${money(r.after.totals.direct)}</td></tr>
+        <tr><td>Preço com BDI</td><td class="r">${money(r.before.totals.price)}</td><td class="r">${money(r.after.totals.price)}</td></tr>
+        <tr><td>Crédito de IVA estimado</td><td class="r">${credit(r.before.iva)}</td><td class="r">${credit(r.after.iva)}</td></tr></tbody></table></div>
+        <p class="note">Os créditos não são descontados automaticamente do preço. A confirmação cria uma versão auditável; análises de risco anteriores conservam sua fotografia e devem ser refeitas para a nova base.</p>
+        ${absent.length ? `<div class="notice warn">${absent.length} serviço(s) sem custo na referência de destino. A atualização está bloqueada até resolver as pendências.</div>` : ''}
+        <details><summary>Conferir ${r.items.length} serviços</summary><div class="tblw" style="max-height:340px"><table class="tbl sm"><thead><tr><th>Código / serviço</th><th class="r">Custo unit. atual</th><th class="r">Novo custo unit.</th><th class="r">Variação total</th></tr></thead><tbody>${r.items.map(x => `<tr><td><b>${U.esc(x.code)}</b> · ${U.esc(x.description)}</td><td class="r">${money(x.oldUnitCostCents)}</td><td class="r">${money(x.newUnitCostCents)}</td><td class="r">${money(x.deltaDirectCents)}</td></tr>`).join('')}</tbody></table></div></details>
+        <div class="dr-a"><button class="btn" data-act="closeModal">Cancelar</button><button class="btn pri" data-act="infraApplyReference" ${absent.length ? 'disabled' : ''}>Aplicar ao orçamento</button></div>`, { wide: true, onClose: () => { pending = null; } });
+      pending = preview;
+    } catch (error) { UI.closeModal(); UI.toast(error.message, 'warn'); }
+    finally { busy = false; UI.renderTop?.(); }
+  };
+  state.compareReference = change;
+  UI.act.infraApplyReference = async () => {
+    const preview = pending;
+    if (!preview || busy) return;
+    checkEditors(); busy = true;
+    try {
+      await state.flush();
+      const saved = await request(`/infraestrutura/projects/${state.project.id}/migrate-cycle`, { method: 'POST', body: JSON.stringify({ cycleId: preview.targetCycleId, version: preview.version, dryRun: false, confirmationToken: preview.confirmationToken }) });
+      state.project = saved; A.pj = clone(saved.data); state.lastSaved = JSON.stringify(saved.data); state.recoveryDraft = null;
+      await local('drafts', draftId(), { data: saved.data, serverVersion: saved.version, at: Date.now(), confirmed: true }).catch(() => {});
+      status('saved'); pending = null; clearTimeout(timer);
+      // Replace PEM and every tax/productivity/search cache atomically as well.
+      window.location.reload();
+    } catch (error) { pending = null; if (error.status === 409) UI.closeModal(); UI.toast(error.message, 'warn'); }
+    finally { busy = false; }
+  };
+  const renderTop = UI.renderTop;
+  UI.renderTop = () => {
+    renderTop?.();
+    const top = document.getElementById('top'), active = current(), available = choices();
+    if (!top) return;
+    const select = top.querySelector('[data-ch="uf"]'); if (!select) return;
+    select.dataset.ch = 'infraUF'; select.setAttribute('aria-label', 'UF do SICRO');
+    select.innerHTML = [...new Set(available.filter(c => c.ref === active.ref).map(c => c.uf))].sort().map(uf => `<option ${uf === active.uf ? 'selected' : ''}>${U.esc(uf)}</option>`).join('');
+    const refs = [...new Set(available.map(c => c.ref))].sort().reverse();
+    const field = document.createElement('label'); field.className = 'fld sm';
+    field.innerHTML = `<span>Data-base</span><select data-ch="infraReference" aria-label="Data-base do SICRO">${refs.map(ref => `<option value="${ref}" ${ref === active.ref ? 'selected' : ''}>${label(ref)}</option>`).join('')}</select>`;
+    select.closest('label').before(field);
+    top.querySelectorAll('[data-ch="infraUF"], [data-ch="infraReference"]').forEach(el => { el.disabled = busy; });
+  };
+  const choose = (uf, ref) => {
+    const target = choices().find(c => c.uf === uf && c.ref === ref);
+    if (!target) {
+      UI.renderTop?.(); const alternatives = choices().filter(c => c.ref === ref);
+      if (alternatives.length) return UI.modal('Selecionar UF da nova data-base', `<p>SICRO ${label(ref)} ainda não está publicado para ${U.esc(uf)}. Escolha uma UF disponível para comparar; a referência atual permanece até confirmar.</p><div class="dr-a">${alternatives.map(c => `<button class="btn" data-act="infraSelectCycle" data-id="${c.id}">${U.esc(c.uf)}</button>`).join('')}</div>`, { wide: true });
+      return UI.toast('Não há referência SICRO publicada para esta UF e data-base.', 'warn');
+    }
+    return change(target);
+  };
+  const safely = task => Promise.resolve(task).catch(e => { UI.toast(e.message, 'warn'); UI.renderTop?.(); });
+  UI.chg ||= {};
+  UI.chg.infraUF = el => safely(choose(el.value, current().ref));
+  UI.chg.infraReference = el => safely(choose(current().uf, el.value));
+  UI.chg.uf = UI.chg.infraUF;
+  UI.act.setUF = el => safely(choose(el.dataset.uf, current().ref));
+  UI.act.infraSelectCycle = el => safely(change(choices().find(c => c.id === el.dataset.id)));
+  UI.act.useBase = el => safely(change(choices().find(c => c.id === el.dataset.id)));
+
+  if (!O.drawer) return;
+  const renderDrawer = O.drawer.render;
+  O.drawer.render = () => {
+    renderDrawer();
+    const tabs = document.getElementById('drawer')?.querySelector('.tabs');
+    if (tabs && !tabs.querySelector('[data-t="uf"]')) tabs.querySelector('[data-t="prod"]')?.insertAdjacentHTML('afterend', `<button class="tab ${A.drawer?.tab === 'uf' ? 'on' : ''}" data-act="drTab" data-t="uf">Preços por UF</button>`);
+  };
+  const prices = new Map(); let run = 0;
+  const keyFor = code => JSON.stringify([code, current().ref, projectData(O)]);
+  state.pricesByUF = async code => {
+    const key = keyFor(code), cached = prices.get(key); if (cached) return cached;
+    const token = ++run, entry = { key, code, rows: [], loading: true }; prices.clear(); prices.set(key, entry);
+    const project = projectData(O), cycles = choices().filter(c => c.ref === current().ref).sort((a, b) => a.uf.localeCompare(b.uf));
+    const redraw = () => { if (A.drawer?.tab === 'uf' && String(A.drawer.code) === String(code) && keyFor(code) === key) O.drawer.render(); };
+    for (const cycle of cycles) {
+      if (token !== run || keyFor(code) !== key) break;
+      const row = { uf: cycle.uf, cycleId: cycle.id, value: null };
+      try {
+        const raw = await cycleSnapshot(cycle.id);
+        if (!raw.ufs?.includes(cycle.uf) || raw.ufs.length !== 1 || month(raw.ref) !== cycle.ref) throw new Error('Snapshot divergente da UF/data-base.');
+        const base = O.register.makeBase(raw, cycle.id, project.catalog?.inputs || [], project.catalog?.compositions || [], project.sicroPriceQuotes || []);
+        const context = { ...project, uf: cycle.uf };
+        base.setTransport(O.fit?.effective(context) || context.dmt || null); base.setPem('', null);
+        const fic = O.fic?.overrides(context, base); if (fic) base.setFic(fic.sig, fic.arr);
+        row.value = base.compCost(code, cycle.uf, project.rg);
+        if (row.value == null) row.error = 'Composição ou preço ausente nesta referência';
+      } catch (error) { row.error = error.message; }
+      entry.rows.push(row); redraw();
+    }
+    entry.loading = false; redraw(); return entry;
+  };
+  O.drawer.tabs.uf = c => {
+    const key = keyFor(c.code), entry = prices.get(key);
+    if (!entry) { void state.pricesByUF(c.code); return '<p role="status">Consultando preços dos estados…</p>'; }
+    const known = entry.rows.map(r => r.value).filter(v => v != null).sort((a, b) => a - b), max = known.at(-1), min = known[0];
+    const median = known.length ? (known[Math.floor((known.length - 1) / 2)] + known[Math.floor(known.length / 2)]) / 2 : null;
+    return `<div class="kv"><div><small>Mínimo</small><b>${UI.money(min)}</b></div><div><small>Mediana</small><b>${UI.money(median)}</b></div><div><small>Máximo</small><b>${UI.money(max)}</b></div></div>
+      <p class="note">SICRO ${label(current().ref)} · ${U.esc(O.sicro.REGIMES[A.pj.rg])} · custo unitário sem BDI, com DMT/FIT e regras de FIC do projeto. Próprias usam suas cotações por UF/data-base. Consultar esta aba não altera o orçamento.</p>
+      ${entry.loading ? `<p role="status">Consultando estados: ${entry.rows.length}/${choices().filter(x => x.ref === current().ref).length}…</p>` : ''}
+      <div class="ufb">${entry.rows.map(row => `<button class="ufr ${row.uf === A.pj.uf ? 'on' : ''}" data-act="setUF" data-uf="${row.uf}" title="${U.esc(row.error || 'Comparar atualização do orçamento')}" style="width:100%"><span>${row.uf}</span><i style="width:${max && row.value != null ? (row.value / max * 100).toFixed(1) : 0}%"></i><b>${row.value == null ? 'Indisponível' : U.num(row.value / 100, 2)}</b></button>`).join('')}</div>
+      <p class="note">Clique numa UF para comparar e confirmar a atualização de todo o orçamento. Valores indisponíveis não são substituídos pelos de SP.</p>`;
+  };
+}

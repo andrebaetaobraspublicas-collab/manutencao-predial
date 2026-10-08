@@ -39,7 +39,7 @@ async function fixture(options = {}) {
   let failNextProject = false, failNextOwn = false;
   const own = new Map();
   const parent = { postMessage: (message, origin) => messages.push({ message: copy(message), origin }) };
-  Object.assign(ctx, { structuredClone, queueMicrotask, URLSearchParams, indexedDB: memoryDb(storage), location: { search: `?project=${projectId}`, origin: 'http://fixture.invalid' }, parent,
+  Object.assign(ctx, { structuredClone, queueMicrotask, URLSearchParams, indexedDB: memoryDb(storage), location: { search: `?project=${projectId}`, origin: 'http://fixture.invalid', reload: () => { ctx.reloaded = true; } }, parent,
     top: { location: { assign: target => { ctx.navigated = target; } } }, OP_SOURCE_SHA256: 'calculation-engine-fixture-v1',
     addEventListener: (type, listener) => (listeners[type] ||= []).push(listener),
   });
@@ -49,12 +49,19 @@ async function fixture(options = {}) {
     requests.push({ route, method, body, headers: init.headers || {} });
     const respond = (value, status = 200, headers) => new Response(status === 304 ? null : JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json', ...headers } });
     if (route === '/access') return respond({ enabled: true, userId: options.userId || 'user-1', tenantId: options.tenantId || 'tenant-1', role: 'USER', csrfToken: 'csrf-fixture' });
-    if (route === '/cycles') return respond({ items: [{ id: cycleId }] });
+    if (route === '/cycles') return respond({ items: options.cycles || [{ id: cycleId, uf: 'SP', ref: '2026-07', status: 'PUBLISHED' }] });
     if (route === '/settings') return respond({});
-    if (route.endsWith('/snapshot')) return respond(options.raw || { ufs: ['SP'], ref: '07/2026' }, 200, { ETag: '"fixture-v1"' });
+    if (route.endsWith('/snapshot')) return respond(options.raws?.[route.split('/')[2]] || options.raw || { ufs: ['SP'], ref: '07/2026' }, 200, { ETag: '"fixture-v1"' });
     if (route.endsWith('/pem')) return respond(options.pem || { pem: [] });
     if (route === `/projects/${projectId}` && method === 'GET') return respond(project);
     if (method !== 'GET' && init.headers?.['X-Infra-CSRF'] !== 'csrf-fixture') return respond({ message: 'CSRF ausente' }, 403);
+    if (route === `/projects/${projectId}/migrate-cycle`) {
+      if (body.version !== project.version) return respond({ message: 'Faça a comparação novamente: versão alterada.' }, 409);
+      const target = options.cycles?.find(c => c.id === body.cycleId);
+      if (body.dryRun !== false) return respond({ version: project.version, targetCycleId: target.id, confirmationToken: 'review-fixture', report: options.report || { before: { totals: { direct: 10000, price: 12000 }, iva: { creditCents: 1000, complete: true } }, after: { totals: { direct: 15000, price: 18000 }, iva: { creditCents: 1500, complete: false } }, items: [] } });
+      if (body.confirmationToken !== 'review-fixture') return respond({ message: 'Token inválido' }, 409);
+      project = { ...project, version: project.version + 1, cycleId: target.id, data: { ...project.data, uf: target.uf, sicroCycleId: target.id } }; return respond(project);
+    }
     if (route === `/projects/${projectId}` && method === 'PUT') {
       if (failNextProject || body.version !== project.version) { failNextProject = false; return respond({ message: 'Outro usuário alterou a versão.' }, 409); }
       project = { ...project, version: project.version + 1, data: body.data }; return respond(project);

@@ -160,6 +160,35 @@ suite('Infraestrutura HTTP/MySQL — autorização, histórico e conflito', () =
     await send(a, 'get', `/api/v1/infraestrutura/cycles/${base.id}/snapshot`).set('If-None-Match', `"${base.hash}"`).expect(304);
   });
 
+  test('troca real de UF compara IVA e custos, exige confirmação e versiona sem acesso de terceiros', async () => {
+    const seed = join(__dirname, '../../../../../legacy/infraestrutura-1.8.3');
+    const raw = JSON.parse(gunzipSync(await readFile(join(seed, 'base.json.gz'))).toString());
+    const pem = await readFile(join(seed, 'pem.json.gz'));
+    const example = JSON.parse(await readFile(join(seed, 'example-road.json'), 'utf8'));
+    const sourceId = randomUUID(), targetId = randomUUID();
+    for (const [id, uf, factor] of [[sourceId, 'SP', 1], [targetId, 'RJ', 2]] as const) {
+      const snapshot = structuredClone(raw); snapshot.ufs = [uf];
+      for (const key of ['v', 'vcd']) snapshot.ins[key] = snapshot.ins[key].map((v: number|null, i: number) => snapshot.ins.k[i] === 0 && v != null ? v * factor : v);
+      const encoded = JSON.stringify(snapshot), hash = sha(encoded);
+      await db.query('INSERT INTO InfraCycle(id,uf,ref,status,import_status,imported_by,content_hash,raw_size,expected_chunks) VALUES(?,?,\'2026-07\',\'PUBLISHED\',\'PASSED\',?,?,?,1)', [id, uf, admin.principal.userId, hash, Buffer.byteLength(encoded)]);
+      await db.query('INSERT INTO InfraCycleSnapshot(cycle_id,gz_blob,etag) VALUES(?,?,?)', [id, gzipSync(encoded), hash]);
+      await db.query('INSERT INTO InfraPemSnapshot(cycle_id,gz_blob,etag) VALUES(?,?,?)', [id, pem, sha(pem)]);
+    }
+    example.iva.year = 2033;
+    const own = (await send(a, 'post', '/api/v1/infraestrutura/projects').send({ cycleId: sourceId, data: example }).expect(201)).body;
+    const route = `/api/v1/infraestrutura/projects/${own.id}/migrate-cycle`;
+    for (const who of [b, c, d]) await send(who, 'post', route).send({ cycleId: targetId, version: 1, dryRun: true }).expect(404);
+    const preview = (await send(a, 'post', route).send({ cycleId: targetId, version: 1, dryRun: true }).expect(201)).body;
+    expect(preview.report.after.totals.direct).not.toBe(preview.report.before.totals.direct);
+    expect(preview.report.after.iva.creditCents).not.toBe(preview.report.before.iva.creditCents);
+    expect((await send(a, 'get', `/api/v1/infraestrutura/projects/${own.id}`).expect(200)).body.cycleId).toBe(sourceId);
+    await send(a, 'post', route).send({ cycleId: targetId, version: 1, dryRun: false, confirmationToken: `${Date.now() + 10000}.${'0'.repeat(64)}` }).expect(409);
+    const updated = (await send(a, 'post', route).send({ cycleId: targetId, version: 1, dryRun: false, confirmationToken: preview.confirmationToken }).expect(201)).body;
+    expect(updated).toMatchObject({ cycleId: targetId, version: 2, uf: 'RJ', data: { uf: 'RJ', sicroCycleId: targetId } });
+    const versions = (await send(a, 'get', `/api/v1/infraestrutura/projects/${own.id}/versions`).expect(200)).body.items;
+    expect(versions.map((v: {version:number}) => v.version)).toEqual([2, 1]);
+  }, 120_000);
+
   test('importação HTTP confere cada fragmento gzip/hash e não publica antes do worker', async () => {
     const index = refCounter++;
     const ref = `${1000 + Math.floor(index / 12)}-${String(index % 12 + 1).padStart(2, '0')}`;

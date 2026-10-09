@@ -153,3 +153,11 @@ O pipeline Hostinger pode executar esse seed **somente por opt-in**: `ORCAPRO_SE
 ## Evidências e limites
 
 As três migrations adicionais foram aplicadas em MySQL 8.4 isolado. Seed global foi executado duas vezes. Regressão: todas as 10.547 composições em SP/DF e cinco combinações de regime, e os dois projetos com hidratação parcial MySQL comparados integralmente às fixtures. Os dados complementares e motores legados continuam preservados em JSON/runtime; isso não significa que todos os módulos fiscais, cronogramas e relatórios já foram normalizados em tabelas relacionais próprias. O resumo é recalculado no servidor; persistência de relatórios pesados e storage externo são etapas posteriores. Publicação na Hostinger exige validação e promoção explícitas do checkout, sem substituir a manutenção.
+# Busca no catálogo SINAPI
+
+As consultas de insumos e composições normalizam a comparação textual para
+`utf8mb4_unicode_ci` na própria consulta, evitando o erro MySQL 1267 do parâmetro
+binário do adaptador MariaDB. Código usa prefixo; descrição e grupo usam trecho
+literal, sem diferenciar maiúsculas ou acentos. `%` e `_` não são curingas.
+Referência, filtros, paginação e custos por UF/regime continuam preservados.
+Nenhuma alteração dos dados ou da collation das tabelas é necessária.

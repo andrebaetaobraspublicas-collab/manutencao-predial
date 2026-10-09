@@ -125,3 +125,7 @@ Plano mínimo:
 6. recuperar serviço;
 7. registrar causa, impacto e ações;
 8. testar correções.
+
+## 11. Driver de banco — atualização de 09/10/2026
+
+MariaDB Connector/Node.js está fixado em `3.5.4`, tanto no uso direto como via `@prisma/adapter-mariadb`, com override global e lockfile. A atualização substitui `3.5.3` pelos reparos documentados pelo fornecedor para escaping com `NO_BACKSLASH_ESCAPES`, expansão de chaves SET, GeoJSON inválido e autenticação ed25519. Fontes: [release 3.5.4](https://github.com/mariadb-corporation/mariadb-connector-nodejs/releases/tag/3.5.4), [GHSA-r3rv-jm3r-62q2](https://github.com/advisories/GHSA-r3rv-jm3r-62q2), [GHSA-v6pj-gxxw-phfw](https://github.com/advisories/GHSA-v6pj-gxxw-phfw) e [GHSA-48qf-xh34-q73r](https://github.com/advisories/GHSA-48qf-xh34-q73r). O bloqueio de vulnerabilidades altas/críticas do CI permanece ativo, sem nova exceção. Publicação desta atualização limitada ao desenvolvimento; a produção comercial conserva seu fluxo separado de promoção.

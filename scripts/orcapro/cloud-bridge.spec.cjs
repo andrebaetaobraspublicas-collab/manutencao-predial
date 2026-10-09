@@ -10,7 +10,7 @@ const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 function setup(fetch) {
   const runtime = loadLegacyRuntime(), { OP } = runtime;
-  const messages = [];
+  const messages = []; let reloads = 0;
   OP.ui.renderNav = () => {};
   OP.ui.$ = () => null;
   OP.ui.toast = () => {};
@@ -19,7 +19,7 @@ function setup(fetch) {
   OP.app.pj.id = id;
   OP.app.inputs = []; OP.app.customs = [];
   OP.app.base = { raw: { ref: '08/2026' }, nComp: 0 };
-  const context = { OP, fetch, URL, URLSearchParams, location: { origin: 'https://example.test', search: '?project=' + id },
+  const context = { OP, fetch, URL, URLSearchParams, location: { origin: 'https://example.test', search: '?project=' + id, reload: () => { reloads++; } },
     document: { addEventListener() {}, getElementById: () => null }, addEventListener() {},
     parent: { postMessage: (data, origin) => messages.push({ data, origin }) }, localStorage: {}, console, setTimeout, clearTimeout };
   context.window = context;
@@ -27,7 +27,7 @@ function setup(fetch) {
   vm.runInContext('(' + source + ')("https://api.example.test/api/v1")', context);
   Object.assign(OP.cloud, { ready: true, wrapper: { id, referenceId: 'reference-1', version: 4 },
     access: { enabled: true, role: 'USER', tenantId: 'tenant', userId: 'user' } });
-  return { OP, messages, runtime };
+  return { OP, messages, runtime, get reloads() { return reloads; } };
 }
 test('refresh retries once and transport stays credentialed at the built API origin', async () => {
   const calls = [];
@@ -202,4 +202,30 @@ test('risk snapshot flush includes debounced edits and server acceptance cancels
   await OP.cloud.flush();assert.equal(bodies.length,1);assert.equal(bodies[0].data.name,'Edited before snapshot');
   OP.cloud.acceptProject({id,referenceId:'reference-1',version:6,data:{...OP.app.pj,risks:{v:1,analyses:[]}}});
   await OP.cloud.flush();assert.equal(bodies.length,1);assert.equal(OP.cloud.wrapper.version,6);
+});
+
+test('reference preview is read-only until confirmation and stale previews cannot be applied', async () => {
+  const calls=[];let preview;
+  const fixture=setup(async (url, options) => {
+    calls.push({url,options});const body=JSON.parse(options.body);
+    if(url.endsWith('/reference-preview'))return json(preview);
+    return json({id,referenceId:body.referenceId,version:body.expectedVersion+1,data:body.data});
+  });
+  attachBase(fixture);const {OP}=fixture;
+  await OP.cloud.flush();calls.length=0;
+  const before=JSON.stringify(OP.app.pj);let modal='';
+  OP.ui.$=selector=>selector==='#cloudReferenceTarget'?{value:'reference-2'}:null;
+  OP.ui.modal=(_,html)=>{modal=html;};OP.ui.closeModal=()=>{};
+  const tax={creditCents:123,complete:false,missing:1};
+  preview={expectedVersion:OP.cloud.wrapper.version,referenceId:'reference-2',currentReference:'08/2026',nextReference:'09/2026',current:{direct:100,price:125,days:1,iva:tax,items:[]},next:{direct:200,price:250,days:2,iva:tax,items:[]},data:{...OP.app.pj,sinapiReferenceId:'reference-2'}};
+  await OP.ui.act.cloudReferencePreview({disabled:false});
+  assert.equal(calls.length,1);assert.ok(calls[0].url.endsWith('/reference-preview'));
+  assert.equal(JSON.stringify(OP.app.pj),before);assert.match(modal,/Aplicar ao orçamento/);assert.match(modal,/parcial/);
+  OP.cloud.wrapper.version++;
+  await OP.ui.act.cloudReferenceApply({disabled:false});assert.equal(calls.length,1);assert.equal(fixture.reloads,0);
+  preview.expectedVersion=OP.cloud.wrapper.version;
+  await OP.ui.act.cloudReferencePreview({disabled:false});
+  await OP.ui.act.cloudReferenceApply({disabled:false});
+  assert.equal(calls.at(-1).options.method,'PUT');assert.equal(JSON.parse(calls.at(-1).options.body).referenceId,'reference-2');
+  assert.equal(fixture.reloads,1);
 });

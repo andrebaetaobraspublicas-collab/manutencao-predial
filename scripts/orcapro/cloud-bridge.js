@@ -390,6 +390,55 @@ function installOrcaProCloud(API_BASE) {
     if (footer) footer.innerHTML = `<b>SINAPI ${U.esc(A.base.raw.ref)}</b> · referência do projeto<br>${U.int(A.base.nComp)} composições carregadas sob demanda<br>${state.conflict ? 'CONFLITO — alterações ainda não salvas' : A.saveError ? 'FALHA AO SALVAR — exporte JSON' : state.saving ? 'Salvando na nuvem…' : 'Nuvem · versão ' + (state.wrapper?.version || '')}`;
   };
   const renderBudget = UI.views.budget.render;
+  const renderTop = UI.renderTop;
+  UI.renderTop = () => {
+    renderTop();
+    const chip = UI.$('#top .chip');
+    if (chip) { chip.textContent = `SINAPI ${A.base.raw.ref} · deste orçamento`;
+      chip.title = 'Referência preservada neste orçamento. O padrão administrativo vale para novos projetos.'; }
+  };
+  function referenceNotice() {
+    const reference = state.references?.items.find(r => r.id === state.references.defaultReferenceId);
+    return `<div class="info"><b>Referência deste orçamento: SINAPI ${U.esc(state.raw.ref)}.</b> ${reference ? `Padrão para novos projetos: ${U.esc(reference.label)}.` : ''} Alterar o padrão não modifica este orçamento. <button class="btn sm" data-act="cloudReferenceSelect">Comparar e atualizar referência</button></div>`;
+  }
+  let referencePreview = null;
+  UI.act.cloudReferenceSelect = () => {
+    referencePreview = null;
+    const items = (state.references?.items || []).filter(r => r.status === 'PUBLISHED' && r.id !== state.wrapper.referenceId);
+    UI.modal('Atualizar a referência deste orçamento', '<p>Compare os custos, créditos de IVA e prazos antes de aplicar. Quantidades, cadastros próprios, BDI e equipes editadas são preservados. Composições excluídas exigem revisão; o sistema não escolhe substituições automaticamente.</p>' +
+      (items.length ? `<label>Nova referência <select id="cloudReferenceTarget">${items.map(r => `<option value="${U.esc(r.id)}" ${r.id === state.references.defaultReferenceId ? 'selected' : ''}>${U.esc(r.label)}</option>`).join('')}</select></label><p><button class="btn primary" data-act="cloudReferencePreview">Comparar sem aplicar</button></p>` : '<p>Não há outra referência publicada disponível.</p>'), { wide: true });
+  };
+  UI.act.cloudReferencePreview = async element => {
+    const referenceId = UI.$('#cloudReferenceTarget')?.value;
+    if (!referenceId) return;
+    element.disabled = true;
+    try {
+      await state.flush();
+      const signature = JSON.stringify(projectDocument());
+      const preview = await request(`/orcapro/projects/${projectId}/reference-preview`, { method: 'POST', body: JSON.stringify({ referenceId }) });
+      if (state.wrapper.version !== preview.expectedVersion || signature !== JSON.stringify(projectDocument())) throw new Error('O orçamento foi alterado durante a comparação. Compare novamente.');
+      referencePreview = { ...preview, signature };
+      const row = (label, before, after) => `<tr><td>${label}</td><td class="r">${before}</td><td class="r">${after}</td></tr>`;
+      const tax = value => `${UI.money(value.creditCents)}${value.complete ? ' · estimativa' : ' · parcial (' + value.missing + ' pendências)'}`;
+      UI.modal('Conferir atualização de referência', `<h3>SINAPI ${U.esc(preview.currentReference)} → ${U.esc(preview.nextReference)}</h3><div class="tblw"><table class="tbl"><thead><tr><th>Comparativo</th><th>Atual</th><th>Nova referência</th></tr></thead><tbody>${row('Custo direto', UI.money(preview.current.direct), UI.money(preview.next.direct))}${row('Preço com BDI', UI.money(preview.current.price), UI.money(preview.next.price))}${row('Crédito de IVA estimado', tax(preview.current.iva), tax(preview.next.iva))}${row('Prazo programado', preview.current.days + ' dias úteis', preview.next.days + ' dias úteis')}</tbody></table></div><p>Custos informados manualmente e adaptações próprias são preservados. Cotações por referência não são transferidas. Os créditos não são descontados automaticamente do preço. Análises de riscos anteriores mantêm sua fotografia; refaça-as para a nova referência.</p><details><summary>Conferir ${preview.next.items.length} serviços</summary><div class="tblw"><table class="tbl"><thead><tr><th>Código</th><th>Serviço</th><th>Custo unitário atual</th><th>Novo custo unitário</th><th>Prazo novo</th></tr></thead><tbody>${preview.next.items.map(item => { const old = preview.current.items.find(r => r.id === item.id); return `<tr><td>${U.esc(item.code)}</td><td>${U.esc(item.description)}</td><td>${UI.money(old?.unitCost)}</td><td>${UI.money(item.unitCost)}</td><td>${item.days} dias</td></tr>`; }).join('')}</tbody></table></div></details><p><button class="btn" data-act="cloudReferenceCancel">Cancelar</button> <button class="btn primary" data-act="cloudReferenceApply">Aplicar ao orçamento</button></p><p class="note">A confirmação cria uma versão auditável; a anterior permanece no histórico.</p>`, { wide: true });
+    } catch (error) { UI.toast(error.message, 'warn'); } finally { element.disabled = false; }
+  };
+  UI.act.cloudReferenceCancel = () => { referencePreview = null; UI.closeModal(); };
+  UI.act.cloudReferenceApply = async element => {
+    const preview = referencePreview;
+    if (!preview) return;
+    if (state.conflict || state.saving || state.wrapper.version !== preview.expectedVersion || JSON.stringify(projectDocument()) !== preview.signature) {
+      referencePreview = null; UI.toast('O orçamento foi alterado. Compare novamente antes de aplicar.', 'warn'); return;
+    }
+    element.disabled = true;
+    try {
+      clearTimeout(autosaveTimer);
+      const saved = await request(`/orcapro/projects/${projectId}`, { method: 'PUT', body: JSON.stringify({ expectedVersion: preview.expectedVersion,
+        referenceId: preview.referenceId, name: A.pj.name, uf: A.pj.uf, regime: A.pj.rg, data: preview.data }) });
+      state.wrapper = saved; state.lastSaved = JSON.stringify(saved.data); state.ready = false;
+      referencePreview = null; notifyParent('saved'); location.reload();
+    } catch (error) { reportError(error); UI.toast(error.message, 'warn'); element.disabled = false; }
+  };
   function historicalCostsMessage() {
     const codes = new Set(), stack = [A.pj.root];
     while (stack.length) {
@@ -400,10 +449,10 @@ function installOrcaProCloud(API_BASE) {
     }
     return codes.size ? `<div class="alertbox"><b>Custos informados e históricos preservados.</b> Códigos ${U.esc([...codes].join(', '))}: estes valores provêm da memória/cotação do projeto; não representam preços SINAPI atuais para a UF selecionada. Confira fonte e memória antes de revisar.</div>` : '';
   }
-  UI.views.budget.render = () => conflictMessage() + historicalCostsMessage() + renderBudget();
+  UI.views.budget.render = () => conflictMessage() + referenceNotice() + historicalCostsMessage() + renderBudget();
   UI.act.cloudReload = () => { if (confirm('Reabrir a versão do servidor? Exporte as alterações JSON para preservá-las antes de continuar.')) location.reload(); };
   UI.act.importBase = UI.act.useBase = UI.act.delBase = () => { throw new Error('A referência deste projeto é fixa. Publique e gerencie versões no portal administrativo.'); };
-  UI.views.base = { render: () => `<div class="vh"><h1>Referência SINAPI do projeto</h1></div><div class="panel"><h3>SINAPI ${U.esc(state.raw.ref)}</h3><p>Este orçamento permanece vinculado à sua versão. Publicação e seleção de referência padrão pertencem à administração global. <a href="/orcapro/gerenciar" target="_top">Voltar ao portal OrçaPro</a></p></div>` };
+  UI.views.base = { render: () => `<div class="vh"><h1>Referência SINAPI do projeto</h1></div><div class="panel"><h3>SINAPI ${U.esc(state.raw.ref)} · deste orçamento</h3>${referenceNotice()}<p>Publicação e seleção de referência padrão pertencem à administração global. <a href="/orcapro/gerenciar" target="_top">Voltar ao portal OrçaPro</a></p></div>` };
   O.main.embeddedRaw = async () => { throw new Error('A referência é obtida do catálogo global autorizado.'); };
   O.main.useBase = () => { throw new Error('Troca de referência disponível somente pelo portal com revisão auditável.'); };
   O.main.openProject = () => { throw new Error('Abra os projetos privados pelo portal OrçaPro.'); };
@@ -591,6 +640,7 @@ function installOrcaProCloud(API_BASE) {
     if (!projectId || !uuid.test(projectId)) throw new Error('Abra um projeto válido pelo portal OrçaPro.');
     state.access = await request('/orcapro/access');
     if (!state.access.enabled) throw new Error('O acesso ao OrçaPro não está ativo para esta conta.');
+    state.references = await request('/orcapro/references');
     const context = await request(`/orcapro/projects/${projectId}/context`);
     if (context.project.id !== projectId || !context.project.referenceId || !context.raw) throw new Error('Contexto do projeto inválido.');
     state.wrapper = context.project; state.raw = context.raw;

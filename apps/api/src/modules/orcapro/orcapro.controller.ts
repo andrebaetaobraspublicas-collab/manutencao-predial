@@ -37,6 +37,8 @@ export class OrcaproController {
   importProject(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateProjectDto) { return this.service.importLegacyProject(user, dto); }
   @Get('projects/:id') project(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return this.service.project(user, id); }
   @Get('projects/:id/context') context(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return this.service.projectContext(user, id); }
+  @Post('projects/:id/reference-preview') @ApiOperation({ summary: 'Comparação sem gravação para mudança explícita de referência; aplicar por PUT com expectedVersion.' })
+  previewReference(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: ReferenceDto) { return this.service.previewReference(user, id, dto.referenceId); }
   @Get('projects/:id/calculation') calculate(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return this.service.calculation(user, id); }
   @Get('projects/:id/export') exportProject(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return this.service.exportProject(user, id); }
   @Put('projects/:id') save(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: SaveProjectDto) { return this.service.saveProject(user, id, dto); }

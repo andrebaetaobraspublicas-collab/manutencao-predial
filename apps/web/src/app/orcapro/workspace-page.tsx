@@ -8,6 +8,7 @@ import { endSession } from '@/lib/end-session';
 import { ORCAPRO_ONLY } from '@/lib/product-config';
 import styles from './workspace.module.css';
 import { ProjectImport, ProjectHistory, ReferenceImport } from './panels';
+import { ReferenceReport } from './sinapi-import-panel';
 
 type Access = { enabled: boolean; role: 'ADMIN' | 'USER'; userId: string; tenantId: string };
 type Reference = { id: string; label: string; year: number; month: number; revision: number; status: string };
@@ -49,6 +50,7 @@ export default function OrcaproPage() {
   const [analytic, setAnalytic] = useState<Analytic | null>(null);
   const [historyProject, setHistoryProject] = useState<Project | null>(null);
   const [adminReferences, setAdminReferences] = useState<Reference[]>([]);
+  const [reportReferenceId, setReportReferenceId] = useState('');
   const [signingOut, setSigningOut] = useState(false);
 
   const loadProjects = useCallback(async (archived = showArchived) => {
@@ -202,8 +204,9 @@ export default function OrcaproPage() {
           <div className={styles.pager}><button disabled={page === 1 || catalogBusy} onClick={() => setPage((p) => p - 1)}>Anterior</button><span>Página {page} de {Math.max(1, Math.ceil((catalog?.total ?? 0) / 40))}</span><button disabled={page * 40 >= (catalog?.total ?? 0) || catalogBusy} onClick={() => setPage((p) => p + 1)}>Próxima</button></div>
         </section> : null}
         {view === 'admin' && access.role === 'ADMIN' ? <>
-          <ReferenceImport onImported={openAdmin} />
-          <section className={styles.panel}><h2>Referências SINAPI</h2><p className={styles.muted}>O padrão é usado ao criar novos projetos. Orçamentos anteriores conservam sua referência.</p><div className={styles.tablewrap}><table><thead><tr><th>Referência</th><th>Revisão</th><th>Situação</th><th /></tr></thead><tbody>{adminReferences.map((r) => <tr key={r.id}><td>{r.label}</td><td>{r.revision}</td><td>{r.status}</td><td className={styles.actions}>{r.status === 'DRAFT' ? <button onClick={() => referenceAction(r.id, 'validate')}>Validar</button> : r.status === 'VALIDATED' ? <button onClick={() => referenceAction(r.id, 'publish')}>Publicar</button> : r.status === 'PUBLISHED' ? <><button onClick={() => setDefault(r.id)}>Usar como padrão</button><button onClick={() => referenceAction(r.id, 'archive')}>Arquivar referência</button></> : null}</td></tr>)}</tbody></table></div></section>
+          <ReferenceImport references={adminReferences} defaultReferenceId={referenceId} onImported={openAdmin} />
+          <section className={styles.panel}><h2>Referências SINAPI</h2><p className={styles.muted}>O padrão é usado ao criar novos projetos. Orçamentos anteriores conservam sua referência.</p><div className={styles.tablewrap}><table><thead><tr><th>Referência</th><th>Revisão</th><th>Situação</th><th /></tr></thead><tbody>{adminReferences.map((r) => <tr key={r.id}><td>{r.label}</td><td>{r.revision}</td><td>{r.status}</td><td className={styles.actions}><button onClick={() => setReportReferenceId(r.id)}>Ver relatório</button>{r.status === 'DRAFT' ? <button onClick={() => referenceAction(r.id, 'validate')}>Validar</button> : r.status === 'VALIDATED' ? <button onClick={() => referenceAction(r.id, 'publish')}>Publicar</button> : r.status === 'PUBLISHED' ? <><button onClick={() => setDefault(r.id)}>Usar como padrão</button><button onClick={() => referenceAction(r.id, 'archive')}>Arquivar referência</button></> : null}</td></tr>)}</tbody></table></div></section>
+          {reportReferenceId ? <section className={styles.panel}><ReferenceReport key={reportReferenceId} referenceId={reportReferenceId} onClose={() => setReportReferenceId('')} /></section> : null}
           <section className={styles.panel}><h2>Gestão do SaaS</h2><p>Usuários, senhas, planos, assinaturas e auditoria estão na administração do sistema.</p><Link href="/orcapro/administracao">Abrir gestão do SaaS</Link></section>
         </> : null}
       </div>

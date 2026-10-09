@@ -68,6 +68,44 @@ export function apiFileUrl(path: string): string {
   return `${API_URL}${path}`;
 }
 
+/** NDJSON import progress from authenticated POST. Percentages come from the
+ * server, never from a timer; 100% is emitted only after the transaction commits. */
+export async function apiImportStream<T>(path: string, init: RequestInit, onProgress: (phase: string, percent: number) => void, retry = true): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type','application/json');
+  const response = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: 'include', cache: 'no-store' });
+  if (response.status === 401 && retry && await refreshSession()) return apiImportStream(path, init, onProgress, false);
+  if (!response.ok) {
+    const details = await response.json().catch(() => null);
+    throw new ApiError(Array.isArray(details?.message) ? details.message.join(' ') : String(details?.message ?? `Falha na importação (${response.status}).`), response.status);
+  }
+  if (!response.body) throw new Error('O navegador não disponibilizou o progresso da importação.');
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  let buffer = '', result: T | undefined;
+  const consume = (line: string) => {
+    if (!line.trim()) return;
+    const event = JSON.parse(line);
+    if (event.type === 'progress') onProgress(String(event.phase), Number(event.percent));
+    if (event.type === 'error') throw new ApiError(String(event.message), Number(event.status));
+    if (event.type === 'result') result = event.result as T;
+  };
+  try {
+    for (;;) {
+      const chunk = await reader.read();
+      buffer += decoder.decode(chunk.value, { stream: !chunk.done });
+      let end: number;
+      while ((end = buffer.indexOf('\n')) >= 0) { consume(buffer.slice(0,end)); buffer = buffer.slice(end + 1); }
+      if (chunk.done) { consume(buffer); break; }
+    }
+  } catch (cause) {
+    await reader.cancel().catch(() => {});
+    if (cause instanceof ApiError) throw cause;
+    throw new Error('O acompanhamento foi interrompido. Confira a lista de referências e seu relatório antes de repetir a importação.');
+  } finally { reader.releaseLock(); }
+  if (result === undefined) throw new Error('A conexão terminou sem confirmação. Confira a lista de referências e seu relatório antes de repetir a importação.');
+  return result;
+}
+
 function downloadFileName(response: Response, fallback: string): string {
   const disposition = response.headers.get('Content-Disposition') ?? '';
   const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];

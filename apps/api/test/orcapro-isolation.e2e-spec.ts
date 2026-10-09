@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { hash } from 'bcryptjs';
 import request from 'supertest';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { sinapiWorkbookFixture } from '../src/modules/orcapro/sinapi-workbook.fixture';
 
 const ORIGIN = 'http://localhost:3000';
 const PASSWORD = 'test-only-orcapro-password-2026';
@@ -253,6 +254,45 @@ describe('OrçaPro — MySQL, referências e isolamento HTTP', () => {
     expect(project.data.risks.analyses[0].result.contingencyCents).toBe('34');
     const preview=await b.agent.post(route+'/bdi-preview').set('Origin',ORIGIN).send({expectedVersion:project.version,method:'param',mode:'replace'}).expect(201);
     expect(preview.body.rate).toBe('0.1000000000');
+  });
+
+  it('importa XLSX com progresso real, conserva o relatório e protege a comparação administrativa', async () => {
+    const file = await sinapiWorkbookFixture();
+    const route = '/api/v1/orcapro/admin/imports/file/stream';
+    await b.agent.post(route).set('Origin', ORIGIN).attach('file', file, 'SINAPI_Referência_2036_09.xlsx').expect(403);
+    await a.agent.post(route).set('Origin', 'https://untrusted.example').attach('file', file, 'SINAPI_Referência_2036_09.xlsx').expect(403);
+    const prior = await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200);
+    const streamed = await a.agent.post(route).set('Origin', ORIGIN).field('revision', String(revision)).field('baselineReferenceId', ref1).attach('file', file, 'SINAPI_Referência_2036_09.xlsx').buffer(true).parse((response, done) => {
+      let text = ''; response.on('data', (chunk: Buffer) => { text += chunk.toString('utf8'); }); response.on('end', () => done(null, text));
+    }).expect(200);
+    const events = String(streamed.body).trim().split('\n').map(line => JSON.parse(line));
+    expect(events.find(event => event.type === 'error')).toBeUndefined();
+    const progress = events.filter(event => event.type === 'progress');
+    expect(progress.at(-1).percent).toBe(100); expect(progress.map(event => event.percent)).toEqual(progress.map(event => event.percent).sort((a,b) => a - b));
+    const result = events.at(-1).result;
+    expect(result.reference.status).toBe('DRAFT'); expect(result.report.sourceValidation).toMatchObject({ total: 2, ok: 2 });
+    expect(result.report.comparison.baseline.id).toBe(ref1);
+    const path = `/api/v1/orcapro/admin/references/${result.reference.id}/import-report`;
+    await b.agent.get(path).expect(403); await b.agent.get(path + '.csv').expect(403);
+    const report = await a.agent.get(path).query({ kind: 'C', pageSize: 1 }).expect(200);
+    expect(report.body.items).toHaveLength(1); expect(report.body.report.comparison).not.toHaveProperty('items');
+    expect((await a.agent.get(path + '.csv').expect(200)).text).toContain('Cadastro anterior');
+    expect((await b.agent.get(`/api/v1/orcapro/projects/${projectId}`).expect(200)).body).toEqual(prior.body);
+    await a.agent.post('/api/v1/orcapro/admin/imports').set('Origin', ORIGIN).send({ raw: rawBase('09'), sourceName: 'duplicate.json', revision }).expect(409);
+    const refused = await a.agent.post('/api/v1/orcapro/admin/imports/stream').set('Origin', ORIGIN).send({ raw: rawBase('09'), sourceName: 'duplicate.json', revision }).expect(200);
+    expect(refused.text).toContain('"type":"error","status":409'); expect(refused.text).not.toContain('"type":"result"');
+    expect(await prisma.orcaproReference.count({ where: { year: 2036, month: 9, revision } })).toBe(1);
+  });
+
+  it('relata aba ausente com erro de formato e libera nova importação após a falha', async () => {
+    const file = await sinapiWorkbookFixture('10/2036', ['Faltante','CSD','Analítico']);
+    const route = '/api/v1/orcapro/admin/imports/file';
+    const before = await prisma.orcaproReference.count();
+    const response = await a.agent.post(route).set('Origin', ORIGIN).field('revision', String(revision)).attach('file', file, 'incomplete.xlsx').expect(400);
+    expect(response.body.message).toContain('Aba obrigatória');
+    expect(await prisma.orcaproReference.count()).toBe(before);
+    // A second request reaches the parser rather than a stale concurrency lock.
+    await a.agent.post(route).set('Origin', ORIGIN).field('revision', String(revision)).attach('file', file, 'incomplete.xlsx').expect(400);
   });
 
   it('versiona riscos privados, simula e recalcula BDI sem aceitar taxas do cliente',async()=>{

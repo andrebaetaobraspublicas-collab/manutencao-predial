@@ -49,9 +49,18 @@ export class ImportSinapiDto {
   @ApiProperty({ description: 'Estrutura raw extraída do importador SINAPI legado; preços em centavos.' }) @IsObject() raw!: Record<string, unknown>;
   @ApiProperty() @IsString() @MaxLength(255) sourceName!: string;
   @ApiPropertyOptional({ default: 1 }) @IsOptional() @IsInt() @Min(1) @Max(999) revision = 1;
+  @ApiPropertyOptional({ description: 'Referência publicada/arquivada usada na comparação.' }) @IsOptional() @IsUUID() baselineReferenceId?: string;
 }
 export class ImportSinapiFileDto {
   @ApiPropertyOptional({ default: 1 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(999) revision = 1;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() baselineReferenceId?: string;
+}
+export class ImportReportQuery {
+  @ApiPropertyOptional({ enum: ['I','C'] }) @IsOptional() @IsIn(['I','C']) kind?: 'I'|'C';
+  @ApiPropertyOptional({ enum: ['ADDED','CHANGED','REMOVED','NEW'] }) @IsOptional() @IsIn(['ADDED','CHANGED','REMOVED','NEW']) status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(150) search?: string;
+  @ApiPropertyOptional({ default: 1 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100000) page = 1;
+  @ApiPropertyOptional({ default: 30 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize = 30;
 }
 export class RevisionDto {
   @ApiProperty() @IsInt() @Min(1) expectedVersion!: number;

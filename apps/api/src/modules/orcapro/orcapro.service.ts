@@ -53,11 +53,34 @@ export class OrcaproService {
     return { referenceId, inputCount, groups: (ref.metadata as JsonRecord).grupos,
       items: rows.map(row => ({ code: row.composition.code, description: row.description, unit: row.unit, group: row.group })) };
   }
+  private async catalogSearchIds(kind: 'I'|'C', referenceId: string, search?: string) {
+    const term = search?.trim();
+    if (!term) return null;
+    // MariaDB adapter binds LIKE parameters as binary strings. Normalize both
+    // operands locally and escape wildcard characters for literal searches.
+    const pattern = term.replace(/[=%_]/g, '=$&');
+    const contains = Prisma.sql`CONVERT(${'%' + pattern + '%'} USING utf8mb4) COLLATE utf8mb4_unicode_ci`;
+    const prefix = Prisma.sql`CONVERT(${pattern + '%'} USING utf8mb4) COLLATE utf8mb4_unicode_ci`;
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>(kind === 'I' ? Prisma.sql`
+      SELECT v.id FROM OrcaproInputVersion v JOIN OrcaproInput i ON i.id = v.inputId
+      WHERE v.referenceId = ${referenceId} AND (
+        v.description COLLATE utf8mb4_unicode_ci LIKE ${contains} ESCAPE '=' OR
+        i.code COLLATE utf8mb4_unicode_ci LIKE ${prefix} ESCAPE '='
+      )` : Prisma.sql`
+      SELECT v.id FROM OrcaproCompositionVersion v JOIN OrcaproComposition c ON c.id = v.compositionId
+      WHERE v.referenceId = ${referenceId} AND (
+        v.description COLLATE utf8mb4_unicode_ci LIKE ${contains} ESCAPE '=' OR
+        c.code COLLATE utf8mb4_unicode_ci LIKE ${prefix} ESCAPE '=' OR
+        v.\`group\` COLLATE utf8mb4_unicode_ci LIKE ${contains} ESCAPE '='
+      )`);
+    return rows.map(row => row.id);
+  }
   async catalogInputs(query: CatalogQuery) {
     assertContext(query.uf, query.regime); await this.reference(query.referenceId);
+    const matches = await this.catalogSearchIds('I', query.referenceId, query.search);
     const where: Prisma.OrcaproInputVersionWhereInput = { referenceId: query.referenceId,
       ...(query.nature ? { nature: query.nature } : {}),
-      ...(query.search?.trim() ? { OR: [{ description: { contains: query.search.trim() } }, { input: { code: { startsWith: query.search.trim() } } }] } : {}) };
+      ...(matches ? { id: { in: matches } } : {}) };
     const [rows, total] = await Promise.all([
       this.prisma.orcaproInputVersion.findMany({ where, include: { input: { include: { prices: { where: { referenceId: query.referenceId, regime: query.regime, uf: { in: [query.uf,'SP'] } } } } } }, orderBy: { input: { code: 'asc' } }, skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
       this.prisma.orcaproInputVersion.count({ where }),
@@ -71,9 +94,10 @@ export class OrcaproService {
   }
   async catalogCompositions(query: CatalogQuery) {
     assertContext(query.uf, query.regime); await this.reference(query.referenceId);
+    const matches = await this.catalogSearchIds('C', query.referenceId, query.search);
     const where: Prisma.OrcaproCompositionVersionWhereInput = { referenceId: query.referenceId,
       ...(query.group ? { group: query.group } : {}),
-      ...(query.search?.trim() ? { OR: [{ description: { contains: query.search.trim() } }, { composition: { code: { startsWith: query.search.trim() } } }, { group: { contains: query.search.trim() } }] } : {}) };
+      ...(matches ? { id: { in: matches } } : {}) };
     const [rows, total] = await Promise.all([
       this.prisma.orcaproCompositionVersion.findMany({ where, include: { composition: true }, orderBy: { composition: { code: 'asc' } }, skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
       this.prisma.orcaproCompositionVersion.count({ where }),

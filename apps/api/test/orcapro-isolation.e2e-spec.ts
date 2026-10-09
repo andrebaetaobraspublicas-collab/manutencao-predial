@@ -99,6 +99,23 @@ describe('OrçaPro — MySQL, referências e isolamento HTTP', () => {
     expect(refs.body.items.map((r: { id: string }) => r.id)).toEqual(expect.arrayContaining([ref1, ref2]));
   });
 
+  it('busca códigos e descrições com collation explícita e caracteres literais', async () => {
+    const search = async (kind: string, term: string, referenceId = ref1) =>
+      (await b.agent.get(`/api/v1/orcapro/catalog/${kind}`).query({ referenceId, uf: 'DF', regime: 'SD', search: term }).expect(200)).body;
+    const composition = await search('compositions', '991003');
+    expect(composition.total).toBe(1);
+    expect(composition.items[0].costCents).toBe('1150');
+    expect((await search('compositions', 'REFERENCIA')).total).toBe(1);
+    expect((await search('compositions', 'Concreto de teste')).total).toBe(1);
+    expect((await search('compositions', '991003', ref2)).items[0].costCents).toBe('2300');
+    expect((await search('inputs', '991001')).items[0].priceCents).toBe('200');
+    expect((await search('inputs', 'OPERARIO')).total).toBe(1);
+    for (const term of ['%', '_', "' OR 1=1 --", 'inexistente']) {
+      expect((await search('inputs', term)).total).toBe(0);
+      expect((await search('compositions', term)).total).toBe(0);
+    }
+  });
+
   it('recalcula o mesmo analítico por referência, UF e regime', async () => {
     const result = async (referenceId: string, uf: string, regime: string) => {
       const response = await b.agent.get('/api/v1/orcapro/catalog/compositions/991003').query({ referenceId, uf, regime }).expect(200);

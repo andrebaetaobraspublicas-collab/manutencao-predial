@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const vm = require('node:vm');
+const { TextDecoderStream } = require('node:stream/web');
 
 function hash(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -33,6 +34,7 @@ function loadLegacyRuntime({ assetsDirectory = __dirname, nowISO } = {}) {
     setTimeout: () => 0,
     clearTimeout: noOperation,
     TextDecoder,
+    TextDecoderStream,
     TextEncoder,
     Blob,
     Response,

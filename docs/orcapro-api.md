@@ -104,6 +104,10 @@ Prefixo `/projects/:projectId/risks`, sob `/api/v1/orcapro`; mesmas regras de au
 | `GET /admin/references` | Inclui DRAFT/VALIDATED e históricos |
 | `POST /admin/imports` | `{raw,sourceName,revision}`; importação normalizada transacional em DRAFT |
 | `POST /admin/imports/file` | Multipart `file` XLSX e `revision`; usa o parser original protegido |
+| `POST /admin/imports/stream` | JSON normalizado; eventos NDJSON de progresso, resultado ou erro |
+| `POST /admin/imports/file/stream` | Multipart XLSX; eventos NDJSON de leitura, comparação e lotes gravados |
+| `GET /admin/references/:id/import-report` | Resumo e diferenças paginadas; filtros `kind=I/C`, `status=ADDED/CHANGED/REMOVED/NEW`, `search`, `page`, `pageSize` (máximo 100) |
+| `GET /admin/references/:id/import-report.csv` | Todas as diferenças dos filtros selecionados, sem limitar à página; células protegidas contra fórmulas |
 | `POST /admin/references/:id/validate` | Confere grafo, códigos, grade de preços e integridade; DRAFT → VALIDATED |
 | `POST /admin/references/:id/publish` | VALIDATED → PUBLISHED; não altera padrão nem projetos |
 | `POST /admin/references/:id/archive` | PUBLISHED → ARCHIVED; bloqueia arquivamento do padrão e preserva leituras históricas |
@@ -113,6 +117,20 @@ Prefixo `/projects/:projectId/risks`, sob `/api/v1/orcapro`; mesmas regras de au
 | `PATCH /admin/users/:id/access {enabled}` | Ativa/desativa somente OrçaPro; administrador não pode suspender a si mesmo |
 
 Referências publicadas não têm rota de alteração de estruturas ou preços. Correções exigem nova revisão `(ano,mês,revisão)`. Default/arquivamento usam lock transacional das configurações e referência. FKs oficiais e privadas usam RESTRICT; nenhuma exclusão física é exposta.
+
+### Assistente de importação e comparação
+
+As quatro rotas de importação aceitam `baselineReferenceId` opcional, validado como UUID de referência publicada ou historicamente publicada/arquivada. O padrão de comparação é a referência padrão atual; na sua ausência, a publicação mais recente. As rotas síncronas continuam compatíveis. A exclusão mútua em memória permite uma importação por processo, e a restrição `(ano,mês,revisão)` protege contra duplicação no banco.
+
+Os endpoints `/stream` devolvem `application/x-ndjson`, `Cache-Control: no-store, no-transform` e `X-Accel-Buffering: no`. Cada linha é um evento `{type:'progress',phase,percent}`, `{type:'heartbeat'}`, `{type:'result',result}` ou `{type:'error',status,message}`. Após iniciar o fluxo, erros de processamento são informados no evento, mesmo com HTTP 200; autenticação, Origin, DTO e upload rejeitados antes disso conservam o status HTTP normal. O cliente interpreta o evento de erro e nunca trata HTTP 200 sozinho como sucesso.
+
+O envio inicial tem barra indeterminada. O percentual seguinte acompanha fases e lotes efetivamente processados, com pesos por etapa; não representa tempo restante. Somente o commit da transação completa permite 100% e o resultado. O fluxo não é uma fila durável: se o navegador desconectar, a operação em andamento pode terminar e salvar seu relatório. Deve-se conferir a lista de referências antes de repetir; a mesma revisão não pode ser importada novamente. Proxies intermediários devem permitir streaming sem bufferização. A transação existente continua atômica, com timeout de 180 segundos.
+
+O relatório persistido em `OrcaproImport.report.comparison` distingue novos códigos globais de códigos incluídos em relação ao mês comparado; enumera também ausências, alterações de descrição, unidade, classificação, origem, grupo e situação. Analíticos são comparados por código e tipo I/C, coeficientes com 12 casas e multiplicidade de ocorrências, sem depender da ordem das linhas. Preços de insumos são comparados em centavos, por UF e regime, conservando ausência diferente de zero. Custos de composições são recompostos com o motor original por contexto, incluindo sua política de atribuição SP, para detectar variações propagadas. O relatório registra os contextos de preço que variaram; o catálogo conserva os valores completos por referência. Esta comparação não incorpora BDI, DMT, créditos ou outras premissas particulares dos projetos.
+
+A interface apresenta totais, conferência dos custos do XLSX, diferenças pesquisáveis, detalhes antes/depois dos cadastros e coeficientes e exportação CSV. `sinapi.import` registra apenas o resumo da comparação na auditoria. Relatórios antigos continuam consultáveis sem inventar diferenças retroativas. O parser no runtime isolado inclui `TextDecoderStream` para ler o XML comprimido do XLSX oficial; erros reconhecidos de formato são 400, conflitos de revisão são 409 e falhas internas têm código seguro, sem expor dados do servidor.
+
+Não há migration: utilizam-se as tabelas e o campo JSON de relatório existentes. A nova referência permanece DRAFT até validação e publicação explícitas; o padrão e os orçamentos históricos permanecem vinculados às suas referências. Rollback da aplicação pode voltar ao artefato anterior sem apagar o rascunho ou seu relatório; as rotas síncronas existentes permanecem disponíveis.
 
 XLSX: limite comprimido 40 MiB, descomprimido acumulado 256 MiB, 96 MiB por entrada, 2048 entradas, razão máxima 250 quando a entrada excede 1 MiB e limite de 120 segundos verificado a cada bloco de leitura. Valida diretório central, assinaturas, limites, nomes, duplicidades, criptografia e método; ZIP64 é recusado. A leitura também limita bytes **reais**, incluindo `usize` declarado falso. O limite temporal não encerra forçadamente um bloco síncrono do parser; isolamento em worker com cancelamento de CPU é evolução futura. O arquivo é processado em memória e descartado; registram-se SHA-256 do arquivo e do raw normalizado, nome, estatísticas e autoria. O raw anexado com 6.120 insumos gera 495.720 preços para 27 UFs e três regimes, sem registros por usuário.
 

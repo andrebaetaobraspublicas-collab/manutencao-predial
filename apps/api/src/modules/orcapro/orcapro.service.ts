@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { Prisma, OrcaproReferenceStatus, type OrcaproProject } from '../../generated/prisma/client';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
@@ -8,19 +8,22 @@ import { AdaptCompositionDto, AdminListQuery, CatalogQuery, CloneTemplateDto, Cr
 import { AnalyticNode, assertContext, calculateAnalyticCosts, centsToAmount, JsonRecord, mulTrunc, officialCode, ORCAPRO_ENGINE_VERSION, projectOfficialCodes, RawSinapi, REGIMES, scaledDecimal, validateProjectData, validateRawSinapi } from './orcapro-domain';
 import { loadLegacyRuntime } from './legacy/legacy-runtime';
 import { protectLegacyXlsx } from './orcapro-upload';
+import { Comparison, comparisonSummary, compareSinapi, differenceMatches, differencesCsv } from './orcapro-import-comparison';
 
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 const stableJson = (value: unknown): string => JSON.stringify(value, function (_key, current) {
   return current && typeof current === 'object' && !Array.isArray(current) ? Object.fromEntries(Object.keys(current).sort().map(key => [key,current[key]])) : current;
 });
 type Db = Prisma.TransactionClient;
-const batch = async <T>(items: T[], save: (rows: T[]) => Promise<unknown>, size = 700) => {
-  for (let i = 0; i < items.length; i += size) await save(items.slice(i, i + size));
+const batch = async <T>(items: T[], save: (rows: T[]) => Promise<unknown>, size = 700, progress?: (done: number, total: number) => void) => {
+  for (let i = 0; i < items.length; i += size) { await save(items.slice(i, i + size)); progress?.(Math.min(i + size, items.length), items.length); }
 };
 const readable = [OrcaproReferenceStatus.PUBLISHED, OrcaproReferenceStatus.ARCHIVED];
+export type ImportOptions = { baselineReferenceId?: string; onProgress?: (phase: string, percent: number) => void };
 
 @Injectable()
 export class OrcaproService {
+  private importing = false;
   constructor(private readonly prisma: PrismaService, private readonly access: OrcaproAccess) {}
   private owner(user: AuthenticatedUser) { return { tenantId: user.tenantId, ownerUserId: user.userId }; }
   private audit(db: Db, user: AuthenticatedUser, action: string, entityId: string, metadata?: unknown) {
@@ -373,16 +376,61 @@ export class OrcaproService {
     });
   }
 
-  async importSinapi(user: AuthenticatedUser, dto: ImportSinapiDto, originalChecksum?: string) {
+  private async exclusiveImport<T>(work: () => Promise<T>): Promise<T> {
+    if (this.importing) throw new ConflictException('Há uma importação SINAPI em andamento neste servidor. Aguarde sua conclusão antes de enviar outro arquivo.');
+    this.importing = true;
+    try { return await work(); } finally { this.importing = false; }
+  }
+  async importSinapi(user: AuthenticatedUser, dto: ImportSinapiDto, originalChecksum?: string, options: ImportOptions = {}) {
     this.access.assertAdmin(user);
+    return this.exclusiveImport(() => this.persistSinapi(user, dto, originalChecksum, options));
+  }
+  private async comparisonRaw(id: string): Promise<RawSinapi> {
+    const reference = await this.reference(id), metadata = reference.metadata as JsonRecord;
+    const raw: RawSinapi = { ...metadata, v: Number(metadata.v ?? 1), fonte: String(metadata.fonte ?? 'SINAPI'), emissao: String(metadata.emissao ?? ''), ufs: metadata.ufs as string[], encargos: metadata.encargos as JsonRecord, grupos: metadata.grupos as string[], ct: metadata.ct as string[], cls: metadata.cls as string[], un: metadata.un as string[], ref: `${String(reference.month).padStart(2,'0')}/${reference.year}`, ins: { c: [], k: [], d: [], u: [], o: [], p: [], lab: {} }, comp: { c: [], g: [], d: [], u: [], s: [], it: [] } };
+    for (let skip = 0; ; skip += 200) {
+      const rows = await this.prisma.orcaproInputVersion.findMany({ where: { referenceId: id }, orderBy: { inputId: 'asc' }, skip, take: 200, include: { input: { include: { prices: { where: { referenceId: id } } } } } });
+      for (const row of rows) {
+        const meta = row.metadata as JsonRecord, values = new Map(row.input.prices.map(price => [`${price.regime}:${price.uf}`, price.amount == null ? null : Number(scaledDecimal(price.amount.toFixed(6), 2, true))]));
+        raw.ins.c.push(Number(row.input.code)); raw.ins.d.push(row.description); raw.ins.k.push(Number(meta.classIndex)); raw.ins.u.push(Number(meta.unitIndex)); raw.ins.o.push(Number(meta.originIndex));
+        raw.ins.p.push(raw.ufs.map(uf => values.get(`SD:${uf}`) ?? null));
+        if (meta.hasLaborRegimes) raw.ins.lab[row.input.code] = { CD: raw.ufs.map(uf => values.get(`CD:${uf}`) ?? null), SE: raw.ufs.map(uf => values.get(`SE:${uf}`) ?? null) };
+      }
+      if (rows.length < 200) break;
+    }
+    for (let skip = 0; ; skip += 300) {
+      const rows = await this.prisma.orcaproCompositionVersion.findMany({ where: { referenceId: id }, orderBy: { compositionId: 'asc' }, skip, take: 300, include: { composition: true, items: { orderBy: { position: 'asc' }, include: { input: true, childComposition: true } } } });
+      for (const row of rows) {
+        const meta = row.metadata as JsonRecord;
+        raw.comp.c.push(Number(row.composition.code)); raw.comp.d.push(row.description); raw.comp.u.push(Number(meta.unitIndex)); raw.comp.g.push(Number(meta.groupIndex)); raw.comp.s.push(meta.situation);
+        raw.comp.it.push(row.items.map(item => [item.input ? Number(item.input.code) : -Number(item.childComposition!.code), Number(item.coefficient.toFixed(12))]));
+      }
+      if (rows.length < 300) break;
+    }
+    return raw;
+  }
+  private async persistSinapi(user: AuthenticatedUser, dto: ImportSinapiDto, originalChecksum: string | undefined, options: ImportOptions) {
+    this.access.assertAdmin(user);
+    const progress = options.onProgress ?? (() => {});
+    progress('Conferindo estrutura e contexto da referência', 60);
     const raw = validateRawSinapi(dto.raw), normalizationChecksum = createHash('sha256').update(JSON.stringify(raw)).digest('hex'), checksum = originalChecksum ?? normalizationChecksum;
     const [month, year] = raw.ref.split('/').map(Number);
+    if (await this.prisma.orcaproReference.findUnique({ where: { year_month_revision: { year, month, revision: dto.revision } } })) throw new ConflictException('Referência/revisão já importada; confira seu relatório ou escolha outra revisão.');
+    let baselineId = options.baselineReferenceId;
+    if (!baselineId) baselineId = (await this.prisma.orcaproSettings.findUnique({ where: { id: 'global' } }))?.defaultReferenceId ?? (await this.prisma.orcaproReference.findFirst({ where: { status: { in: readable }, publishedAt: { not: null } }, orderBy: [{ year: 'desc' }, { month: 'desc' }, { revision: 'desc' }] }))?.id;
+    progress('Carregando a referência de comparação', 63);
+    const baseline = baselineId ? await this.reference(baselineId) : null;
+    const previous = baseline ? await this.comparisonRaw(baseline.id) : null;
+    const [knownInputs, knownComps] = await Promise.all([this.prisma.orcaproInput.findMany({ select: { code: true } }), this.prisma.orcaproComposition.findMany({ select: { code: true } })]);
+    progress('Comparando cadastros, analíticos e preços por UF e regime', 70);
+    const comparison = compareSinapi(raw, previous, baseline ? { id: baseline.id, label: baseline.label } : null, new Set(knownInputs.map(row => row.code)), new Set(knownComps.map(row => row.code)));
     const referenceId = randomUUID();
     const { ins, comp, ...metadata } = raw;
-    return this.prisma.$transaction(async db => {
+    const result = await this.prisma.$transaction(async db => {
       const existing = await db.orcaproReference.findUnique({ where: { year_month_revision: { year, month, revision: dto.revision } } });
       if (existing) throw new ConflictException('Referência/revisão já importada; publique ou crie outra revisão.');
       const ref = await db.orcaproReference.create({ data: { id: referenceId, year, month, revision: dto.revision, label: `${raw.ref} • revisão ${dto.revision}`, sourceChecksum: checksum, sourceName: dto.sourceName, importedByUserId: user.userId, metadata: json(metadata) } });
+      progress('Registrando identidades do catálogo global', 73);
       await batch(ins.c.map(c => ({ id: randomUUID(), code: officialCode(c) })), rows => db.orcaproInput.createMany({ data: rows, skipDuplicates: true }));
       await batch(comp.c.map(c => ({ id: randomUUID(), code: officialCode(c) })), rows => db.orcaproComposition.createMany({ data: rows, skipDuplicates: true }));
       const [inputIdentities, compIdentities] = await Promise.all([
@@ -390,13 +438,13 @@ export class OrcaproService {
       ]);
       const inputs = new Map(inputIdentities.map(i => [i.code,i.id])), comps = new Map(compIdentities.map(c => [c.code,c.id]));
       await batch(ins.c.map((c,i) => ({ id: randomUUID(), referenceId, inputId: inputs.get(officialCode(c))!, description: ins.d[i], unit: raw.un[ins.u[i]], nature: raw.cls[ins.k[i]], origin: ['C','CR','—'][ins.o[i]] ?? '—',
-        metadata: json({ classIndex: ins.k[i], unitIndex: ins.u[i], originIndex: ins.o[i], hasLaborRegimes: !!ins.lab[String(c)] }) })), rows => db.orcaproInputVersion.createMany({ data: rows }));
+        metadata: json({ classIndex: ins.k[i], unitIndex: ins.u[i], originIndex: ins.o[i], hasLaborRegimes: !!ins.lab[String(c)] }) })), rows => db.orcaproInputVersion.createMany({ data: rows }), 700, (done,total) => progress('Gravando versões de insumos', 75 + 3 * done / total));
       const compVersions = comp.c.map((c,i) => ({ id: randomUUID(), referenceId, compositionId: comps.get(officialCode(c))!, description: comp.d[i], unit: raw.un[comp.u[i]], group: raw.grupos[comp.g[i]],
         metadata: json({ unitIndex: comp.u[i], groupIndex: comp.g[i], situation: comp.s[i] }) }));
-      await batch(compVersions, rows => db.orcaproCompositionVersion.createMany({ data: rows }));
+      await batch(compVersions, rows => db.orcaproCompositionVersion.createMany({ data: rows }), 700, (done,total) => progress('Gravando versões de composições', 78 + 3 * done / total));
       const analytic = comp.c.flatMap((_,i) => comp.it[i].map((item,position) => ({ id: randomUUID(), compositionVersionId: compVersions[i].id, position,
         inputId: item[0] > 0 ? inputs.get(officialCode(item[0]))! : null, childCompositionId: item[0] < 0 ? comps.get(officialCode(Math.abs(item[0])))! : null, coefficient: item[1].toFixed(12) })));
-      await batch(analytic, rows => db.orcaproAnalyticItem.createMany({ data: rows }));
+      await batch(analytic, rows => db.orcaproAnalyticItem.createMany({ data: rows }), 700, (done,total) => progress('Gravando estrutura analítica', 81 + 7 * done / total));
       let priceCount = 0, missingPrices = 0;
       for (let start = 0; start < ins.c.length; start += 100) {
         const prices: Prisma.OrcaproInputPriceCreateManyInput[] = [];
@@ -405,15 +453,20 @@ export class OrcaproService {
           raw.ufs.forEach((uf,j) => { if (arr[j] == null) missingPrices++; prices.push({ id: randomUUID(), referenceId, inputId: inputs.get(officialCode(ins.c[i]))!, uf, regime, amount: arr[j] == null ? null : centsToAmount(BigInt(arr[j]!)), source: 'SINAPI' }); });
         }
         priceCount += prices.length; await batch(prices, rows => db.orcaproInputPrice.createMany({ data: rows }));
+        progress('Gravando preços por referência × UF × regime', 88 + 10 * Math.min(start + 100, ins.c.length) / ins.c.length);
       }
-      const report = { inputs: ins.c.length, compositions: comp.c.length, analyticItems: analytic.length, prices: priceCount, missingPrices, ufs: raw.ufs, regimes: REGIMES, checksum, normalizationChecksum, transactional: true, status: 'DRAFT' };
+      const report = { inputs: ins.c.length, compositions: comp.c.length, analyticItems: analytic.length, prices: priceCount, missingPrices, ufs: raw.ufs, regimes: REGIMES, checksum, normalizationChecksum, transactional: true, status: 'DRAFT', sourceValidation: raw.valid ?? null, comparison };
       await db.orcaproImport.create({ data: { referenceId, createdByUserId: user.userId, checksum, sourceName: dto.sourceName, report: json(report) } });
-      await this.audit(db, user, 'sinapi.import', referenceId, report);
-      return { reference: ref, report };
+      await this.audit(db, user, 'sinapi.import', referenceId, { ...report, comparison: comparisonSummary(comparison) });
+      progress('Confirmando gravação e relatório da importação', 99);
+      return { reference: ref, report: { ...report, comparison: comparisonSummary(comparison) } };
     }, { maxWait: 30000, timeout: 180000 });
+    progress('Importação concluída como rascunho', 100);
+    return result;
   }
-  async importSinapiFile(user: AuthenticatedUser, file: Express.Multer.File | undefined, revision: number) {
+  async importSinapiFile(user: AuthenticatedUser, file: Express.Multer.File | undefined, revision: number, options: ImportOptions = {}) {
     this.access.assertAdmin(user);
+    return this.exclusiveImport(async () => {
     if (!file?.buffer?.length) throw new BadRequestException('Arquivo SINAPI obrigatório.');
     if (!file.originalname.toLowerCase().endsWith('.xlsx') || file.buffer[0] !== 0x50 || file.buffer[1] !== 0x4b) throw new BadRequestException('Envie um XLSX SINAPI válido.');
     const permitted = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/octet-stream','application/zip'];
@@ -421,9 +474,25 @@ export class OrcaproService {
     const runtime = loadLegacyRuntime();
     protectLegacyXlsx(runtime,file.buffer);
     let raw: JsonRecord;
-    try { raw = await runtime.OP.sinapi.importXlsx(new Blob([new Uint8Array(file.buffer)])); }
-    catch { throw new BadRequestException('Não foi possível validar/processar o XLSX oficial SINAPI.'); }
-    return this.importSinapi(user, { raw, sourceName: file.originalname.slice(0,255), revision }, createHash('sha256').update(file.buffer).digest('hex'));
+    try { raw = await runtime.OP.sinapi.importXlsx(new Blob([new Uint8Array(file.buffer)]), (phase: string, fraction: number) => options.onProgress?.(phase, Math.min(59, Math.max(2, fraction * 59)))); }
+    catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      // Errors created in the VM are not instanceof the host's Error.
+      const message = error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : '';
+      if (/^(Aba obrigatória|Cabeçalho não encontrado|Ordem das UFs|Arquivo não é|Entrada ausente no|Entrada ZIP|Compressão|Método de compressão)/.test(message)) throw new BadRequestException(message.slice(0,500));
+      throw new InternalServerErrorException('Falha interna na leitura do XLSX SINAPI. Código: SINAPI_XLSX_RUNTIME. Nenhuma referência foi gravada.');
+    }
+    return this.persistSinapi(user, { raw, sourceName: file.originalname.slice(0,255), revision }, createHash('sha256').update(file.buffer).digest('hex'), options);
+    });
+  }
+  async importReport(user: AuthenticatedUser, id: string, query: AdminListQuery & { kind?: string; status?: string; search?: string }, csv = false) {
+    this.access.assertAdmin(user);
+    const entry = await this.prisma.orcaproImport.findFirst({ where: { referenceId: id }, orderBy: { createdAt: 'desc' } });
+    if (!entry) throw new NotFoundException('Relatório da importação não encontrado.');
+    const report = entry.report as JsonRecord, comparison = report.comparison as Comparison | undefined;
+    const items = (comparison?.items ?? []).filter(row => differenceMatches(row, query));
+    if (csv) return differencesCsv(items);
+    return { referenceId: id, sourceName: entry.sourceName, createdAt: entry.createdAt, report: { ...report, comparison: comparison ? comparisonSummary(comparison) : null }, items: items.slice((query.page - 1) * query.pageSize, query.page * query.pageSize), total: items.length, page: query.page, pageSize: query.pageSize, comparisonAvailable: !!comparison };
   }
   async validateReference(user: AuthenticatedUser, id: string) {
     this.access.assertAdmin(user);

@@ -85,6 +85,7 @@ jobs:
           node --test scripts/frontend/product-config.spec.mjs
           node --test scripts/frontend/infra-api.spec.mjs
           node --test scripts/frontend/infra-import.spec.cjs
+          node --test scripts/frontend/sinapi-import-stream.spec.mjs
           node --test scripts/infraestrutura/hostinger-jobs.spec.mjs
           node --test apps/api/scripts/infraestrutura-backup.spec.mjs
           mkdir -p artifacts

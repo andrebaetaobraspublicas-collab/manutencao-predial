@@ -13,6 +13,8 @@ separada, validando novamente o vínculo e registrando auditoria no banco Infrae
 
 A documentação executável fica em `/docs` via Swagger. Este arquivo registra o contrato conceitual e deve ser atualizado com mudanças incompatíveis.
 
+Assistente SINAPI OrçaPro: `/orcapro/admin/imports/file/stream` (XLSX multipart) e `/orcapro/admin/imports/stream` (JSON) adicionam `baselineReferenceId?` e retornam NDJSON autenticado com `progress`, `heartbeat`, `error` ou `result`. `GET /orcapro/admin/references/:id/import-report` pagina diferenças por `kind/status/search/page/pageSize`; `.csv` exporta todas as diferenças filtradas. O contrato completo e a recuperação de conexão estão em [orcapro-api.md](orcapro-api.md). Os endpoints síncronos anteriores continuam disponíveis.
+
 ## 1. Convenções
 
 - JSON UTF-8;

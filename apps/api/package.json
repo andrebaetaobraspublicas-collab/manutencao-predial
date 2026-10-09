@@ -56,7 +56,7 @@
     "dotenv": "17.4.2",
     "helmet": "8.1.0",
     "iconv-lite": "^0.7.3",
-    "mariadb": "3.5.3",
+    "mariadb": "3.5.4",
     "mime-types": "3.0.1",
     "multer": "2.4.0",
     "passport": "0.7.0",

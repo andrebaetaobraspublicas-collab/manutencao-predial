@@ -6,7 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { OrcaproAccess } from './orcapro.guard';
 import { AdaptCompositionDto, AdminListQuery, CatalogQuery, CloneTemplateDto, CreateProjectDto, ImportSinapiDto, SaveProjectDto } from './orcapro.dto';
 import { AnalyticNode, assertContext, calculateAnalyticCosts, centsToAmount, JsonRecord, mulTrunc, officialCode, ORCAPRO_ENGINE_VERSION, projectOfficialCodes, RawSinapi, REGIMES, scaledDecimal, validateProjectData, validateRawSinapi } from './orcapro-domain';
-import { loadLegacyRuntime } from './legacy/legacy-runtime';
+import { loadLegacyRuntime, type LegacyRecord } from './legacy/legacy-runtime';
 import { protectLegacyXlsx } from './orcapro-upload';
 import { Comparison, comparisonSummary, compareSinapi, differenceMatches, differencesCsv } from './orcapro-import-comparison';
 
@@ -190,6 +190,30 @@ export class OrcaproService {
     const codes = projectOfficialCodes(project.data as JsonRecord);
     const graph = await this.graph(project.referenceId, codes.compositions, codes.inputs, project.uf, project.regime, this.prisma, false, new Set(codes.optional));
     return { project, raw: graph.raw, fallbackInputs: graph.fallbackInputs, historicalFixedCodes: graph.historicalFixedCodes };
+  }
+
+  async previewReference(user: AuthenticatedUser, id: string, referenceId: string) {
+    const project = await this.project(user, id);
+    const target = await this.reference(referenceId);
+    if (target.status !== OrcaproReferenceStatus.PUBLISHED) throw new BadRequestException('Escolha uma referência publicada.');
+    const codes = projectOfficialCodes(project.data as JsonRecord);
+    const graphFor = (ref: string) => this.graph(ref, codes.compositions, codes.inputs, project.uf, project.regime, this.prisma, false, new Set(codes.optional));
+    const [before, after] = await Promise.all([graphFor(project.referenceId), graphFor(referenceId)]);
+    const summarize = (raw: RawSinapi, ref: string) => {
+      const runtime = loadLegacyRuntime();
+      const data = this.canonicalData(project.data, { ...project, referenceId: ref });
+      const result = runtime.calculateProject(raw, data, { referenceId: ref });
+      const tax = runtime.OP.iva.budget(result.model);
+      return { direct: result.model.tot.direct, price: result.model.tot.price, days: result.model.T,
+        iva: { creditCents: tax.total.creditCents, complete: tax.total.complete, missing: tax.total.missing },
+        items: result.model.items.map((row: LegacyRecord) => ({ id: row.id, code: String(row.node.code), description: row.desc,
+          quantity: row.qty, unitCost: row.unitCost, direct: row.direct, days: row.days })), data };
+    };
+    // No writes: price gaps stay null, removed codes block the preview rather than
+    // being silently replaced, and every eventual save checks expectedVersion.
+    const current = summarize(before.raw, project.referenceId), next = summarize(after.raw, referenceId);
+    return { expectedVersion: project.version, referenceId, currentReference: before.raw.ref, nextReference: after.raw.ref,
+      current: { ...current, data: undefined }, next: { ...next, data: undefined }, data: next.data };
   }
   async calculation(user: AuthenticatedUser, id: string) {
     const context = await this.projectContext(user, id);

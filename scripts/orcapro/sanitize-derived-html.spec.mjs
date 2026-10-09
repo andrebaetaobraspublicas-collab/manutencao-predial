@@ -21,7 +21,8 @@ test('generated editor scripts compile and bridge is outside report template lit
   const bridge = html.lastIndexOf('<script>(function installOrcaProCloud');
   const risks = html.lastIndexOf('<script>window.installOrcaProRisks');
   const mainStart = html.indexOf('<script>window.OP_FONTS');
-  const mainEnd = html.lastIndexOf('</script>', risks);
+  const review = html.lastIndexOf('<script>/* Reference-scoped interpretation overlay.');
+  const mainEnd = html.lastIndexOf('</script>', review);
   const manualData = html.lastIndexOf('<script>window.ORCAPRO_MANUAL=');
   const manualUi = html.lastIndexOf('<script>window.installOrcaProManual');
   const riskEnd = html.indexOf('</script>', risks);
@@ -30,6 +31,8 @@ test('generated editor scripts compile and bridge is outside report template lit
   assert.ok(!html.includes('id="op-base"'));
   assert.ok(!html.includes('${r.id}'));
   new vm.Script(html.slice(mainStart + '<script>'.length, mainEnd));
+  assert.ok(review > mainEnd && risks > review);
+  new vm.Script(html.slice(review + '<script>'.length, html.indexOf('</script>', review)));
   assert.ok(risks>mainEnd && riskEnd>risks && bridge>riskEnd);
   assert.ok(html.includes("['reforma', 'Reforma Tributária', 'pct'], ['risks', 'Riscos e contingências', 'flag'],"));
   new vm.Script(html.slice(risks + '<script>'.length, riskEnd));

@@ -37,6 +37,8 @@ Base: `/api/v1/orcapro`. Autenticação reutiliza os cookies/JWT já existentes.
 
 ## Rotas de consulta
 
+`POST /projects/:id/reference-preview`, corpo `{referenceId}`: comparação privada, sem gravação, de uma referência publicada. Retorna `{expectedVersion,referenceId,currentReference,nextReference,current,next,data}`; `current/next` contêm custos em centavos, dias úteis, IVA (`creditCents/complete/missing`) e serviços (`id/code/description/quantity/unitCost/direct/days`). A referência atual pode estar arquivada. O projeto é filtrado por tenant e proprietário antes de ler os grafos. Dependência excluída gera 400, sem substituição automática. A confirmação usa o `PUT /projects/:id` existente com `referenceId`, `expectedVersion` e `data`; 409 impede perda de alterações concorrentes. Não existem efeitos de gravação na comparação. O padrão administrativo continua exclusivo dos novos projetos.
+
 | Método / rota | Resultado |
 | --- | --- |
 | `GET /access` | `{enabled:true,role:'ADMIN'\|'USER',userId,tenantId}` |

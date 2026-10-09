@@ -35,6 +35,7 @@ export default function OrcaproPage() {
   const [view, setView] = useState<'projects' | 'catalog' | 'admin'>('projects');
   const [references, setReferences] = useState<Reference[]>([]);
   const [referenceId, setReferenceId] = useState('');
+  const [defaultReferenceId, setDefaultReferenceId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -68,7 +69,7 @@ export default function OrcaproPage() {
         apiFetch<Template[] | { items: Template[] }>('/orcapro/templates'),
       ]);
       if (!active) return;
-      setAccess(userAccess); setReferences(refs.items); setReferenceId(refs.defaultReferenceId ?? refs.items[0]?.id ?? '');
+      setAccess(userAccess); setReferences(refs.items); setDefaultReferenceId(refs.defaultReferenceId); setReferenceId(refs.defaultReferenceId ?? refs.items[0]?.id ?? '');
       setProjects(unwrap(rows)); setTemplates(unwrap(examples));
     })().catch((cause: unknown) => {
       if (!active) return;
@@ -125,7 +126,7 @@ export default function OrcaproPage() {
     setError('');
     try {
       await apiFetch('/orcapro/admin/default-reference', { method: 'PUT', body: JSON.stringify({ referenceId: id }) });
-      setReferenceId(id); setNotice('Referência padrão atualizada para novos orçamentos.');
+      setDefaultReferenceId(id); setReferenceId(id); setNotice('Referência padrão atualizada para novos orçamentos. Para atualizar um orçamento existente, abra seu menu Orçamento e clique em “Comparar e atualizar referência”.');
     } catch (cause) { setError(message(cause)); }
   }
   async function referenceAction(id: string, action: 'validate' | 'publish' | 'archive') {
@@ -134,7 +135,7 @@ export default function OrcaproPage() {
       await apiFetch(`/orcapro/admin/references/${encodeURIComponent(id)}/${action}`, { method: 'POST', body: '{}' });
       await openAdmin();
       const updated = await apiFetch<{ items: Reference[]; defaultReferenceId: string | null }>('/orcapro/references');
-      setReferences(updated.items); setNotice(action === 'validate' ? 'Referência validada. Confira o relatório antes de publicar.' : action === 'publish' ? 'Referência publicada. Projetos existentes conservaram sua referência.' : 'Referência arquivada; os orçamentos históricos continuam reproduzíveis.');
+      setReferences(updated.items); setDefaultReferenceId(updated.defaultReferenceId); setNotice(action === 'validate' ? 'Referência validada. Confira o relatório antes de publicar.' : action === 'publish' ? 'Referência publicada. Projetos existentes conservaram sua referência.' : 'Referência arquivada; os orçamentos históricos continuam reproduzíveis.');
     } catch (cause) { setError(message(cause)); }
   }
   async function copyComposition() {
@@ -205,7 +206,7 @@ export default function OrcaproPage() {
         </section> : null}
         {view === 'admin' && access.role === 'ADMIN' ? <>
           <ReferenceImport references={adminReferences} defaultReferenceId={referenceId} onImported={openAdmin} />
-          <section className={styles.panel}><h2>Referências SINAPI</h2><p className={styles.muted}>O padrão é usado ao criar novos projetos. Orçamentos anteriores conservam sua referência.</p><div className={styles.tablewrap}><table><thead><tr><th>Referência</th><th>Revisão</th><th>Situação</th><th /></tr></thead><tbody>{adminReferences.map((r) => <tr key={r.id}><td>{r.label}</td><td>{r.revision}</td><td>{r.status}</td><td className={styles.actions}><button onClick={() => setReportReferenceId(r.id)}>Ver relatório</button>{r.status === 'DRAFT' ? <button onClick={() => referenceAction(r.id, 'validate')}>Validar</button> : r.status === 'VALIDATED' ? <button onClick={() => referenceAction(r.id, 'publish')}>Publicar</button> : r.status === 'PUBLISHED' ? <><button onClick={() => setDefault(r.id)}>Usar como padrão</button><button onClick={() => referenceAction(r.id, 'archive')}>Arquivar referência</button></> : null}</td></tr>)}</tbody></table></div></section>
+          <section className={styles.panel}><h2>Referências SINAPI</h2><p className={styles.muted}>O padrão é usado ao criar novos projetos. Orçamentos anteriores conservam sua referência.</p><div className={styles.tablewrap}><table><thead><tr><th>Referência</th><th>Revisão</th><th>Situação</th><th /></tr></thead><tbody>{adminReferences.map((r) => <tr key={r.id}><td>{r.label}{r.id === defaultReferenceId ? <strong> · Padrão para novos projetos</strong> : null}</td><td>{r.revision}</td><td>{r.status}</td><td className={styles.actions}><button onClick={() => setReportReferenceId(r.id)}>Ver relatório</button>{r.status === 'DRAFT' ? <button onClick={() => referenceAction(r.id, 'validate')}>Validar</button> : r.status === 'VALIDATED' ? <button onClick={() => referenceAction(r.id, 'publish')}>Publicar</button> : r.status === 'PUBLISHED' ? <><button onClick={() => setDefault(r.id)}>Usar como padrão</button><button onClick={() => referenceAction(r.id, 'archive')}>Arquivar referência</button></> : null}</td></tr>)}</tbody></table></div></section>
           {reportReferenceId ? <section className={styles.panel}><ReferenceReport key={reportReferenceId} referenceId={reportReferenceId} onClose={() => setReportReferenceId('')} /></section> : null}
           <section className={styles.panel}><h2>Gestão do SaaS</h2><p>Usuários, senhas, planos, assinaturas e auditoria estão na administração do sistema.</p><Link href="/orcapro/administracao">Abrir gestão do SaaS</Link></section>
         </> : null}

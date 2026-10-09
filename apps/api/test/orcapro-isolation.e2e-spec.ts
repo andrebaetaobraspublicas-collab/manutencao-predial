@@ -133,6 +133,25 @@ describe('OrçaPro — MySQL, referências e isolamento HTTP', () => {
     await b.agent.put(`/api/v1/orcapro/projects/${projectId}`).set('Origin', ORIGIN).send({ expectedVersion: updated.body.version, data: { ...updated.body.data, base: rawBase('01') } }).expect(400);
   });
 
+  it('compara uma referência sem gravar e aplica com confirmação, isolamento e histórico', async () => {
+    const created = await b.agent.post('/api/v1/orcapro/projects').set('Origin', ORIGIN).send({ name: 'Comparação de referência', uf: 'SP', regime: 'SD', referenceId: ref1,
+      data: { root: { id: 'root', kind: 'stage', children: [{ id: 'service', kind: 'item', code: 991003, qty: 1 }] } } }).expect(201);
+    const route = `/api/v1/orcapro/projects/${created.body.id}/reference-preview`;
+    await request(app.getHttpServer()).post(route).set('Origin', ORIGIN).send({ referenceId: ref2 }).expect(401);
+    await a.agent.post(route).set('Origin', ORIGIN).send({ referenceId: ref2 }).expect(404);
+    await b.agent.post(route).set('Origin', 'https://untrusted.example').send({ referenceId: ref2 }).expect(403);
+    const compared = await b.agent.post(route).set('Origin', ORIGIN).send({ referenceId: ref2 }).expect(201);
+    expect(compared.body.current.direct).toBe(700); expect(compared.body.next.direct).toBe(1400);
+    const unchanged = await b.agent.get(`/api/v1/orcapro/projects/${created.body.id}`).expect(200);
+    expect(unchanged.body.version).toBe(created.body.version); expect(unchanged.body.referenceId).toBe(ref1);
+    const body = { expectedVersion: compared.body.expectedVersion, referenceId: ref2, data: compared.body.data };
+    const applied = await b.agent.put(`/api/v1/orcapro/projects/${created.body.id}`).set('Origin', ORIGIN).send(body).expect(200);
+    expect(applied.body.referenceId).toBe(ref2);
+    await b.agent.put(`/api/v1/orcapro/projects/${created.body.id}`).set('Origin', ORIGIN).send(body).expect(409);
+    const history = await b.agent.get(`/api/v1/orcapro/projects/${created.body.id}/versions`).expect(200);
+    expect(history.body.map((v: { referenceId: string }) => v.referenceId)).toEqual([ref2, ref1]);
+  });
+
   it('a cópia própria mantém proveniência e não altera a composição oficial', async () => {
     const original = await b.agent.get('/api/v1/orcapro/catalog/compositions/991003').query({ referenceId: ref1, uf: 'SP', regime: 'SD' }).expect(200);
     const copied = await b.agent.post('/api/v1/orcapro/custom-compositions/from-sinapi/991003').set('Origin', ORIGIN).send({ referenceId: ref1 }).expect(201);

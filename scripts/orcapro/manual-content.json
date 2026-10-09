@@ -1,6 +1,6 @@
 {
-  "version": "1.0.2",
-  "reviewedAt": "03/10/2026",
+  "version": "1.0.3",
+  "reviewedAt": "09/10/2026",
   "title": "Manual interativo do OrçaPro",
   "sources": [
     {
@@ -204,6 +204,18 @@
             "Registre a origem de qualquer complemento próprio e exporte uma memória para a revisão."
           ],
           "expected": "O serviço adotado corresponde à solução técnica e seu custo pode ser reproduzido com a mesma referência, UF e regime."
+        },
+        {
+          "title": "Padrão administrativo e atualização de um orçamento",
+          "steps": [
+            "Usar como padrão, na Base de dados, escolhe a referência para projetos novos. A barra do editor mostra a referência preservada do orçamento aberto.",
+            "Para adotar outra referência publicada, abra Orçamento e clique em Comparar e atualizar referência.",
+            "Escolha a nova referência e clique em Comparar sem aplicar. Confira custo direto, preço com BDI, crédito de IVA, prazo e a relação de serviços.",
+            "Se houver composição excluída, revise o serviço e sua solução técnica antes de repetir a comparação. O programa não escolhe equivalentes automaticamente.",
+            "Clique em Aplicar ao orçamento somente após conferir. Cancelar conserva a referência atual. A aplicação verifica a versão para evitar perder alterações de outra sessão.",
+            "Confira equipes e prazos após a mudança dos coeficientes. Equipes editadas, quantidades, BDI e adaptações próprias são conservados; cotações vinculadas a outro mês não são transferidas. Refaça as análises de riscos para a nova fotografia."
+          ],
+          "expected": "A nova referência aparece na barra; a versão anterior fica no histórico. O crédito de IVA continua sendo uma estimativa conforme o cenário tributário, com pendências explícitas quando faltam preços."
         }
       ],
       "sources": [

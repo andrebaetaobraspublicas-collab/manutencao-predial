@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Building2, Calculator, FolderOpen, LogOut, Plus, Search, ShieldCheck } from 'lucide-react';
+import { Building2, Calculator, FolderOpen, LogOut, Plus, Search, ShieldCheck, Video } from 'lucide-react';
 import { apiFetch, ApiError } from '@/lib/api';
 import { endSession } from '@/lib/end-session';
 import { ORCAPRO_ONLY } from '@/lib/product-config';
 import styles from './workspace.module.css';
 import { ProjectImport, ProjectHistory, ReferenceImport } from './panels';
 import { ReferenceReport } from './sinapi-import-panel';
+import { VideoLessons } from './video-lessons';
 
 type Access = { enabled: boolean; role: 'ADMIN' | 'USER'; userId: string; tenantId: string };
 type Reference = { id: string; label: string; year: number; month: number; revision: number; status: string };
@@ -32,7 +33,7 @@ export default function OrcaproPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [view, setView] = useState<'projects' | 'catalog' | 'admin'>('projects');
+  const [view, setView] = useState<'projects' | 'catalog' | 'admin' | 'videos'>('projects');
   const [references, setReferences] = useState<Reference[]>([]);
   const [referenceId, setReferenceId] = useState('');
   const [defaultReferenceId, setDefaultReferenceId] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export default function OrcaproPage() {
         apiFetch<Template[] | { items: Template[] }>('/orcapro/templates'),
       ]);
       if (!active) return;
+      if (window.location.pathname.replace(/\/$/, '') === '/orcapro/video-aulas') setView('videos');
       setAccess(userAccess); setReferences(refs.items); setDefaultReferenceId(refs.defaultReferenceId); setReferenceId(refs.defaultReferenceId ?? refs.items[0]?.id ?? '');
       setProjects(unwrap(rows)); setTemplates(unwrap(examples));
     })().catch((cause: unknown) => {
@@ -174,6 +176,7 @@ export default function OrcaproPage() {
       <nav aria-label="Navegação OrçaPro">
         <button className={view === 'projects' ? styles.active : ''} onClick={() => { setView('projects'); setError(''); }}><FolderOpen size={19} /> Meus orçamentos</button>
         <button className={view === 'catalog' ? styles.active : ''} onClick={() => { setView('catalog'); setError(''); }}><Search size={19} /> Catálogo SINAPI</button>
+        <button type="button" onClick={() => { setView('videos'); setError(''); setNotice(''); }} className={`${styles.videoNav} ${view === 'videos' ? styles.active : ''}`} aria-current={view === 'videos' ? 'page' : undefined}><Video size={19} /> Vídeo-aulas</button>
         {access.role === 'ADMIN' ? <button className={view === 'admin' ? styles.active : ''} onClick={openAdmin}><ShieldCheck size={19} /> Base de dados</button> : null}
         {access.role === 'ADMIN' ? <Link href="/orcapro/administracao"><ShieldCheck size={19} /> Gestão do SaaS</Link> : null}
         <Link href="/orcapro/assinatura">Minha assinatura</Link>
@@ -181,10 +184,11 @@ export default function OrcaproPage() {
       <footer><span className={styles.badge}>Sessão protegida · {access.role}</span>{!ORCAPRO_ONLY ? <Link href="/programas"><Building2 size={16} /> Trocar programa</Link> : null}<button disabled={signingOut} onClick={logout}><LogOut size={16} /> {signingOut ? 'Saindo…' : 'Sair'}</button></footer>
     </aside>
     <main className={styles.main}>
-      <header className={styles.topbar}><h1>{view === 'projects' ? 'Meus orçamentos' : view === 'catalog' ? 'Catálogo SINAPI' : 'Base de dados'}</h1>{!ORCAPRO_ONLY ? <Link href="/programas">Gestão de Prédios / OrçaPro</Link> : <Link href="/orcapro">Voltar ao editor</Link>}</header>
+      <header className={styles.topbar}><h1>{view === 'projects' ? 'Meus orçamentos' : view === 'catalog' ? 'Catálogo SINAPI' : view === 'videos' ? 'Vídeo-aulas' : 'Base de dados'}</h1>{!ORCAPRO_ONLY ? <Link href="/programas">Gestão de Prédios / OrçaPro</Link> : <Link href="/orcapro">Voltar ao editor</Link>}</header>
       <div className={styles.content}>
         {error ? <p className={styles.error} role="alert">{error}</p> : null}
         {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
+        {view === 'videos' ? <VideoLessons /> : null}
         {view === 'projects' ? <>
           <section className={styles.panel}><h2>Novo orçamento</h2><form onSubmit={createProject} className={styles.form}>
             <label>Nome<input value={name} onChange={(e) => setName(e.target.value)} maxLength={160} required placeholder="Nome da obra" /></label>

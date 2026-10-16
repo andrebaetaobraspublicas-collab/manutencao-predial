@@ -9,6 +9,11 @@ const source = fs.readFileSync(path.join(__dirname, 'cloud-bridge.js'), 'utf8');
 const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 function setup(fetch) {
+  const auditCalls = [];
+  const transport = async (url, options) => {
+    if (url.endsWith('/orcapro/activity/navigation')) { auditCalls.push(JSON.parse(options.body)); return json({ recorded: true }); }
+    return fetch(url, options);
+  };
   const runtime = loadLegacyRuntime(), { OP } = runtime;
   const messages = []; let reloads = 0;
   OP.ui.renderNav = () => {};
@@ -19,7 +24,7 @@ function setup(fetch) {
   OP.app.pj.id = id;
   OP.app.inputs = []; OP.app.customs = [];
   OP.app.base = { raw: { ref: '08/2026' }, nComp: 0 };
-  const context = { OP, fetch, URL, URLSearchParams, location: { origin: 'https://example.test', search: '?project=' + id, reload: () => { reloads++; } },
+  const context = { OP, fetch: transport, URL, URLSearchParams, location: { origin: 'https://example.test', search: '?project=' + id, reload: () => { reloads++; } },
     document: { addEventListener() {}, getElementById: () => null }, addEventListener() {},
     parent: { postMessage: (data, origin) => messages.push({ data, origin }) }, localStorage: {}, console, setTimeout, clearTimeout };
   context.window = context;
@@ -27,8 +32,17 @@ function setup(fetch) {
   vm.runInContext('(' + source + ')("https://api.example.test/api/v1")', context);
   Object.assign(OP.cloud, { ready: true, wrapper: { id, referenceId: 'reference-1', version: 4 },
     access: { enabled: true, role: 'USER', tenantId: 'tenant', userId: 'user' } });
-  return { OP, messages, runtime, get reloads() { return reloads; } };
+  return { OP, messages, runtime, auditCalls, get reloads() { return reloads; } };
 }
+
+test('screen navigation is recorded once per screen change without saving the budget', () => {
+  const { OP, auditCalls } = setup(async () => { throw new Error('Unexpected project mutation'); });
+  const before = JSON.stringify(OP.app.pj);
+  OP.app.view = 'budget'; OP.ui.renderNav(); OP.ui.renderNav();
+  OP.app.view = 'bdi'; OP.ui.renderNav(); OP.ui.renderNav();
+  assert.deepEqual(auditCalls, [{ screen: 'budget', projectId: id }, { screen: 'bdi', projectId: id }]);
+  assert.equal(JSON.stringify(OP.app.pj), before);
+});
 test('refresh retries once and transport stays credentialed at the built API origin', async () => {
   const calls = [];
   const { OP } = setup(async (url, options) => {

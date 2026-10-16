@@ -8,14 +8,13 @@ import { endSession } from '@/lib/end-session';
 import { ORCAPRO_ONLY } from '@/lib/product-config';
 import styles from '../workspace.module.css';
 import css from './saas.module.css';
+import AuditPanel from './audit-panel';
 
 type Plan = { id: string; code: string; name: string; billingInterval: 'MONTH' | 'YEAR'; priceBrl: string; stripePriceId: string | null; active: boolean; version: number };
 type Subscription = { id: string; planId: string | null; status: string; billingSource: string; currentPeriodEnd: string | null; stripeSubscriptionId: string | null; stripeStatus: string | null; stripePeriodEnd: string | null; cancelAtPeriodEnd: boolean; version: number; plan: Plan | null };
 type User = { id: string; name: string; email: string; protected: boolean; accessAllowed: boolean; status: string; orcaproAccess: { enabled: boolean; managed: boolean; deletedAt: string | null } | null; orcaproSubscription: Subscription | null; memberships: { status: string; maintenanceAccess: boolean; tenant: { name: string; slug: string } }[] };
-type Log = { id: string; action: string; entityId: string | null; actorUserId: string; createdAt: string; metadata?: { reason?: string; status?: string } };
 type Integration = { keyConfigured: boolean; webhookConfigured: boolean; webhookPath: string };
 const labels: Record<string, string> = { ACTIVE: 'Ativa', TRIALING: 'Em teste', MANUAL_CONTRACT: 'Contrato manual', PAST_DUE: 'Inadimplente', UNPAID: 'Não paga', CANCELED: 'Cancelada' };
-const actions: Record<string, string> = { 'saas.user.create': 'Cadastro de usuário', 'saas.user.password': 'Alteração de senha', 'saas.user.status': 'Alteração de acesso', 'saas.user.revoke': 'Revogação de sessões', 'saas.plan.save': 'Cadastro de plano', 'saas.subscription.manual': 'Controle manual de assinatura', 'saas.subscription.stripe': 'Gestão de assinatura Stripe', 'saas.subscription.webhook': 'Atualização automática Stripe' };
 const text = (cause: unknown) => cause instanceof Error ? cause.message : 'Não foi possível concluir a operação.';
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Sem vencimento';
 const dateInput = (value: string) => new Date(value).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -25,11 +24,11 @@ const emptyPlan = { code: '', name: '', billingInterval: 'MONTH' as 'MONTH' | 'Y
 export default function SaasAdministrationPage() {
   const [tab, setTab] = useState<'users' | 'plans' | 'audit'>('users');
   const [users, setUsers] = useState<User[]>([]); const [total, setTotal] = useState(0);
-  const [plans, setPlans] = useState<Plan[]>([]); const [logs, setLogs] = useState<{ items: Log[]; total: number }>({ items: [], total: 0 });
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [integration, setIntegration] = useState<Integration | null>(null);
   const [access, setAccess] = useState(false); const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
-  const [search, setSearch] = useState(''); const [filter, setFilter] = useState(''); const [deleted, setDeleted] = useState(false); const [page, setPage] = useState(1); const [logPage, setLogPage] = useState(1);
+  const [search, setSearch] = useState(''); const [filter, setFilter] = useState(''); const [deleted, setDeleted] = useState(false); const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false); const [newUser, setNewUser] = useState({ name: '', email: '', password: '', organizationName: '', organizationSlug: '' });
   const [passwordUser, setPasswordUser] = useState<User | null>(null); const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState<{ user: User; status: 'ACTIVE' | 'SUSPENDED' | 'DELETED' } | null>(null);
@@ -39,12 +38,12 @@ export default function SaasAdministrationPage() {
 
   const load = useCallback(async () => {
     const query = new URLSearchParams({ search: filter, deleted: String(deleted), page: String(page), pageSize: '20' });
-    const [people, catalog, stripe, history] = await Promise.all([
+    const [people, catalog, stripe] = await Promise.all([
       apiFetch<{ items: User[]; total: number }>(`/orcapro/admin/saas/users?${query}`), apiFetch<Plan[]>('/orcapro/admin/saas/plans'),
-      apiFetch<Integration>('/orcapro/admin/saas/stripe'), apiFetch<{ items: Log[]; total: number }>(`/orcapro/admin/logs?page=${logPage}&pageSize=20`),
+      apiFetch<Integration>('/orcapro/admin/saas/stripe'),
     ]);
-    setUsers(people.items); setTotal(people.total); setPlans(catalog); setIntegration(stripe); setLogs(history); setAccess(true);
-  }, [filter, deleted, page, logPage]);
+    setUsers(people.items); setTotal(people.total); setPlans(catalog); setIntegration(stripe); setAccess(true);
+  }, [filter, deleted, page]);
   useEffect(() => { let active = true;
     Promise.resolve().then(() => { if (active) return load(); }).catch(cause => { if (!active) return; if (cause instanceof ApiError && cause.status === 401) { window.location.replace('/login?next=/orcapro'); return; } setError(text(cause)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -91,7 +90,7 @@ export default function SaasAdministrationPage() {
         {planOpen ? <form className={styles.panel} onSubmit={savePlan}><h2>{editPlan ? 'Editar plano' : 'Novo plano'}</h2><div className={css.grid}><label>Código<input required pattern="[A-Z0-9][A-Z0-9_-]{1,49}" value={planForm.code} onChange={e => setPlanForm({ ...planForm, code: e.target.value.toUpperCase() })} /></label><label>Nome<input required minLength={2} value={planForm.name} onChange={e => setPlanForm({ ...planForm, name: e.target.value })} /></label><label>Valor em R$<input required inputMode="decimal" value={planForm.priceBrl} onChange={e => setPlanForm({ ...planForm, priceBrl: e.target.value })} /></label><label>Periodicidade<select value={planForm.billingInterval} onChange={e => setPlanForm({ ...planForm, billingInterval: e.target.value as 'MONTH' | 'YEAR' })}><option value="MONTH">Mensal</option><option value="YEAR">Anual</option></select></label><label>Identificador do preço Stripe<input placeholder="price_… (opcional)" value={planForm.stripePriceId} onChange={e => setPlanForm({ ...planForm, stripePriceId: e.target.value })} /></label><label><input type="checkbox" checked={planForm.active} onChange={e => setPlanForm({ ...planForm, active: e.target.checked })} /> Plano ativo</label></div><div className={styles.actions}><button disabled={busy}>Salvar plano</button><button type="button" disabled={busy} onClick={() => setPlanOpen(false)}>Cancelar</button></div></form> : null}
         <section className={styles.panel}><h2>Integração Stripe</h2><p>Chave da API: {integration?.keyConfigured ? 'configurada' : 'pendente'}. Webhook: {integration?.webhookConfigured ? 'configurado' : 'pendente'}.</p><p>As credenciais são configuradas no ambiente seguro da hospedagem. Cadastre os preços dos planos no Stripe e vincule seus identificadores acima.</p><p>Endereço do webhook: <code>{new URL(apiFileUrl('/')).origin}{integration?.webhookPath}</code></p><p className={styles.muted}>O controle manual altera o acesso ao OrçaPro. Para interromper uma cobrança Stripe, use “Cancelar renovação” na assinatura.</p></section>
       </> : null}
-      {tab === 'audit' ? <section className={styles.panel}><h2>Auditoria do OrçaPro</h2><div className={styles.tablewrap}><table><thead><tr><th>Quando</th><th>Ação</th><th>Registro</th><th>Responsável</th></tr></thead><tbody>{logs.items.map(log => <tr key={log.id}><td>{new Date(log.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td><td>{actions[log.action] ?? log.action}{log.metadata?.reason ? <small className={css.secondary}>{log.metadata.reason}</small> : null}{log.metadata?.status ? <small className={css.secondary}>{labels[log.metadata.status] ?? log.metadata.status}</small> : null}</td><td>{log.entityId ?? '—'}</td><td>{users.find(u => u.id === log.actorUserId)?.name ?? log.actorUserId}</td></tr>)}</tbody></table></div><div className={styles.pager}><button disabled={logPage === 1} onClick={() => setLogPage(p => p - 1)}>Anterior</button><span>Página {logPage}</span><button disabled={logPage * 20 >= logs.total} onClick={() => setLogPage(p => p + 1)}>Próxima</button></div></section> : null}
+      {tab === 'audit' ? <AuditPanel /> : null}
     </div></main>
     {passwordUser ? <div className={styles.overlay}><form className={styles.drawer} role="dialog" aria-modal="true" aria-label="Alterar senha" onSubmit={savePassword}><header><h2>Senha de {passwordUser.name}</h2><button type="button" disabled={busy} onClick={() => { setPasswordUser(null); setPassword(''); }} aria-label="Fechar alteração de senha"><X size={18} /></button></header><p>O login é compartilhado: esta senha vale para OrçaPro e Gestão de Prédios. Todas as sessões anteriores serão encerradas.</p><label className={css.field}>Nova senha<input autoFocus required type="password" autoComplete="new-password" minLength={10} maxLength={72} value={password} onChange={e => setPassword(e.target.value)} /></label><button disabled={busy}>Alterar senha e encerrar sessões</button>{error ? <p role="alert" className={styles.error}>{error}</p> : null}</form></div> : null}
     {subscriptionUser ? <div className={styles.overlay}><form className={styles.drawer} role="dialog" aria-modal="true" aria-label="Controle de assinatura" onSubmit={saveSubscription}><header><h2>Assinatura de {subscriptionUser.name}</h2><button type="button" disabled={busy} onClick={() => setSubscriptionUser(null)}>Fechar</button></header><p>Controle manual do acesso individual ao OrçaPro. Cobranças existentes no Stripe continuam até serem canceladas no Stripe.</p><div className={css.grid}><label>Plano<select value={subscription.planId} onChange={e => setSubscription({ ...subscription, planId: e.target.value })}><option value="">Sem plano definido</option>{plans.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Situação<select value={subscription.status} onChange={e => setSubscription({ ...subscription, status: e.target.value })}>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Válida até<input type="date" required={subscription.status === 'TRIALING'} value={subscription.currentPeriodEnd} onChange={e => setSubscription({ ...subscription, currentPeriodEnd: e.target.value })} /><small>Em branco: acesso sem vencimento, exceto teste.</small></label><label>Motivo da alteração<textarea required minLength={5} maxLength={500} value={subscription.reason} onChange={e => setSubscription({ ...subscription, reason: e.target.value })} /></label></div><button disabled={busy}>Salvar controle manual</button>{error ? <p role="alert" className={styles.error}>{error}</p> : null}</form></div> : null}

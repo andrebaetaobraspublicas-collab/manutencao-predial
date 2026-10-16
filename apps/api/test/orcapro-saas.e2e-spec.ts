@@ -80,6 +80,21 @@ describe('OrçaPro SaaS — gestão global e licença por usuário em MySQL', ()
     await admin.agent.post('/api/v1/orcapro/admin/saas/users').set('Origin', 'https://invalid.example').send({ name: 'Intruso', email: 'intruso@example.test', password }).expect(403);
     await admin.agent.post('/api/v1/orcapro/admin/saas/users').set('Origin', origin).send({ name: 'Intruso', email: 'intruso@example.test', password, tenantId: other.tenantId }).expect(400);
   });
+  it('auditoria protege histórico global e filtra usuário, dias brasileiros e páginas antigas', async () => {
+    await other.agent.get('/api/v1/orcapro/admin/logs').expect(403);
+    await request(app.getHttpServer()).get('/api/v1/orcapro/admin/logs').expect(401);
+    await prisma.orcaproAudit.createMany({ data: ['2020-01-15T02:59:59Z', '2020-01-15T03:00:00Z', '2020-01-16T02:59:59Z', '2020-01-16T03:00:00Z'].map(date => ({ tenantId: other.tenantId, actorUserId: other.userId, action: 'project.save', entityId: key, metadata: { version: 3, password: 'must-not-leak' }, createdAt: new Date(date) })) });
+    const query = { user: other.email, from: '2020-01-15', to: '2020-01-15', pageSize: 1, category: 'activity' };
+    const first = await admin.agent.get('/api/v1/orcapro/admin/logs').query(query).expect(200);
+    const second = await admin.agent.get('/api/v1/orcapro/admin/logs').query({ ...query, page: 2 }).expect(200);
+    expect(first.body).toMatchObject({ total: 2, pages: 2, items: [{ actor: { id: other.userId, email: other.email }, metadata: { version: 3 } }] });
+    expect(first.body.items[0].id).not.toBe(second.body.items[0].id);
+    expect(JSON.stringify(first.body)).not.toContain('must-not-leak');
+    await admin.agent.get('/api/v1/orcapro/admin/logs').query({ from: '2026-02-30' }).expect(400);
+    await admin.agent.get('/api/v1/orcapro/admin/logs').query({ from: '2026-10-16', to: '2026-10-15' }).expect(400);
+    const none = await admin.agent.get('/api/v1/orcapro/admin/logs').query({ user: `${key}-missing` }).expect(200);
+    expect(none.body.total).toBe(0);
+  });
   it('cria acesso exclusivo ao OrçaPro com teste individual, sem preço ou plano inventado', async () => {
     customer = await createCustomerAccount('one'); neighbor = await createCustomerAccount('two', false);
     const membership = await prisma.tenantMembership.findFirstOrThrow({ where: { userId: customer.userId } });

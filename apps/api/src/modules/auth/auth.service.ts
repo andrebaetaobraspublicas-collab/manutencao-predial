@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -559,11 +560,15 @@ export class AuthService {
 
   async logout(rawRefreshToken?: string): Promise<void> {
     if (!rawRefreshToken) return;
-
-    await this.prisma.refreshSession.updateMany({
+    const session = this.config.get<string>('ORCAPRO_ENABLED') === 'true' ? await this.prisma.refreshSession.findUnique({ where: { tokenHash: this.hashRefreshToken(rawRefreshToken) }, select: { userId: true, revokedAt: true, membership: { select: { tenantId: true } } } }) : null;
+    const revoked = await this.prisma.refreshSession.updateMany({
       where: { tokenHash: this.hashRefreshToken(rawRefreshToken), revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (revoked.count && session && !session.revokedAt) {
+      try { await this.prisma.orcaproAudit.create({ data: { actorUserId: session.userId, tenantId: session.membership.tenantId, action: 'access.logout', entityId: session.userId } }); }
+      catch { new Logger(AuthService.name).error('Falha ao registrar encerramento da sessão.'); }
+    }
   }
 
   async me(user: AuthenticatedUser) {

@@ -9,6 +9,8 @@ import { AnalyticNode, assertContext, calculateAnalyticCosts, centsToAmount, Jso
 import { loadLegacyRuntime, type LegacyRecord } from './legacy/legacy-runtime';
 import { protectLegacyXlsx } from './orcapro-upload';
 import { Comparison, comparisonSummary, compareSinapi, differenceMatches, differencesCsv } from './orcapro-import-comparison';
+import { AuditListQuery, AuditNavigationDto } from './orcapro.dto';
+import { auditDetails, auditPeriod } from './orcapro-audit';
 
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 const stableJson = (value: unknown): string => JSON.stringify(value, function (_key, current) {
@@ -341,7 +343,9 @@ export class OrcaproService {
       if (updated.count !== 1) throw new ConflictException('Conflito de versão do projeto.');
       const project = await this.project(user, id, db);
       await this.snapshot(db, user, project);
-      await this.audit(db, user, 'project.save', id, { version: project.version, referenceId, uf, regime });
+      const previous = current.data as JsonRecord;
+      const changedSections = ['name', 'uf', 'rg', 'bdi', 'items', 'stages', 'schedule', 'teams', 'iva', 'tax', 'risks', 'catalog', 'start', 'calendar'].filter(key => stableJson(previous[key] ?? null) !== stableJson(data[key] ?? null));
+      await this.audit(db, user, 'project.save', id, { version: project.version, previousVersion: current.version, referenceId, uf, regime, changedSections, ...(referenceId !== current.referenceId || uf !== current.uf || regime !== current.regime ? { previousContext: { referenceId: current.referenceId, uf: current.uf, regime: current.regime } } : {}) });
       if (operation) await this.audit(db,user,operation.action,id,{ version:project.version,details:operation.metadata });
       return project;
     }, { timeout: 30000 });
@@ -595,10 +599,31 @@ export class OrcaproService {
       await this.audit(db, user, 'sinapi.archive', id); return { referenceId: id, status: 'ARCHIVED' };
     });
   }
-  async adminLogs(user: AuthenticatedUser, query: AdminListQuery) {
+  async auditNavigation(user: AuthenticatedUser, dto: AuditNavigationDto) {
+    if (dto.projectId && !(await this.prisma.orcaproProject.findFirst({ where: { id: dto.projectId, ...this.owner(user), archivedAt: null }, select: { id: true } }))) throw new NotFoundException('Orçamento não encontrado.');
+    await this.audit(this.prisma, user, 'activity.navigation', dto.projectId ?? 'orcapro', { screen: dto.screen });
+    return { recorded: true };
+  }
+  async adminLogs(user: AuthenticatedUser, query: AuditListQuery) {
     this.access.assertAdmin(user);
-    const [items,total] = await Promise.all([this.prisma.orcaproAudit.findMany({ orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.pageSize, take: query.pageSize }),this.prisma.orcaproAudit.count()]);
-    return { items,total,page: query.page,pageSize: query.pageSize };
+    const createdAt = auditPeriod(query.from, query.to);
+    // Explicit global product administration: only this admin endpoint may span tenants.
+    const matches = query.user?.trim() ? await this.prisma.user.findMany({ where: { OR: [{ name: { contains: query.user.trim() } }, { email: { contains: query.user.trim() } }] }, select: { id: true } }) : null;
+    const where: Prisma.OrcaproAuditWhereInput = {
+      ...(matches ? { actorUserId: { in: matches.map(u => u.id) } } : {}),
+      ...(Object.keys(createdAt).length ? { createdAt } : {}),
+      ...(query.category === 'access' ? { action: { startsWith: 'access.' } } : query.category === 'activity' ? { NOT: { action: { startsWith: 'access.' } } } : query.category === 'failure' ? { action: { endsWith: '.failed' } } : {}),
+    };
+    return this.prisma.$transaction(async db => {
+      const total = await db.orcaproAudit.count({ where });
+      const pages = Math.max(1, Math.ceil(total / query.pageSize)), page = Math.min(query.page, pages);
+      const items = await db.orcaproAudit.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (page - 1) * query.pageSize, take: query.pageSize });
+      const [actors, projects] = await Promise.all([
+        db.user.findMany({ where: { id: { in: [...new Set(items.map(i => i.actorUserId))] } }, select: { id: true, name: true, email: true } }),
+        db.orcaproProject.findMany({ where: { id: { in: [...new Set(items.map(i => i.entityId))] } }, select: { id: true, name: true } }),
+      ]);
+      return { items: items.map(item => ({ ...item, metadata: auditDetails(item.metadata), actor: actors.find(a => a.id === item.actorUserId) ?? null, entityName: projects.find(p => p.id === item.entityId)?.name ?? null })), total, page, pageSize: query.pageSize, pages, timezone: 'America/Sao_Paulo' };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
   async adminUsers(user: AuthenticatedUser, query: AdminListQuery) {
     this.access.assertAdmin(user);

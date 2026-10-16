@@ -536,6 +536,14 @@ aprovação do orçamento de OS e movimentação de empenhos.
 
 ## 11. OrçaPro Infraestrutura
 
+### Auditoria administrativa OrçaPro (16/10/2026)
+
+`GET /orcapro/admin/logs`: exclusivo de administrador global OrçaPro. `user` procura nome/e-mail inclusive de contas removidas; `from`/`to` são datas YYYY-MM-DD inclusivas em America/Sao_Paulo; `category=all|access|activity|failure`; `page` e `pageSize` (máximo100). Resposta mantém items/total e acrescenta pages, page/pageSize normalizados, actor{id,name,email}, entityName e metadata limitada sem credenciais/documentos. Ordem createdAt DESC,id DESC. Datas impossíveis ou invertidas retornam400. Usuários comuns403; anônimos401.
+
+`POST /orcapro/activity/navigation`: tela técnica de até50 caracteres e projectId opcional; valida proprietário+tenant antes de registrar navegação. Não concede acesso a projetos. Interceptor registra requisições autenticadas OrçaPro e resultados (rota sem query/body, método, status, duração, IP observado e navegador); login compartilhado registra sucesso/falha, logout revoga e registra uma vez. Falhas de login não são atribuídas a um usuário não autenticado. Consultas da própria auditoria, OPTIONS, refresh e chamadas de navegação duplicadas não geram eventos HTTP adicionais. Rejeições anteriores ao interceptor, como bloqueios dos guards, permanecem nos mecanismos de segurança existentes. Falha na captura HTTP é enviada ao log operacional sem dados sensíveis e não provoca repetição de mutação já concluída. Eventos de negócio transacionais permanecem obrigatórios.
+
+Registros antigos sem esses detalhes permanecem válidos; eventos não capturados no passado não podem ser recuperados. Nenhuma retenção destrutiva foi introduzida. Publicação desta entrega: apenas desenvolvimento; promoção comercial exige solicitação separada.
+
 Terceiro aplicativo autorizado em03/10/2026, somente no ambiente DEV nesta entrega. O contrato aditivo `/api/v1/infraestrutura` compartilha a identidade central e usa outro banco para perfis do produto, catálogo SICRO/PEM e dados privados. [infraestrutura-api.md](infraestrutura-api.md) descreve todos os endpoints, envelopes, CSRF/login, importação incremental/hash, ETag, projetos/versões409, migração confirmada, administração e exportação/expurgo LGPD. Rotas da manutenção e do OrçaPro não mudam de versão ou formato.
 
 GET `/infraestrutura/health` é público; os demais recursos exigem perfil próprio, cookies e filtros de proprietário+tenant. Rotas administrativas verificam ADMIN local/configurado, sem herdar OWNER da organização. Senha permanece central; nenhuma nova API aceita hash/senha de outro produto como credencial de bridge.

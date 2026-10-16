@@ -27,7 +27,7 @@ describe('OrçaPro audit administration and tenant boundary', () => {
       user: { findMany: jest.fn().mockResolvedValue([{ id: 'actor-other-page', name: 'Old account', email: 'old@example.com' }]) },
       orcaproProject: { findMany: jest.fn().mockResolvedValue([{ id: 'project', name: 'Bridge' }]), findFirst: jest.fn().mockResolvedValue(null) },
     };
-    const prisma = { ...db, $transaction: jest.fn((run: (value: typeof db) => unknown) => run(db)) };
+    const prisma = { ...db, $queryRaw: jest.fn().mockResolvedValue([{ id: 'actor-other-page' }]), $transaction: jest.fn((run: (value: typeof db) => unknown) => run(db)) };
     const access = { assertAdmin: jest.fn(() => { if (!admin) throw new ForbiddenException(); }) };
     return { db, prisma, service: new OrcaproService(prisma as unknown as PrismaService, access as unknown as OrcaproAccess) };
   }
@@ -35,13 +35,21 @@ describe('OrçaPro audit administration and tenant boundary', () => {
     const { service, db } = setup();
     const response = await service.adminLogs(user, { page: 3, pageSize: 50, category: 'activity', user: 'Old', from: '2026-10-01', to: '2026-10-15' });
     expect(response).toMatchObject({ total: 101, pages: 3, page: 3, items: [{ actor: { name: 'Old account' }, entityName: 'Bridge' }] });
-    expect(db.orcaproAudit.findMany.mock.calls[0][0]).toMatchObject({ skip: 100, take: 50, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], where: { actorUserId: { in: ['actor-other-page'] }, createdAt: auditPeriod('2026-10-01', '2026-10-15'), NOT: { action: { startsWith: 'access.' } } } });
+    expect(db.orcaproAudit.findMany.mock.calls[0][0]).toMatchObject({ skip: 100, take: 50, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], where: { actorUserId: { in: ['actor-other-page'] }, createdAt: auditPeriod('2026-10-01', '2026-10-15'), action: { notIn: expect.arrayContaining(['access.login', 'access.request.failed']) } } });
     expect(db.orcaproAudit.count.mock.calls[0][0].where).toEqual(db.orcaproAudit.findMany.mock.calls[0][0].where);
   });
   it('rejects common users before any cross-tenant audit or identity query', async () => {
     const { service, prisma, db } = setup(false);
     await expect(service.adminLogs(user, { page: 1, pageSize: 50, category: 'all' })).rejects.toThrow(ForbiddenException);
     expect(prisma.$transaction).not.toHaveBeenCalled(); expect(db.user.findMany).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+  it('uses escaped, parameterized, explicitly collated text search on historical MySQL', async () => {
+    const { service, prisma } = setup();
+    await service.adminLogs(user, { page: 1, pageSize: 50, category: 'all', user: 'A%_=' });
+    const sql = prisma.$queryRaw.mock.calls[0][0];
+    expect(sql.sql).toContain('CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci');
+    expect(sql.values).toEqual(['%A=%=_==%', '%A=%=_==%']);
   });
   it('cannot attach a navigation event to another tenant/user project', async () => {
     const { service, db } = setup();

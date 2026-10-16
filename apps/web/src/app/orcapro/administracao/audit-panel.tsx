@@ -40,7 +40,7 @@ export default function AuditPanel() {
   const [history, setHistory] = useState<History | null>(null), [loading, setLoading] = useState(true), [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    const query = new URLSearchParams({ ...filter, page: String(page) });
+    const query = new URLSearchParams(Object.entries({ ...filter, page: String(page) }).filter(([, value]) => value.trim() !== ''));
     Promise.resolve().then(() => { if (active) { setLoading(true); setError(''); } return apiFetch<History>(`/orcapro/admin/logs?${query}`); })
       .then(value => { if (active) setHistory(value); }).catch(cause => { if (active) { setHistory(null); setError(cause instanceof Error ? cause.message : 'Não foi possível consultar a auditoria.'); } }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };

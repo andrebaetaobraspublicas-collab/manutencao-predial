@@ -56,8 +56,8 @@ export default function AuditPanel() {
     <p className={styles.muted}>Consulte todo o histórico disponível. Datas e horários de Brasília (America/Sao_Paulo); a data final inclui o dia inteiro.</p>
     <form className={css.filters} onSubmit={apply}>
       <label>Usuário<input placeholder="Nome ou e-mail do responsável" maxLength={150} value={draft.user} onChange={e => setDraft({ ...draft, user: e.target.value })} /></label>
-      <label>Data inicial<input type="date" value={draft.from} onChange={e => setDraft({ ...draft, from: e.target.value })} /></label>
-      <label>Data final<input type="date" value={draft.to} onChange={e => setDraft({ ...draft, to: e.target.value })} /></label>
+      <label>Data inicial<input type="date" value={draft.from} onInput={e => { const from = e.currentTarget.value; setDraft(current => ({ ...current, from })); }} /></label>
+      <label>Data final<input type="date" value={draft.to} onInput={e => { const to = e.currentTarget.value; setDraft(current => ({ ...current, to })); }} /></label>
       <label>Tipo de registro<select value={draft.category} onChange={e => setDraft({ ...draft, category: e.target.value })}><option value="all">Todos</option><option value="access">Acessos e operações</option><option value="activity">Alterações e atividades</option><option value="failure">Falhas registradas</option></select></label>
       <label>Por página<select value={draft.pageSize} onChange={e => setDraft({ ...draft, pageSize: e.target.value })}>{[20, 50, 100].map(n => <option key={n}>{n}</option>)}</select></label>
       <button disabled={loading}>Aplicar filtros</button><button type="button" disabled={loading} onClick={() => { setDraft(initial); setFilter(initial); setPage(1); setRefresh(v => v + 1); }}>Limpar filtros</button>

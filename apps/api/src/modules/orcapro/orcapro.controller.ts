@@ -9,6 +9,7 @@ import { OrcaproService } from './orcapro.service';
 import { OrcaproAccess, OrcaproAdmin, OrcaproGuard } from './orcapro.guard';
 import { AdaptCompositionDto, AdminListQuery, BundleQuery, CatalogQuery, CloneTemplateDto, ContextQuery, CreateProjectDto, CustomRecordDto, ImportSinapiDto, ImportSinapiFileDto, ImportReportQuery, ProjectListQuery, ReferenceDto, RestoreDto, RevisionDto, SaveProjectDto, UserAccessDto } from './orcapro.dto';
 import { codeList } from './orcapro-domain';
+import { AuditListQuery, AuditNavigationDto } from './orcapro.dto';
 
 @ApiTags('OrçaPro')
 @ApiCookieAuth('gp_access')
@@ -20,6 +21,8 @@ export class OrcaproController {
 
   @Get('access') @ApiOperation({ summary: 'Acesso OrçaPro e papel global independente do papel de manutenção.' })
   session(@CurrentUser() user: AuthenticatedUser) { return this.access.session(user); }
+  @Post('activity/navigation') @ApiOperation({ summary: 'Registrar abertura de tela; projeto opcional deve pertencer ao usuário e ao tenant autenticados.' })
+  navigationActivity(@CurrentUser() user: AuthenticatedUser, @Body() dto: AuditNavigationDto) { return this.service.auditNavigation(user, dto); }
   @Post('workspace/open') @ApiOperation({ summary: 'Retoma o orçamento privado mais recente; na primeira entrada cria uma única cópia privada do exemplo inicial.' })
   openWorkspace(@CurrentUser() user: AuthenticatedUser) { return this.service.openWorkspace(user); }
   @Get('references') references(@CurrentUser() user: AuthenticatedUser) { return this.service.references(user); }
@@ -104,7 +107,8 @@ export class OrcaproController {
   @OrcaproAdmin() @Post('admin/references/:id/publish') publish(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return this.service.publishReference(user, id); }
   @OrcaproAdmin() @Post('admin/references/:id/archive') archiveReference(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return this.service.archiveReference(user, id); }
   @OrcaproAdmin() @Put('admin/default-reference') default(@CurrentUser() user: AuthenticatedUser, @Body() dto: ReferenceDto) { return this.service.defaultReference(user, dto.referenceId); }
-  @OrcaproAdmin() @Get('admin/logs') logs(@CurrentUser() user: AuthenticatedUser, @Query() dto: AdminListQuery) { return this.service.adminLogs(user, dto); }
+  @OrcaproAdmin() @Get('admin/logs') @ApiOperation({ summary: 'Auditoria global OrçaPro: filtros por responsável, datas inclusivas de São Paulo e categoria; paginação de todo o histórico.' })
+  logs(@CurrentUser() user: AuthenticatedUser, @Query() dto: AuditListQuery) { return this.service.adminLogs(user, dto); }
   @OrcaproAdmin() @Get('admin/users') users(@CurrentUser() user: AuthenticatedUser, @Query() dto: AdminListQuery) { return this.service.adminUsers(user, dto); }
   @OrcaproAdmin() @Patch('admin/users/:id/access') userAccess(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: UserAccessDto) { return this.service.setUserAccess(user, id, dto.enabled); }
 }

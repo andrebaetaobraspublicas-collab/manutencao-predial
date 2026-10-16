@@ -382,9 +382,14 @@ function installOrcaProCloud(API_BASE) {
     return '<div class="alertbox"><b>Este projeto foi alterado em outra sessão.</b> Suas alterações continuam nesta tela. Exporte o JSON antes de reabrir a versão salva. <button class="btn sm" data-act="exportJSON">Exportar alterações JSON</button> <button class="btn sm" data-act="cloudReload">Reabrir versão salva</button></div>';
   }
   const renderNav = UI.renderNav;
+  let lastAuditScreen;
   UI.renderNav = () => {
     if (!A.pj) return;
     renderNav();
+    if (state.ready && /^[a-z][a-z0-9-]{0,49}$/.test(A.view) && lastAuditScreen !== A.view) {
+      lastAuditScreen = A.view;
+      request('/orcapro/activity/navigation', { method: 'POST', body: JSON.stringify({ screen: A.view, projectId }) }).catch(() => {});
+    }
     if (state.access?.role !== 'ADMIN') UI.$('[data-v="base"]')?.remove();
     const footer = UI.$('#sidef');
     if (footer) footer.innerHTML = `<b>SINAPI ${U.esc(A.base.raw.ref)}</b> · referência do projeto<br>${U.int(A.base.nComp)} composições carregadas sob demanda<br>${state.conflict ? 'CONFLITO — alterações ainda não salvas' : A.saveError ? 'FALHA AO SALVAR — exporte JSON' : state.saving ? 'Salvando na nuvem…' : 'Nuvem · versão ' + (state.wrapper?.version || '')}`;

@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { OrcaproAuditInterceptor } from './modules/orcapro/orcapro-audit.interceptor';
 import { ConfigModule } from '@nestjs/config';
 import { configureBigIntJsonSerialization } from './common/serialization/bigint-json';
 import { validateEnvironment } from './config/env.validation';
@@ -29,6 +31,7 @@ import { InfraModule } from './modules/infraestrutura/infra.module';
 configureBigIntJsonSerialization();
 
 @Module({
+  providers: [{ provide: APP_INTERCEPTOR, useClass: OrcaproAuditInterceptor }],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,

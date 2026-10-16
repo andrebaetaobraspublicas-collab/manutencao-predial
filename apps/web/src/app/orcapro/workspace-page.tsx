@@ -34,6 +34,9 @@ export default function OrcaproPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [view, setView] = useState<'projects' | 'catalog' | 'admin' | 'videos'>('projects');
+  useEffect(() => {
+    if (access) void apiFetch('/orcapro/activity/navigation', { method: 'POST', body: JSON.stringify({ screen: view }) }).catch(() => {});
+  }, [access, view]);
   const [references, setReferences] = useState<Reference[]>([]);
   const [referenceId, setReferenceId] = useState('');
   const [defaultReferenceId, setDefaultReferenceId] = useState<string | null>(null);

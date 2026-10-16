@@ -2934,6 +2934,8 @@ model OrcaproAudit {
   createdAt       DateTime  @default(now())
   @@index([tenantId, createdAt])
   @@index([entityId, createdAt])
+  @@index([createdAt, id])
+  @@index([actorUserId, createdAt])
 }
 
 model OrcaproUserAccess {

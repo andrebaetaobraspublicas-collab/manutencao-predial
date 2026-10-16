@@ -1,5 +1,9 @@
 # Modelo e dicionário de dados
 
+## Auditoria OrçaPro — 16/10/2026
+
+`OrcaproAudit` preserva os eventos de negócio existentes e recebe eventos de acesso e navegação. Índices aditivos `(createdAt,id)` e `(actorUserId,createdAt)` atendem paginação estável e filtros. Não há exclusão, substituição ou reconstrução retroativa de eventos. Identidades e nomes de orçamentos são resolvidos na consulta administrativa global, com seleção explícita de campos; projetos continuam privados nos endpoints operacionais. Credenciais e documentos completos nunca entram no novo registro de acesso. Rollback: voltar código mantendo tabela, eventos e índices; opcionalmente remover somente os dois índices da migration 20261016140000.
+
 ## 1. Convenções
 
 - Chaves primárias: UUID armazenado como `CHAR(36)` no início.

@@ -79,6 +79,16 @@ export class AdminListQuery {
   @ApiPropertyOptional({ default: 1 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100000) page = 1;
   @ApiPropertyOptional({ default: 50 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize = 50;
 }
+export class AuditListQuery extends AdminListQuery {
+  @ApiPropertyOptional({ description: 'Nome ou e-mail do responsável (inclui contas excluídas)' }) @IsOptional() @IsString() @MaxLength(150) user?: string;
+  @ApiPropertyOptional({ description: 'Data inicial inclusiva em America/Sao_Paulo (YYYY-MM-DD)' }) @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) from?: string;
+  @ApiPropertyOptional({ description: 'Data final inclusiva em America/Sao_Paulo (YYYY-MM-DD)' }) @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) to?: string;
+  @ApiPropertyOptional({ enum: ['all', 'access', 'activity', 'failure'] }) @IsOptional() @IsIn(['all', 'access', 'activity', 'failure']) category: string = 'all';
+}
+export class AuditNavigationDto {
+  @ApiProperty({ description: 'Identificador técnico da tela, sem conteúdo livre' }) @Matches(/^[a-z][a-z0-9-]{0,49}$/) screen!: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() projectId?: string;
+}
 export class ProjectListQuery {
   @ApiPropertyOptional({ enum: ['true','false'] }) @IsOptional() @IsIn(['true','false']) archived = 'false';
 }

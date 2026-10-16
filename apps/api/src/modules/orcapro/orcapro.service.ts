@@ -608,11 +608,16 @@ export class OrcaproService {
     this.access.assertAdmin(user);
     const createdAt = auditPeriod(query.from, query.to);
     // Explicit global product administration: only this admin endpoint may span tenants.
-    const matches = query.user?.trim() ? await this.prisma.user.findMany({ where: { OR: [{ name: { contains: query.user.trim() } }, { email: { contains: query.user.trim() } }] }, select: { id: true } }) : null;
+    // The MariaDB adapter binds LIKE arguments as binary strings. Both sides
+    // need an explicit charset/collation on historical Hostinger databases.
+    const pattern = '%' + (query.user?.trim() ?? '').replace(/[=%_]/g, '=$&') + '%';
+    const search = Prisma.sql`CONVERT(${pattern} USING utf8mb4) COLLATE utf8mb4_unicode_ci`;
+    const matches = query.user?.trim() ? await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT id FROM \`User\` WHERE name COLLATE utf8mb4_unicode_ci LIKE ${search} ESCAPE '=' OR email COLLATE utf8mb4_unicode_ci LIKE ${search} ESCAPE '='`) : null;
+    const accessActions = ['access.login', 'access.login.failed', 'access.logout', 'access.request', 'access.request.failed'];
     const where: Prisma.OrcaproAuditWhereInput = {
       ...(matches ? { actorUserId: { in: matches.map(u => u.id) } } : {}),
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
-      ...(query.category === 'access' ? { action: { startsWith: 'access.' } } : query.category === 'activity' ? { NOT: { action: { startsWith: 'access.' } } } : query.category === 'failure' ? { action: { endsWith: '.failed' } } : {}),
+      ...(query.category === 'access' ? { action: { in: accessActions } } : query.category === 'activity' ? { action: { notIn: accessActions } } : query.category === 'failure' ? { action: { in: ['access.login.failed', 'access.request.failed'] } } : {}),
     };
     return this.prisma.$transaction(async db => {
       const total = await db.orcaproAudit.count({ where });

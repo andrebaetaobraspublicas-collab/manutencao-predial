@@ -550,4 +550,4 @@ GET `/infraestrutura/health` é público; os demais recursos exigem perfil próp
 
 ## Infraestrutura comercial isolado
 
-No modo INFRA_COMMERCIAL=true, o acesso a projetos exige licença individual ativa ou contrato manual além do perfil Infraestrutura. GET /infraestrutura/access retorna enabled=false para licença pendente, permitindo abrir Minha assinatura. Os endpoints reutilizados /orcapro/billing/* pertencem somente à nova API api.orcaobras.com.br; validam metadata ORCAPRO_INFRA. Endpoints SINAPI e de orçamentos OrçaPro são bloqueados nessa instância. O modo DEV compartilhado mantém o comportamento anterior.
+No modo INFRA_COMMERCIAL=true, o acesso a projetos exige licença individual ativa ou contrato manual além do perfil Infraestrutura. GET /infraestrutura/access retorna enabled=false para licença pendente, permitindo abrir Minha assinatura. As telas e os modelos de assinatura reutilizados pertencem somente à nova instância; o controle de acesso é manual. Chaves, produtos e webhooks Stripe não são configurados nesta etapa. Endpoints SINAPI e de orçamentos OrçaPro são bloqueados nessa instância. O modo DEV compartilhado mantém o comportamento anterior.

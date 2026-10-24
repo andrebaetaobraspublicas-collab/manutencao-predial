@@ -470,4 +470,4 @@ Exclusão ordinária usa lixeira. Pedido expresso de eliminação LGPD encerra a
 
 ## Infraestrutura comercial independente — 24/10/2026
 
-A instância orcaobras.com.br usa dois bancos novos e exclusivos: identidades/cobrança e catálogo/projetos. Reutiliza os schemas existentes sem alteração de tabelas dos outros ambientes. A cobrança local usa metadata Stripe ORCAPRO_INFRA e preserva canal manual. Ver docs/adr/0010-infraestrutura-comercial-isolado.md e docs/infraestrutura-commercial-deploy.md.
+A instância orcaobras.com.br usa dois bancos novos e exclusivos: identidades/cobrança e catálogo/projetos. Reutiliza os schemas existentes sem alteração de tabelas dos outros ambientes. Nesta primeira etapa, o acesso usa somente o controle manual; a integração Stripe foi adiada pelo proprietário. Ver docs/adr/0010-infraestrutura-comercial-isolado.md e docs/infraestrutura-commercial-deploy.md.

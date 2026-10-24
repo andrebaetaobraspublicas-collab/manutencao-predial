@@ -1,0 +1,20 @@
+Options -Indexes
+DirectoryIndex index.html
+<IfModule mod_rewrite.c>
+RewriteEngine On
+# Keep browser requests on the single origin accepted by the Infraestrutura API.
+RewriteCond %{HTTP_HOST} ^www\.orcaproinfra\.com\.br(?::[0-9]+)?$ [NC]
+RewriteRule ^ https://orcaproinfra.com.br%{REQUEST_URI} [R=301,L,NE]
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+RewriteRule ^ https://orcaproinfra.com.br%{REQUEST_URI} [R=301,L]
+</IfModule>
+<IfModule mod_headers.c>
+<FilesMatch "\.(html|json|txt)$">
+Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
+</IfModule>
+<FilesMatch "^\.">
+Require all denied
+</FilesMatch>

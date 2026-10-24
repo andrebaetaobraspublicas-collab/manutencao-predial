@@ -9,6 +9,8 @@ Criar hospedagens novas para a raiz do domínio e para a API. Configurar somente
 - `u528277311_infra_auth`: migrations Prisma, contas e cobrança.
 - `u528277311_infra_live`: cópia SICRO/PEM, orçamentos e histórico.
 
+Após exportar o frontend, instalar `scripts/infraestrutura/frontend.htaccess` na raiz pública do novo domínio. Essa configuração redireciona `www.orcaproinfra.com.br` para `https://orcaproinfra.com.br`, preservando caminho e parâmetros. Não ampliar o CORS da API para compensar um alias sem redirecionamento: a aplicação deve usar uma única origem, inclusive no login. Conferir a resposta HTTP e o navegador após limpar o cache do CDN quando necessário.
+
 O arquivo privado do backend, fora de `public_html`, precisa conter:
 
 ```dotenv

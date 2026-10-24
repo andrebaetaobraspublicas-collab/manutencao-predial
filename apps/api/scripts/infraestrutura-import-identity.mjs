@@ -11,8 +11,8 @@ config({ path: process.env.INFRA_ENV_FILE || '../../.env', override: false, quie
 let primary, catalog;
 try {
   if (process.env.INFRA_COMMERCIAL !== 'true'
-    || new URL(process.env.DATABASE_URL).pathname !== '/u528277311_orcaproinfra_auth'
-    || new URL(process.env.INFRA_DATABASE_URL).pathname !== '/u528277311_orcaproinfra_live') throw new Error('Target is not an isolated Infraestrutura database.');
+    || new URL(process.env.DATABASE_URL).pathname !== '/u528277311_infra_auth'
+    || new URL(process.env.INFRA_DATABASE_URL).pathname !== '/u528277311_infra_live') throw new Error('Target is not an isolated Infraestrutura database.');
   const directory = resolve(process.argv[2] || '');
   const manifest = JSON.parse(await readFile(resolve(directory, 'manifest.json'), 'utf8'));
   const bytes = await readFile(resolve(directory, 'identity.json'));

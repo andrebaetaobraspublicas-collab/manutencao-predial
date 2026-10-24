@@ -147,7 +147,7 @@ function LoginContent() {
               <LogIn size={18} /> {submitting ? 'Entrando…' : 'Entrar'}
             </button>
             <Link className="auth-link" href="/esqueci-senha">Esqueci minha senha</Link>
-            {!login.requiresOrganization && destination !== '/orcapro-infraestrutura' ? <Link className="auth-link" href={BILLING_PATH + '/cadastro'}>Ainda não tenho conta · Assinar o {BILLING_NAME}</Link> : null}
+            {!login.requiresOrganization && (destination !== '/orcapro-infraestrutura' || INFRA_ONLY) ? <Link className="auth-link" href={BILLING_PATH + '/cadastro'}>Ainda não tenho conta · Assinar o {BILLING_NAME}</Link> : null}
             {ORCAPRO_ONLY ? <button className="auth-link auth-cancel" type="button" disabled={submitting} onClick={() => window.location.assign(exitDestination())}>Cancelar e voltar ao site</button> : null}
           </form>
         </div>

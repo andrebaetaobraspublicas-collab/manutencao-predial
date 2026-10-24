@@ -19,11 +19,11 @@ export function validateEnvironment(config: Record<string, unknown>): AppEnviron
     const identity = new URL(databaseUrl);
     const catalog = new URL(String(config.INFRA_DATABASE_URL || ''));
     if (config.INFRA_ENABLED !== 'true' || config.ORCAPRO_ENABLED !== 'true'
-      || identity.pathname !== '/u528277311_orcaproinfra_auth'
-      || catalog.pathname !== '/u528277311_orcaproinfra_live'
-      || config.WEB_BASE_URL !== 'https://sistema.orcaobras.com.br'
-      || config.CORS_ORIGINS !== 'https://sistema.orcaobras.com.br') {
-      throw new Error('Infraestrutura comercial exige bancos novos exclusivos e domínio orcaobras.com.br.');
+      || identity.pathname !== '/u528277311_infra_auth'
+      || catalog.pathname !== '/u528277311_infra_live'
+      || config.WEB_BASE_URL !== 'https://orcaproinfra.com.br'
+      || config.CORS_ORIGINS !== 'https://orcaproinfra.com.br') {
+      throw new Error('Infraestrutura comercial exige bancos novos exclusivos e domínio orcaproinfra.com.br.');
     }
   }
 

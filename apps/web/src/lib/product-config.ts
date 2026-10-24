@@ -29,7 +29,7 @@ export const BILLING_NAME = INFRA_ONLY ? 'OrçaPro Infraestrutura' : 'OrçaPro';
 export const BILLING_PATH = INFRA_ONLY ? '/orcapro-infraestrutura' : '/orcapro';
 export const MARKETING_URL = product.marketingUrl;
 export const PRODUCT_NAME = INFRA_ONLY ? 'OrçaPro Infraestrutura' : ORCAPRO_ONLY ? 'OrçaPro' : 'Gestão de Prédios';
-export const PRODUCT_DOMAIN = INFRA_ONLY ? 'orcaobras.com.br' : ORCAPRO_ONLY ? 'orcaproobras.com.br' : 'gestaodepredios.com.br';
+export const PRODUCT_DOMAIN = INFRA_ONLY ? 'orcaproinfra.com.br' : ORCAPRO_ONLY ? 'orcaproobras.com.br' : 'gestaodepredios.com.br';
 
 export type LoginDestination = '/dashboard' | '/orcapro' | '/orcapro-infraestrutura' | '/programas';
 

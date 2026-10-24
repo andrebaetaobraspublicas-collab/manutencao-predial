@@ -13,9 +13,9 @@ describe('Infraestrutura commercial isolation', () => {
   const user = { userId: 'infra-user', tenantId: 'infra-tenant' } as AuthenticatedUser;
   it('requires both new databases and the new web origin; rejects either existing production database', () => {
     const valid = { INFRA_COMMERCIAL: 'true', INFRA_ENABLED: 'true', ORCAPRO_ENABLED: 'true', JWT_ACCESS_SECRET: 'synthetic-only-secret-at-least-32-chars',
-      DATABASE_URL: 'mysql://fixture:fixture@localhost/u528277311_orcaproinfra_auth',
-      INFRA_DATABASE_URL: 'mysql://fixture:fixture@localhost/u528277311_orcaproinfra_live',
-      WEB_BASE_URL: 'https://sistema.orcaobras.com.br', CORS_ORIGINS: 'https://sistema.orcaobras.com.br' };
+      DATABASE_URL: 'mysql://fixture:fixture@localhost/u528277311_infra_auth',
+      INFRA_DATABASE_URL: 'mysql://fixture:fixture@localhost/u528277311_infra_live',
+      WEB_BASE_URL: 'https://orcaproinfra.com.br', CORS_ORIGINS: 'https://orcaproinfra.com.br' };
     expect(validateEnvironment(valid)).toBeDefined();
     for (const key of ['DATABASE_URL', 'INFRA_DATABASE_URL']) {
       for (const database of ['u528277311_orcapro_live', 'u296746636_orcapro_infra']) expect(() => validateEnvironment({ ...valid, [key]: `mysql://fixture:fixture@localhost/${database}` })).toThrow('bancos novos');

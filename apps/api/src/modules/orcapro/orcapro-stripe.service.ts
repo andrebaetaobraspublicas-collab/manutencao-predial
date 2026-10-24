@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
+import { billingProduct } from './billing-product';
 import { Prisma, type OrcaproSubscription } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
@@ -15,7 +16,7 @@ export class OrcaproStripeService {
     this.stripe = key ? new Stripe(key) : null;
   }
   integration() {
-    return { keyConfigured: !!this.stripe, webhookConfigured: !!(this.config.get<string>('ORCAPRO_STRIPE_WEBHOOK_SECRET') || this.config.get<string>('STRIPE_WEBHOOK_SECRET')), mode: this.config.get<string>('ORCAPRO_STRIPE_MODE') ?? null, webhookPath: '/api/v1/orcapro/billing/webhooks/stripe', product: 'ORCAPRO', billingUnit: 'USER' };
+    return { keyConfigured: !!this.stripe, webhookConfigured: !!(this.config.get<string>('ORCAPRO_STRIPE_WEBHOOK_SECRET') || this.config.get<string>('STRIPE_WEBHOOK_SECRET')), mode: this.config.get<string>('ORCAPRO_STRIPE_MODE') ?? null, webhookPath: '/api/v1/orcapro/billing/webhooks/stripe', product: billingProduct(this.config).key, billingUnit: 'USER' };
   }
   private client() {
     if (!this.stripe || !['TEST', 'LIVE'].includes(this.config.get<string>('ORCAPRO_STRIPE_MODE') ?? '')) throw new ServiceUnavailableException('Configure o Stripe e o modo TEST/LIVE no ambiente da API antes de usar cobrança automática.');
@@ -36,7 +37,7 @@ export class OrcaproStripeService {
   }
   private validateRemote(remote: Stripe.Subscription, row: OrcaproSubscription) {
     this.validateMode(remote);
-    if (remote.metadata.product !== 'ORCAPRO' || remote.metadata.orcaproSubscriptionId !== row.id || remote.metadata.userId !== row.userId) throw new BadRequestException('Assinatura Stripe não corresponde ao usuário OrçaPro.');
+    if (remote.metadata.product !== billingProduct(this.config).key || remote.metadata.orcaproSubscriptionId !== row.id || remote.metadata.userId !== row.userId) throw new BadRequestException('Assinatura Stripe não corresponde ao usuário OrçaPro.');
     const customerId = typeof remote.customer === 'string' ? remote.customer : remote.customer.id;
     if (row.stripeCustomerId && customerId !== row.stripeCustomerId) throw new BadRequestException('Cliente Stripe não corresponde à assinatura.');
     return customerId;
@@ -62,6 +63,10 @@ export class OrcaproStripeService {
     if (!plan?.stripePriceId) throw new BadRequestException('Plano sem preço Stripe configurado.');
     const price = await stripe.prices.retrieve(plan.stripePriceId);
     this.validateMode(price);
+    if (billingProduct(this.config).key === 'ORCAPRO_INFRA') {
+      const product = typeof price.product === 'string' ? await stripe.products.retrieve(price.product) : price.product;
+      if ('deleted' in product || product.metadata.product !== 'ORCAPRO_INFRA') throw new BadRequestException('O preço precisa pertencer a um produto exclusivo do OrçaPro Infraestrutura.');
+    }
     const cents = new Prisma.Decimal(plan.priceBrl).mul(100).toFixed(0);
     if (!price.active || price.currency !== 'brl' || String(price.unit_amount) !== cents || price.recurring?.interval !== (plan.billingInterval === 'MONTH' ? 'month' : 'year') || price.recurring.interval_count !== 1) throw new BadRequestException('Valor, moeda ou periodicidade do preço Stripe divergem do plano.');
     return plan;
@@ -84,12 +89,12 @@ export class OrcaproStripeService {
         if (pending.status === 'open' && row.stripeCheckoutPriceId === plan.stripePriceId) return { url: pending.url };
         if (pending.status === 'complete') throw new ConflictException('Contratação concluída; aguarde a confirmação do Stripe.');
         // An explicit plan change cancels only the unpaid checkout, never a subscription.
-        if (pending.status === 'open') await stripe.checkout.sessions.expire(row.stripeCheckoutId, {}, { idempotencyKey: `orcapro-expire-${row.id}-${row.version}` });
+        if (pending.status === 'open') await stripe.checkout.sessions.expire(row.stripeCheckoutId, {}, { idempotencyKey: `${billingProduct(this.config).prefix}-expire-${row.id}-${row.version}` });
       }
-      const customerId = row.stripeCustomerId ?? (await stripe.customers.create({ email: user.email, name: user.name, metadata: { product: 'ORCAPRO', userId: user.userId } }, { idempotencyKey: `orcapro-customer-${row.id}` })).id;
-      const metadata = { product: 'ORCAPRO', userId: user.userId, orcaproSubscriptionId: row.id, activationVersion: String(row.version + 1) };
+      const customerId = row.stripeCustomerId ?? (await stripe.customers.create({ email: user.email, name: user.name, metadata: { product: billingProduct(this.config).key, userId: user.userId } }, { idempotencyKey: `${billingProduct(this.config).prefix}-customer-${row.id}` })).id;
+      const metadata = { product: billingProduct(this.config).key, userId: user.userId, orcaproSubscriptionId: row.id, activationVersion: String(row.version + 1) };
       const web = (this.config.get<string>('WEB_BASE_URL') ?? 'http://localhost:3000').replace(/\/$/, '');
-      const session = await stripe.checkout.sessions.create({ mode: 'subscription', customer: customerId, line_items: [{ price: plan.stripePriceId!, quantity: 1 }], metadata, subscription_data: { metadata }, success_url: `${web}/orcapro/assinatura?checkout=success`, cancel_url: this.marketingUrl() ?? `${web}/orcapro/assinatura?checkout=canceled` }, { idempotencyKey: `orcapro-checkout-${row.id}-${row.version}` });
+      const session = await stripe.checkout.sessions.create({ mode: 'subscription', customer: customerId, line_items: [{ price: plan.stripePriceId!, quantity: 1 }], metadata, subscription_data: { metadata }, success_url: `${web}${billingProduct(this.config).path}/assinatura?checkout=success`, cancel_url: this.marketingUrl() ?? `${web}${billingProduct(this.config).path}/assinatura?checkout=canceled` }, { idempotencyKey: `${billingProduct(this.config).prefix}-checkout-${row.id}-${row.version}` });
       await db.orcaproSubscription.update({ where: { id: row.id }, data: { stripeCustomerId: customerId, stripeCheckoutId: session.id, stripeCheckoutPriceId: plan.stripePriceId, version: { increment: 1 } } });
       return { url: session.url };
     }, { timeout: 30000 });
@@ -105,7 +110,7 @@ export class OrcaproStripeService {
       if (!remote.active) throw new ServiceUnavailableException('A configuração do portal de cobrança OrçaPro está desativada.');
     }
     const web = (this.config.get<string>('WEB_BASE_URL') ?? 'http://localhost:3000').replace(/\/$/, '');
-    const session = await stripe.billingPortal.sessions.create({ customer: row.stripeCustomerId, return_url: `${web}/orcapro/assinatura`, ...(configuration ? { configuration } : {}) });
+    const session = await stripe.billingPortal.sessions.create({ customer: row.stripeCustomerId, return_url: `${web}${billingProduct(this.config).path}/assinatura`, ...(configuration ? { configuration } : {}) });
     this.validateMode(session);
     return { url: session.url };
   }
@@ -119,7 +124,7 @@ export class OrcaproStripeService {
       const stripe = this.client();
       const current = await stripe.subscriptions.retrieve(row.stripeSubscriptionId);
       this.validateRemote(current, row);
-      const remote = dto.action === 'SYNC' ? current : await stripe.subscriptions.update(current.id, { cancel_at_period_end: dto.action === 'CANCEL_AT_PERIOD_END' }, { idempotencyKey: `orcapro-${id}-${row.version}-${dto.action}` });
+      const remote = dto.action === 'SYNC' ? current : await stripe.subscriptions.update(current.id, { cancel_at_period_end: dto.action === 'CANCEL_AT_PERIOD_END' }, { idempotencyKey: `${billingProduct(this.config).prefix}-${id}-${row.version}-${dto.action}` });
       const result = await this.apply(db, row, remote, dto.action === 'SYNC');
       await db.orcaproAudit.create({ data: { tenantId: actor.tenantId, actorUserId: actor.userId, action: 'saas.subscription.stripe', entityId: id, metadata: { action: dto.action, userId: row.userId, customerTenantId: row.tenantId } } });
       return result;
@@ -140,11 +145,11 @@ export class OrcaproStripeService {
     let localId: string | undefined;
     if (event.type.startsWith('customer.subscription.')) {
       const remote = object as Stripe.Subscription;
-      if (remote.metadata.product !== 'ORCAPRO') return false;
+      if (remote.metadata.product !== billingProduct(this.config).key) return false;
       remoteId = remote.id; localId = remote.metadata.orcaproSubscriptionId;
     } else if (event.type === 'checkout.session.completed') {
       const session = object as Stripe.Checkout.Session;
-      if (session.metadata?.product !== 'ORCAPRO') return false;
+      if (session.metadata?.product !== billingProduct(this.config).key) return false;
       if (session.mode !== 'subscription') return true;
       remoteId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
       localId = session.metadata.orcaproSubscriptionId;

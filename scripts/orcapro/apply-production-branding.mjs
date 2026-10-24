@@ -54,4 +54,4 @@ export function brandExport(directory) {
   fs.writeFileSync(manifest,JSON.stringify(data,null,2)+'\n');
   console.log(`Production branding: ${pages} pages, ${styles} stylesheets; scripts and data preserved.`);
 }
-if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url) && (process.argv[2] || (process.env.NEXT_PUBLIC_ORCAPRO_ONLY==='true' && process.env.HOSTINGER_STATIC_EXPORT==='1'))) brandExport(process.argv[2] || path.join(repo,'apps/web/out'));
+if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url) && (process.argv[2] || ((process.env.NEXT_PUBLIC_ORCAPRO_ONLY==='true' || process.env.NEXT_PUBLIC_INFRA_ONLY==='true') && process.env.HOSTINGER_STATIC_EXPORT==='1'))) brandExport(process.argv[2] || path.join(repo,'apps/web/out'));

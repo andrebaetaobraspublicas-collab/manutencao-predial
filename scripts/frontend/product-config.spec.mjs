@@ -175,5 +175,5 @@ test('standalone Infraestrutura hides other programs and sends unpaid users to i
   const html=renderLogin(false,'/dashboard',true);
   assert.doesNotMatch(html,/id="program"|id="tenantSlug"/);
   assert.match(html,/Entrar no OrçaPro Infraestrutura/);
-  assert.doesNotMatch(html,/href="\/orcapro-infraestrutura\/cadastro"/);
+  assert.match(html,/href="\/orcapro-infraestrutura\/cadastro"/);
 });

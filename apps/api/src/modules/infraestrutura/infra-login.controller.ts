@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
 import { compare, hash } from 'bcryptjs';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -48,6 +48,12 @@ export class InfraLoginController {
       // not leave the copied display metadata acting as a second login authority.
       const central = await this.identity.user.findFirst({ where: { email, status: 'ACTIVE', deletedAt: null }, select: { id: true, name: true, email: true } });
       const rows = central ? await this.db.query<AccountRow[]>('SELECT external_user_id,tenant_id FROM InfraUser WHERE external_user_id=? AND status=\'ACTIVE\' AND deleted_at IS NULL ORDER BY created_at,id LIMIT 10', [central.id]) : [];
+      if (!rows.length && central && this.config.get<string>('INFRA_COMMERCIAL') === 'true') {
+        const existing = await this.db.query<AccountRow[]>('SELECT external_user_id,tenant_id FROM InfraUser WHERE external_user_id=? LIMIT 1',[central.id]);
+        const licence = await this.identity.orcaproSubscription.findUnique({where:{userId:central.id},select:{tenantId:true}});
+        const grant = await this.identity.orcaproUserAccess.findUnique({where:{userId:central.id}});
+        if (!existing.length && licence && grant?.enabled && !grant.deletedAt) rows.push({external_user_id:central.id,tenant_id:licence.tenantId});
+      }
       const selected = [];
       for (const account of rows) {
         const membership = await this.identity.tenantMembership.findFirst({ where: { userId: account.external_user_id, tenantId: account.tenant_id, status: 'ACTIVE', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }], user: { email, status: 'ACTIVE', deletedAt: null }, tenant: { deletedAt: null, status: { in: ['TRIAL', 'ACTIVE', 'PAST_DUE'] }, ...(dto.tenantSlug ? { slug: dto.tenantSlug.trim().toLowerCase() } : {}) } }, include: { tenant: { select: { slug: true } } } });
@@ -59,6 +65,7 @@ export class InfraLoginController {
         throw new UnauthorizedException('Credenciais inválidas ou acesso suspenso.');
       }
       const session = await this.auth.login({ email, password: dto.password, tenantSlug: selected[0]!.tenant.slug }, request);
+      if (this.config.get<string>('INFRA_COMMERCIAL') === 'true') await this.db.query('INSERT IGNORE INTO InfraUser(id,external_user_id,tenant_id,name,email,role,status) VALUES(?,?,?,?,?,\'USER\',\'ACTIVE\')',[randomUUID(),session.user.userId,session.user.tenantId,session.user.name,session.user.email]);
       await this.db.query('UPDATE InfraUser SET name=?,email=? WHERE external_user_id=? AND tenant_id=?', [session.user.name, session.user.email, session.user.userId, session.user.tenantId]);
       await this.security.finish(keys, true);
       writeSessionCookies(response, session, this.config);

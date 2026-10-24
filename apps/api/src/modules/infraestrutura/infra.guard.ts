@@ -1,10 +1,12 @@
-import { CanActivate, ExecutionContext, ForbiddenException, HttpException, HttpStatus, Injectable, ServiceUnavailableException, SetMetadata, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, HttpException, HttpStatus, Injectable, Optional, ServiceUnavailableException, SetMetadata, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Request, Response } from 'express';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { InfraDatabase } from './infra-db';
+import { PrismaService } from '../../prisma/prisma.service';
+import { subscriptionAllowsAccess } from '../orcapro/orcapro-entitlement';
 
 const ADMIN = 'infra-global-admin';
 const OPTIONAL = 'infra-profile-optional';
@@ -14,7 +16,15 @@ export type InfraPrincipal = { id: string; role: 'ADMIN'|'USER'; status: 'ACTIVE
 
 @Injectable()
 export class InfraAccess {
-  constructor(private readonly db: InfraDatabase, private readonly config: ConfigService) {}
+  constructor(private readonly db: InfraDatabase, private readonly config: ConfigService, @Optional() private readonly identity?: PrismaService) {}
+  async subscriptionEnabled(user: AuthenticatedUser): Promise<boolean> {
+    if (this.config.get<string>('INFRA_COMMERCIAL') !== 'true' || this.configuredAdmin(user.userId)) return true;
+    if (!this.identity) return false;
+    const grant = await this.identity.orcaproUserAccess.findUnique({ where: { userId: user.userId } });
+    if (!grant || !grant.enabled || grant.deletedAt) return false;
+    const subscription = await this.identity.orcaproSubscription.findUnique({ where: { userId: user.userId } });
+    return subscription?.tenantId === user.tenantId && subscriptionAllowsAccess(subscription, true);
+  }
   configuredAdmin(userId: string): boolean {
     return (this.config.get<string>('INFRA_ADMIN_USER_IDS') ?? '').split(',').map(id => id.trim()).filter(Boolean).includes(userId);
   }
@@ -23,6 +33,10 @@ export class InfraAccess {
     if (this.configuredAdmin(user.userId)) {
       await this.db.query('INSERT INTO InfraUser(id,external_user_id,tenant_id,name,email,role,status) VALUES(?,?,?,?,?,\'ADMIN\',\'ACTIVE\') ON DUPLICATE KEY UPDATE name=VALUES(name),email=VALUES(email)',
         [randomUUID(),user.userId,user.tenantId,user.name,user.email]);
+    }
+    if (this.config.get<string>('INFRA_COMMERCIAL') === 'true' && this.identity) {
+      const grant = await this.identity.orcaproUserAccess.findUnique({ where: { userId: user.userId } });
+      if (grant?.enabled && !grant.deletedAt) await this.db.query('INSERT IGNORE INTO InfraUser(id,external_user_id,tenant_id,name,email,role,status) VALUES(?,?,?,?,?,\'USER\',\'ACTIVE\')', [randomUUID(),user.userId,user.tenantId,user.name,user.email]);
     }
     const rows = await this.db.query<InfraPrincipal[]>('SELECT id,role,status,deleted_at FROM InfraUser WHERE external_user_id=? AND tenant_id=? LIMIT 1',[user.userId,user.tenantId]);
     return rows[0] ?? null;
@@ -70,6 +84,7 @@ export class InfraGuard implements CanActivate {
     const profile = await this.access.principal(user);
     const optional = this.reflector.getAllAndOverride<boolean>(OPTIONAL,[context.getHandler(),context.getClass()]);
     if (profile?.deleted_at || profile?.status === 'BLOCKED' || (!optional && profile?.status !== 'ACTIVE')) throw new ForbiddenException('Acesso ao OrçaPro Infraestrutura pendente, bloqueado ou encerrado.');
+    if (this.config.get<string>('INFRA_COMMERCIAL') === 'true' && !optional && !(await this.access.subscriptionEnabled(user))) throw new ForbiddenException('Assinatura Infraestrutura vencida ou pagamento pendente. Consulte Minha assinatura.');
     const admin = this.access.configuredAdmin(user.userId) || profile?.role === 'ADMIN';
     if (this.reflector.getAllAndOverride<boolean>(ADMIN,[context.getHandler(),context.getClass()]) && (!admin || profile?.status !== 'ACTIVE')) throw new ForbiddenException('Administração global Infraestrutura restrita.');
     if (!['GET','HEAD','OPTIONS'].includes(request.method.toUpperCase())) this.access.assertMutation(request);

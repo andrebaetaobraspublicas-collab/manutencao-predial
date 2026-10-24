@@ -415,7 +415,8 @@ export class InfraService {
         if (!tenant) throw new BadRequestException('Organização indisponível.');
         await primary.user.create({ data: { id,name,email,passwordHash,status: 'ACTIVE' } });
         await primary.tenantMembership.create({ data: { userId: id,tenantId: tenant.id,role: 'REQUESTER',status: 'ACTIVE',maintenanceAccess: false,acceptedAt: new Date() } });
-        await primary.orcaproUserAccess.create({ data: { userId: id,enabled: false,managed: true,updatedByUserId: user.userId } });
+        await primary.orcaproUserAccess.create({ data: { userId: id,enabled: this.config.get<string>('INFRA_COMMERCIAL') === 'true',managed: true,updatedByUserId: user.userId } });
+        if (this.config.get<string>('INFRA_COMMERCIAL') === 'true') await primary.orcaproSubscription.create({data:{userId:id,tenantId:tenant.id,status:'MANUAL_CONTRACT',billingSource:'MANUAL'}});
         // The identity transaction has no operational writes. A failed second-database
         // provision rolls it back; a failed primary commit removes the orphan profile.
         await this.db.transaction(async local => {

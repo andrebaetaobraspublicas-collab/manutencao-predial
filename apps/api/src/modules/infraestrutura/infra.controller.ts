@@ -20,7 +20,7 @@ export class InfraController {
   @ApiOperation({ summary: 'Acesso individual Infraestrutura e bootstrap CSRF vinculado à sessão compartilhada.' })
   async session(@CurrentUser() user: AuthenticatedUser, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const profile = await this.access.principal(user);
-    return { enabled: profile?.status === 'ACTIVE' && !profile.deleted_at,userId: user.userId,tenantId: user.tenantId,name: user.name,email: user.email,
+    return { enabled: profile?.status === 'ACTIVE' && !profile.deleted_at && await this.access.subscriptionEnabled(user),userId: user.userId,tenantId: user.tenantId,name: user.name,email: user.email,
       role: this.access.configuredAdmin(user.userId) ? 'ADMIN' : profile?.role ?? 'USER',status: profile?.status ?? 'PENDING',csrfToken: this.access.csrf(request,response) };
   }
   @InfraProfileOptional() @Get('me') me(@CurrentUser() user: AuthenticatedUser,@Req() request: Request,@Res({ passthrough: true }) response: Response) { return this.session(user,request,response); }

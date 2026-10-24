@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { LoadingPanel } from '@/components/loading';
 import { apiFetch, ApiError } from '@/lib/api';
-import { authenticatedLoginDestination, exitDestination, loginConfiguration, loginDestination, ORCAPRO_ONLY, PRODUCT_DOMAIN, PRODUCT_NAME, type LoginDestination } from '@/lib/product-config';
+import { authenticatedLoginDestination, exitDestination, loginConfiguration, loginDestination, ORCAPRO_ONLY, INFRA_ONLY, COMMERCIAL_ONLY, BILLING_NAME, BILLING_PATH, PRODUCT_DOMAIN, PRODUCT_NAME, type LoginDestination } from '@/lib/product-config';
 
 function LoginContent() {
   const router = useRouter();
@@ -14,8 +14,8 @@ function LoginContent() {
   const [destination, setDestination] = useState<LoginDestination>(
     () => loginDestination(searchParams.get('next')),
   );
-  const [tenantSlug, setTenantSlug] = useState(ORCAPRO_ONLY ? '' : 'demonstracao');
-  const [email, setEmail] = useState(ORCAPRO_ONLY ? '' : 'admin@gestaodepredios.com.br');
+  const [tenantSlug, setTenantSlug] = useState(COMMERCIAL_ONLY ? '' : 'demonstracao');
+  const [email, setEmail] = useState(COMMERCIAL_ONLY ? '' : 'admin@gestaodepredios.com.br');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -37,9 +37,9 @@ function LoginContent() {
       });
       setPassword('');
       let orcaproEnabled = false;
-      if (login.destination === '/orcapro') {
+      if (login.destination === '/orcapro' || INFRA_ONLY) {
         try {
-          const access = await apiFetch<{ enabled: boolean }>('/orcapro/access');
+          const access = await apiFetch<{ enabled: boolean }>(INFRA_ONLY ? '/infraestrutura/access' : '/orcapro/access');
           orcaproEnabled = access.enabled === true;
         } catch {
           orcaproEnabled = false;
@@ -63,14 +63,14 @@ function LoginContent() {
           <div><strong>{orcaLogin ? destination === '/orcapro-infraestrutura' ? 'OrçaPro Infraestrutura' : 'OrçaPro' : PRODUCT_NAME}</strong><small>{PRODUCT_DOMAIN}</small></div>
         </div>
         <div className="login-message">
-          <h1>{ORCAPRO_ONLY ? 'Da composição ao planejamento da obra.' : 'Uma conta. Três programas.'}</h1>
+          <h1>{COMMERCIAL_ONLY ? 'Da composição ao planejamento da obra.' : 'Uma conta. Três programas.'}</h1>
           <p>
-            {ORCAPRO_ONLY ? 'Prepare orçamentos com SINAPI, forme o BDI e planeje prazos, equipes e contingências em um só lugar.' : 'Gerencie a manutenção no Gestão de Prédios, orce edificações com SINAPI no OrçaPro e planeje obras com SICRO no OrçaPro Infraestrutura.'}
+            {INFRA_ONLY ? 'Prepare orçamentos com SICRO e planeje transportes, equipes, cronogramas, BDI e contingências.' : ORCAPRO_ONLY ? 'Prepare orçamentos com SINAPI, forme o BDI e planeje prazos, equipes e contingências em um só lugar.' : 'Gerencie a manutenção no Gestão de Prédios, orce edificações com SINAPI no OrçaPro e planeje obras com SICRO no OrçaPro Infraestrutura.'}
           </p>
         </div>
         <div className="login-feature-list">
-          {!ORCAPRO_ONLY ? <><span>Gestão de Prédios</span><span>OrçaPro</span><span>OrçaPro Infraestrutura</span></> : <><span>BDI</span><span>Cronograma</span><span>Riscos e contingências</span></>}
-          <span>Orçamentos de obras</span><span>SINAPI</span><span>Auditoria</span>
+          {!COMMERCIAL_ONLY ? <><span>Gestão de Prédios</span><span>OrçaPro</span><span>OrçaPro Infraestrutura</span></> : <><span>BDI</span><span>Cronograma</span><span>Riscos e contingências</span></>}
+          <span>Orçamentos de obras</span><span>{INFRA_ONLY ? 'SICRO' : 'SINAPI'}</span><span>Auditoria</span>
         </div>
       </section>
 
@@ -80,7 +80,7 @@ function LoginContent() {
           <p>{login.requiresOrganization ? 'Informe o identificador da empresa e suas credenciais pessoais.' : 'Use o e-mail e a senha da sua conta. Não é necessário informar a organização.'}</p>
           {!login.requiresOrganization ? <p>Se você contratou diretamente, use o e-mail e a senha cadastrados pelo administrador.</p> : null}
           <form className="login-form" onSubmit={handleSubmit}>
-            {!ORCAPRO_ONLY ? <div className="field">
+            {!COMMERCIAL_ONLY ? <div className="field">
               <label htmlFor="program">Programa</label>
               <select
                 className="select"
@@ -147,7 +147,7 @@ function LoginContent() {
               <LogIn size={18} /> {submitting ? 'Entrando…' : 'Entrar'}
             </button>
             <Link className="auth-link" href="/esqueci-senha">Esqueci minha senha</Link>
-            {!login.requiresOrganization && destination !== '/orcapro-infraestrutura' ? <Link className="auth-link" href="/orcapro/cadastro">Ainda não tenho conta · Assinar o OrçaPro</Link> : null}
+            {!login.requiresOrganization && destination !== '/orcapro-infraestrutura' ? <Link className="auth-link" href={BILLING_PATH + '/cadastro'}>Ainda não tenho conta · Assinar o {BILLING_NAME}</Link> : null}
             {ORCAPRO_ONLY ? <button className="auth-link auth-cancel" type="button" disabled={submitting} onClick={() => window.location.assign(exitDestination())}>Cancelar e voltar ao site</button> : null}
           </form>
         </div>

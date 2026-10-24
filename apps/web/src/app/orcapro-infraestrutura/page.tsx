@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ApiError } from '@/lib/api';
 import { infraApi } from '@/lib/infra-api';
-import { ORCAPRO_ONLY } from '@/lib/product-config';
+import { ORCAPRO_ONLY, INFRA_ONLY } from '@/lib/product-config';
 import styles from '../orcapro/editor/editor.module.css';
 
 export default function InfraEntry() {
@@ -15,6 +15,7 @@ export default function InfraEntry() {
       .then(project => { if (active) window.location.replace('/orcapro-infraestrutura/editor/?id=' + encodeURIComponent(project.id)); })
       .catch((cause: unknown) => {
         if (!active) return;
+        if (INFRA_ONLY && cause instanceof ApiError && cause.status === 403) { window.location.replace('/orcapro-infraestrutura/assinatura'); return; }
         if (cause instanceof ApiError && cause.status === 401) { window.location.replace('/login/?next=/orcapro-infraestrutura'); return; }
         setError(cause instanceof Error ? cause.message : 'Não foi possível abrir o orçamento.');
       });

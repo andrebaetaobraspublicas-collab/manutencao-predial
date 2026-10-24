@@ -467,3 +467,7 @@ As datas DATETIME/TIMESTAMP deste banco são UTC. O adapter Infraestrutura conve
 O raw é a entrada exata do motor legado; colunas DECIMAL normalizadas servem consulta e conferência, sem substituir escalas, arredondamento ou custos ausentes do original. Projetos históricos mantêm ciclo fixo; migração compara versões e cria nova revisão. Snapshot de catálogo nunca é incorporado a cada usuário/projeto. Somente dados próprios aparecem no documento privado.
 
 Exclusão ordinária usa lixeira. Pedido expresso de eliminação LGPD encerra acesso local e, após30dias por padrão, o CLI remove projetos/versões/próprios/configurações/perfil e anonimiza auditoria. Preserva outro tenant do mesmo usuário, identidade central, outros produtos e catálogo global. Backups anteriores expiram em14dias. Esse descarte específico é documentado e não autoriza exclusão física genérica dos produtos existentes. [Contratos/limites](infraestrutura-api.md), [migrations/rollback](infraestrutura-deploy.md).
+
+## Infraestrutura comercial independente — 24/10/2026
+
+A instância orcaobras.com.br usa dois bancos novos e exclusivos: identidades/cobrança e catálogo/projetos. Reutiliza os schemas existentes sem alteração de tabelas dos outros ambientes. A cobrança local usa metadata Stripe ORCAPRO_INFRA e preserva canal manual. Ver docs/adr/0010-infraestrutura-comercial-isolado.md e docs/infraestrutura-commercial-deploy.md.

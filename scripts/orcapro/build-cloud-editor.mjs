@@ -33,6 +33,9 @@ html = html.replaceAll('OrçaPlan', 'OrçaPro').replaceAll('OrcaPlan', 'OrcaPro'
 const navMarker = "['reforma', 'Reforma Tributária', 'pct'],";
 if (!html.includes(navMarker)) throw new Error('Original navigation boundary missing');
 html = html.replace(navMarker, navMarker + " ['risks', 'Riscos e contingências', 'flag'],");
+const manualNavMarker = "['manual', 'Manual', 'book']";
+if (!html.includes(manualNavMarker)) throw new Error('Original manual navigation boundary missing');
+html = html.replace(manualNavMarker, "['manual', 'Manual e Vídeos', 'book']");
 html = html.replace('o armazenamento é local ao navegador. Recomenda-se salvar periodicamente o projeto em arquivo JSON e exportar relatórios relevantes.',
   'o orçamento é salvo no servidor quando a gravação é confirmada. Em caso de falha ou conflito, preserve suas alterações em arquivo JSON antes de reabrir o projeto. Recomenda-se exportar os relatórios relevantes.');
 html = html.replace(/<meta name="description"[^>]*>/, '<meta name="description" content="OrçaPro — orçamento, SINAPI versionado e planejamento de obras.">');

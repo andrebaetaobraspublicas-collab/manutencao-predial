@@ -43,6 +43,12 @@ Configurar também SMTP, cookies e demais variáveis de autenticação conforme 
 4. Conferir contagens por tabela, UUIDs, versões dos orçamentos e hashes dos snapshots SICRO/PEM. Verificar login, isolamento entre os três usuários migrados, restauração de versões, 27 referências, alteração de UF somente por confirmação, cronograma e regressão do motor.
 5. Configurar chave restrita e webhook exclusivos. Cadastrar apenas os dois novos preços Infraestrutura, metadata `product=ORCAPRO_INFRA`; conferir cadastro online, Checkout, assinatura e retorno ao domínio próprio. A assinatura depende do webhook assinado.
 6. Preservar as vendas diretas no painel: concessão manual, validade, suspensão, cadastro e redefinição de senha. Produtos novos: mensal R$599 e anual R$5.990. Não editar produtos/preços/assinaturas do OrçaPro anterior.
-7. Programar backups privados dos dois bancos, retenção14dias, e worker de importação na nova API. Preservar o snapshot de origem até concluir o aceite.
+7. O executor `scripts/infraestrutura/commercial-hostinger-jobs.cjs` é instalado em `api.orcaproinfra.com.br/hbuilds/ops/jobs.cjs`, fora da raiz pública. Na Hostinger, executar `backup` diariamente e `imports` a cada cinco minutos. O primeiro gera cópias privadas dos dois bancos, com retenção de 14 dias; o segundo processa somente lotes enviados pelo administrador. Nenhuma purga é incluída no agendamento. Preservar o snapshot de origem até concluir o aceite.
 
 O backup preparado em24/10 contém27 ciclos,3 usuários,3 projetos,42 versões,131 eventos Infraestrutura. Contagens representam a exportação desse momento e precisam ser comparadas ao destino; não garantem mudanças posteriores na origem. O aplicativo anterior continua disponível enquanto o novo destino não for homologado.
+
+## Conferência da implantação em 24/10/2026
+
+As 20 tabelas do catálogo tiveram checksums iguais aos da origem antes da liberação. Foram preservados 3 usuários e seus hashes bcrypt, 3 tenants, 3 orçamentos e 42 versões. Os 27 ciclos publicados foram copiados. As contas migradas receberam licenças manuais sem vínculo com cobranças anteriores.
+
+Os dois produtos Stripe têm identificação ORCAPRO_INFRA e valores R$599/mês e R$5.990/ano. Chave restrita, webhook e Portal do Cliente são exclusivos. O checkout recusa preços de outro produto; o portal exige configuração do Infraestrutura. Os planos e produtos anteriores não foram editados. A interface autenticada, os preços públicos e o primeiro backup foram conferidos; nenhuma compra real foi executada nessa validação.

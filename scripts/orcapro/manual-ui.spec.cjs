@@ -52,6 +52,21 @@ test('read progress is optional and persists only chapter identifiers; no financ
     OP.ui.act.manualRead(); assert.equal(OP.manual.state.read.size, 0);
   }
 });
+
+test('tutorials open inside the manual and returning to chapters preserves reading and the budget', () => {
+  const { OP } = setup(), before = JSON.stringify(OP.app.pj);
+  OP.ui.act.manualChapter({ dataset: { id: 'orcamento' } });
+  OP.ui.act.manualRead();
+  OP.ui.act.manualTab({ dataset: { id: 'videos' } });
+  const html = OP.ui.views.manual.render();
+  assert.ok(html.indexOf('Teste seu entendimento') < html.indexOf('Vídeos tutoriais'));
+  assert.ok(html.includes('src="/orcapro/video-aulas/incorporado/"'));
+  OP.ui.act.manualTab({ dataset: { id: 'guide' } });
+  assert.equal(OP.manual.state.chapter, 'orcamento');
+  assert.equal(OP.manual.state.read.has('orcamento'), true);
+  assert.equal(JSON.stringify(OP.app.pj), before);
+  assert.ok(!OP.ui.views.manual.render().includes('id="manual-video-library"'));
+});
 test('didactic price, capacity and risk examples show the actual formula relationship', () => {
   const { OP } = setup(), x = OP.manual.state.lab;
   const c = OP.manual.didacticCost(x); assert.equal(c.direct, 5000); assert.equal(c.price, 6250); assert.equal(c.work, 50); assert.equal(c.days, 4);

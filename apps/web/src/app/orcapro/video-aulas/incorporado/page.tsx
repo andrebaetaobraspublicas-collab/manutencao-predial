@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { VideoLessons } from '../../video-lessons';
+import styles from './page.module.css';
 
 export default function EmbeddedVideoLessons() {
   const [ready, setReady] = useState(false);
@@ -25,7 +26,7 @@ export default function EmbeddedVideoLessons() {
     resize();
     return () => observer.disconnect();
   }, [ready]);
-  return <main ref={content} style={{ padding: '8px 0', minWidth: 0 }} aria-label="Vídeos tutoriais">
+  return <main ref={content} className={styles.page} aria-label="Vídeos tutoriais">
     {error ? <div role="alert"><p>{error}</p><a href="/orcapro/video-aulas/" target="_top">Abrir biblioteca de vídeo-aulas</a></div> : ready ? <VideoLessons /> : <p role="status">Carregando vídeos tutoriais…</p>}
   </main>;
 }

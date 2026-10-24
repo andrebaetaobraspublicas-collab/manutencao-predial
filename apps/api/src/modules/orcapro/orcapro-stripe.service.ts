@@ -104,9 +104,11 @@ export class OrcaproStripeService {
     if (!row?.stripeCustomerId) throw new BadRequestException('Usuário sem cliente Stripe.');
     const stripe = this.client();
     const configuration = this.config.get<string>('ORCAPRO_STRIPE_PORTAL_CONFIGURATION_ID');
+    if (billingProduct(this.config).key === 'ORCAPRO_INFRA' && !configuration) throw new ServiceUnavailableException('Configure um portal exclusivo do OrçaPro Infraestrutura.');
     if (configuration) {
       const remote = await stripe.billingPortal.configurations.retrieve(configuration);
       this.validateMode(remote);
+      if (billingProduct(this.config).key === 'ORCAPRO_INFRA' && remote.metadata.product !== 'ORCAPRO_INFRA') throw new ServiceUnavailableException('O portal precisa ser exclusivo do OrçaPro Infraestrutura.');
       if (!remote.active) throw new ServiceUnavailableException('A configuração do portal de cobrança OrçaPro está desativada.');
     }
     const web = (this.config.get<string>('WEB_BASE_URL') ?? 'http://localhost:3000').replace(/\/$/, '');

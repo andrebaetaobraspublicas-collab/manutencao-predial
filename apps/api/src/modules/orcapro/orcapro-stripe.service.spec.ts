@@ -11,7 +11,7 @@ describe('OrçaPro dedicated customer portal', () => {
   function setup(portalId: string | undefined = configuration) {
     const config = new ConfigService({ ORCAPRO_STRIPE_SECRET_KEY: 'sk_test_local_only', ORCAPRO_STRIPE_MODE: 'TEST', WEB_BASE_URL: web, ORCAPRO_STRIPE_PORTAL_CONFIGURATION_ID: portalId });
     const prisma = { orcaproSubscription: { findUnique: jest.fn(async () => ({ stripeCustomerId: 'cus_own' })) } };
-    const retrieve = jest.fn(async () => ({ id: configuration, active: true, livemode: false }));
+    const retrieve = jest.fn(async () => ({ id: configuration, active: true, livemode: false, metadata: { product: 'ORCAPRO_INFRA' } }));
     const create = jest.fn(async () => ({ url: 'https://billing.stripe.com/p/session/test', livemode: false }));
     const service = new OrcaproStripeService(prisma as unknown as PrismaService, config, {} as OrcaproAccess);
     Object.defineProperty(service, 'stripe', { configurable: true, value: { billingPortal: { configurations: { retrieve }, sessions: { create } } } });
@@ -33,13 +33,13 @@ describe('OrçaPro dedicated customer portal', () => {
   });
   it('rejects a configuration from the other environment before creating a session', async () => {
     const { service, retrieve, create } = setup();
-    retrieve.mockResolvedValueOnce({ id: configuration, active: true, livemode: true });
+    retrieve.mockResolvedValueOnce({ id: configuration, active: true, livemode: true, metadata: { product: 'ORCAPRO_INFRA' } });
     await expect(service.portal(user)).rejects.toThrow('outro modo');
     expect(create).not.toHaveBeenCalled();
   });
   it('rejects an inactive configuration before creating a session', async () => {
     const { service, retrieve, create } = setup();
-    retrieve.mockResolvedValueOnce({ id: configuration, active: false, livemode: false });
+    retrieve.mockResolvedValueOnce({ id: configuration, active: false, livemode: false, metadata: { product: 'ORCAPRO_INFRA' } });
     await expect(service.portal(user)).rejects.toThrow('desativada');
     expect(create).not.toHaveBeenCalled();
   });
@@ -55,6 +55,20 @@ describe('OrçaPro dedicated customer portal', () => {
     await service.portal(user);
     expect(create).toHaveBeenCalledWith({ customer: 'cus_own', return_url: 'https://orcaproinfra.com.br/orcapro-infraestrutura/assinatura', configuration });
     expect(service.integration().product).toBe('ORCAPRO_INFRA');
+  });
+  it('never falls back to the account-wide portal in an Infraestrutura deployment', async () => {
+    const { service, create, config } = setup();
+    config.set('INFRA_COMMERCIAL', 'true');
+    config.set('ORCAPRO_STRIPE_PORTAL_CONFIGURATION_ID', '');
+    await expect(service.portal(user)).rejects.toThrow('portal exclusivo');
+    expect(create).not.toHaveBeenCalled();
+  });
+  it('refuses a portal belonging to the other application', async () => {
+    const { service, retrieve, create, config } = setup();
+    config.set('INFRA_COMMERCIAL', 'true');
+    retrieve.mockResolvedValueOnce({ id: configuration, active: true, livemode: false, metadata: { product: 'ORCAPRO' } });
+    await expect(service.portal(user)).rejects.toThrow('exclusivo');
+    expect(create).not.toHaveBeenCalled();
   });
   it('refuses an existing OrçaPro price in the independent Infraestrutura catalog', async () => {
     const { service, config, prisma } = setup();

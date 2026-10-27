@@ -47,6 +47,9 @@ const riskCss = fs.readFileSync(path.join(root,'scripts/orcapro/risk-ui.css'),'u
 const manualContent = fs.readFileSync(path.join(root,'scripts/orcapro/manual-content.json'),'utf8').replaceAll('\r\n','\n');
 const manual = JSON.parse(manualContent);
 const manualUi = fs.readFileSync(path.join(root,'scripts/orcapro/manual-ui.js'),'utf8').replaceAll('\r\n','\n');
+const inputPrices = fs.readFileSync(path.join(root,'apps/api/src/modules/orcapro/legacy/assets/project-input-prices.js'),'utf8');
+const inputPricesUi = fs.readFileSync(path.join(root,'scripts/shared/project-input-prices-ui.js'),'utf8');
+const inputPricesCss = fs.readFileSync(path.join(root,'scripts/shared/project-input-prices.css'),'utf8');
 const manualCss = fs.readFileSync(path.join(root,'scripts/orcapro/manual-ui.css'),'utf8').replaceAll('\r\n','\n');
 const manualData = JSON.stringify(manual).replaceAll('<', '\\u003c');
 const literal = JSON.stringify(apiBase).replaceAll('<', '\\u003c');
@@ -56,7 +59,7 @@ html = html.replace('<title>', `<meta http-equiv="Content-Security-Policy" conte
 // the document's final closing body, otherwise the browser terminates JS early.
 const bodyEnd = html.lastIndexOf('</body>');
 if (bodyEnd < html.lastIndexOf('</script>')) throw new Error('Original final body boundary missing');
-html = html.slice(0, bodyEnd) + `<script>${referenceReview}</script><style>${riskCss}</style><script>${riskUi}</script><style>${manualCss}</style><script>window.ORCAPRO_MANUAL=${manualData};</script><script>${manualUi}</script><script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
+html = html.slice(0, bodyEnd) + `<script>${referenceReview}</script><script>${inputPrices}</script><style>${inputPricesCss}</style><script>${inputPricesUi}</script><style>${riskCss}</style><script>${riskUi}</script><style>${manualCss}</style><script>window.ORCAPRO_MANUAL=${manualData};</script><script>${manualUi}</script><script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
 html=html.split(/(<script\b[^>]*>[\s\S]*?<\/script>)/gi).map(part=>/^<script\b/i.test(part)?part:part.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi,(_,attrs,css)=>`<style${attrs}>${bluePalette(css)}</style>`)).join('');
 html=html.replace('</head>','<link rel="stylesheet" href="/orcapro-brand/production.css?v=20261006-dev1"><link rel="icon" href="/orcapro-brand/icon.svg"></head>');
 if (html.includes('id="op-base"') || /M\.boot\(\)\.catch/.test(html)) throw new Error('Offline catalog or bootstrap survived cloud derivation');
@@ -66,6 +69,7 @@ fs.writeFileSync(path.join(output, 'editor.html'), html);
 fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify({ sourceSha256: originalHash,
   bridgeSha256: sha(bridge), editorSha256: sha(html), sourceVersion: '1.8.3', apiBase,
   referenceReviewSha256: sha(referenceReview),
+  inputPricesSha256: sha(inputPrices), inputPricesUiSha256: sha(inputPricesUi),
   riskUiSha256:sha(riskUi),riskCssSha256:sha(riskCss),riskEngineVersion:'orcapro-risk-1.0.0',
   manualVersion:manual.version,manualReviewedAt:manual.reviewedAt,manualContentSha256:sha(manualContent),manualUiSha256:sha(manualUi),manualCssSha256:sha(manualCss),
   catalog: 'authenticated sparse project closure + lazy bundles',

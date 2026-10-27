@@ -1,6 +1,6 @@
-# Preço de um insumo em todo o orçamento — desenvolvimento
+# Preço de um insumo em todo o orçamento
 
-Entrega autorizada em 27/10/2026 somente em `www.gestaodepredios.com.br`, para OrçaPro/SINAPI e OrçaPro Infraestrutura/SICRO. Nenhuma promoção para os domínios comerciais é parte desta entrega.
+Validado no desenvolvimento em `www.gestaodepredios.com.br` e autorizado em 27/10/2026 para produção em `sistema.orcaproobras.com.br` (SINAPI) e `orcaproinfra.com.br` (SICRO). A promoção comercial preserva as configurações e bancos independentes de cada produto; não copia bancos do desenvolvimento, não executa seed e não modifica documentos de projetos existentes. Os novos campos são gravados somente quando o usuário confirma uma substituição no seu orçamento.
 
 ## Uso
 

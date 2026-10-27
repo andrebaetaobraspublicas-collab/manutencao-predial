@@ -86,7 +86,7 @@
       for (const row of document.querySelectorAll('#regResults tbody tr, #cloudCatalogResults tbody tr')) {
         const code = row.querySelector('[data-act="regInspectInput"]')?.dataset.code;
         if (!code || row.querySelector('[data-act="pipEdit"]')) continue;
-        const button = document.createElement('button'); button.className = 'btn sm pip-edit'; button.dataset.act = 'pipEdit'; button.dataset.code = code; button.textContent = 'Preço no orçamento';
+        const button = document.createElement('button'); button.className = 'btn sm pip-edit'; button.dataset.act = 'pipEdit'; button.dataset.type = 'I'; button.dataset.code = code; button.textContent = 'Preço no orçamento';
         row.lastElementChild?.appendChild(button);
         const own = P.find(A.base, A.pj, code);
         if (own) { const badge = document.createElement('small'); badge.className = 'pip-context'; badge.textContent = 'Preço no orçamento: ' + U.brl(own.priceCents / 100); row.children[1]?.appendChild(badge); }

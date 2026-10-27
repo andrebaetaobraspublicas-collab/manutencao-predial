@@ -234,6 +234,7 @@ async function afterModules(O) {
     try { await originalBoot(); } finally { initializing = false; }
     if (key && A.base?._costCache?.size) {
       await local('derived', key, { tables: [...A.base._costCache], transport: A.base._tsig,
+        inputPrices: A.base._inputPriceSignature || '',
         fic: A.base._fsig || '', pem: A.base._psig || '', count: A.base.nComp, at: Date.now() }).catch(() => {});
       await pruneDerived();
     }
@@ -250,11 +251,12 @@ async function afterModules(O) {
   };
   N.makeBase = (...args) => {
     const base = originalMakeBase(...args);
+    if (A.pj) O.inputPrices?.bind(base, A.pj);
     if (initializing && derived?.count === base.nComp && Array.isArray(derived.tables)) {
       base.setTransport((O.fit && O.fit.effective(A.pj)) || A.pj.dmt || null);
       base.setPem('', null);
       if (O.fic) { const fic = O.fic.overrides(A.pj, base); base.setFic(fic ? fic.sig : '', fic ? fic.arr : null); }
-      if (derived.transport === base._tsig && derived.fic === (base._fsig || '') && derived.pem === (base._psig || '') &&
+      if (derived.inputPrices === (base._inputPriceSignature || '') && derived.transport === base._tsig && derived.fic === (base._fsig || '') && derived.pem === (base._psig || '') &&
         derived.tables.every(([key, table]) => typeof key === 'string' && table.cost?.length === base.nComp && table.as?.length === base.nComp && table.detail?.length === base.nComp)) {
         base._costCache = new Map(derived.tables); state.derivedRestored = true;
       }
@@ -395,7 +397,11 @@ function installReferences(O, checkEditors) {
   const selected = () => consulting() ? consultation.cycle || current() : current();
   const bases = new Map();
   const ownKey = () => JSON.stringify([A.inputs || [], A.customs || []]);
-  const makeConsultationBase = (raw, cycle) => consultationPricing(O.register.makeBase(clone(raw), cycle.id, A.inputs || [], A.customs || [], []));
+  const makeConsultationBase = (raw, cycle) => {
+    const base = O.register.makeBase(clone(raw), cycle.id, A.inputs || [], A.customs || [], []);
+    O.inputPrices?.bind(base, { ...A.pj, uf: cycle.uf, inputPriceOverrides: [] });
+    return consultationPricing(base);
+  };
   let frame = null, selectionRun = 0, budgetSource = false;
   const withBudget = fn => {
     if (!frame) return fn();
@@ -418,6 +424,7 @@ function installReferences(O, checkEditors) {
     const contextKey = JSON.stringify([A.pj.iva, A.pj.calendar, A.pj.bdi, A.pj.rg]);
     if (!consultation.project || consultation.contextKey !== contextKey) {
       consultation.project = clone(A.pj); consultation.contextKey = contextKey;
+      consultation.project.inputPriceOverrides = [];
     }
     consultation.project.uf = cycle.uf; consultation.project.rg = consultation.regime || A.pj.rg;
     frame = { base: A.base, pj: A.pj };

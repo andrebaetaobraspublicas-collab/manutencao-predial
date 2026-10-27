@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { validateInputPriceOverrides } from '../../common/project-input-prices';
 
 export const ORCAPRO_ENGINE_VERSION = 'orcaplan-1.8.3-cloud-v1';
 export const REGIMES = ['SD', 'CD', 'SE'] as const;
@@ -143,6 +144,7 @@ export function validateRawSinapi(value: unknown): RawSinapi {
 export function validateProjectData(value: unknown): JsonRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new BadRequestException('Documento de projeto inválido.');
   const data = value as JsonRecord;
+  validateInputPriceOverrides(data.inputPriceOverrides);
   for (const key of ['raw','base','bases','sinapi','sinapiCatalog']) if (key in data) throw new BadRequestException('O catálogo SINAPI não pode ser duplicado no projeto.');
   const encoded = JSON.stringify(data);
   if (Buffer.byteLength(encoded, 'utf8') > 15 * 1024 * 1024) throw new BadRequestException('Projeto excede limite de 15 MiB.');

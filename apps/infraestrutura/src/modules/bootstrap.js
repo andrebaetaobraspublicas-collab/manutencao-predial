@@ -51,3 +51,4 @@ import './99_main.js';
 import './risk-engine.js';
 import './risk-local.js';
 import './risk-ui.js';
+import '../../../api/src/modules/orcapro/legacy/assets/project-input-prices.js';

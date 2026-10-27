@@ -344,8 +344,9 @@ export class OrcaproService {
       const project = await this.project(user, id, db);
       await this.snapshot(db, user, project);
       const previous = current.data as JsonRecord;
-      const changedSections = ['name', 'uf', 'rg', 'bdi', 'items', 'stages', 'schedule', 'teams', 'iva', 'tax', 'risks', 'catalog', 'start', 'calendar'].filter(key => stableJson(previous[key] ?? null) !== stableJson(data[key] ?? null));
+      const changedSections = ['name', 'uf', 'rg', 'bdi', 'items', 'stages', 'schedule', 'teams', 'iva', 'tax', 'risks', 'catalog', 'inputPriceOverrides', 'start', 'calendar'].filter(key => stableJson(previous[key] ?? null) !== stableJson(data[key] ?? null));
       await this.audit(db, user, 'project.save', id, { version: project.version, previousVersion: current.version, referenceId, uf, regime, changedSections, ...(referenceId !== current.referenceId || uf !== current.uf || regime !== current.regime ? { previousContext: { referenceId: current.referenceId, uf: current.uf, regime: current.regime } } : {}) });
+      if (changedSections.includes('inputPriceOverrides')) await this.audit(db,user,'project.input-prices.update',id,{ version: project.version, previous: previous.inputPriceOverrides ?? [], next: data.inputPriceOverrides ?? [] });
       if (operation) await this.audit(db,user,operation.action,id,{ version:project.version,details:operation.metadata });
       return project;
     }, { timeout: 30000 });

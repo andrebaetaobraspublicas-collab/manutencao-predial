@@ -1,5 +1,9 @@
 # Modelo e dicionário de dados
 
+## Preços de insumos no orçamento — 27/10/2026
+
+Campos JSON aditivos em `OrcaproProject.data` e `InfraProject.data`: `inputPriceOverrides` (chave código/UF/mês/regime, preço em centavos, CHP/CHI quando aplicável, fonte e data) e `inputPriceHistory` (alterações confirmadas). São dados privados do projeto, presentes nas versões e exportações, sem atualizar catálogos referenciais ou biblioteca privada. Não exige migration nem modifica usuários/orçamentos existentes. [Especificação](project-input-prices.md).
+
 ## Auditoria OrçaPro — 16/10/2026
 
 `OrcaproAudit` preserva os eventos de negócio existentes e recebe eventos de acesso e navegação. Índices aditivos `(createdAt,id)` e `(actorUserId,createdAt)` atendem paginação estável e filtros. Não há exclusão, substituição ou reconstrução retroativa de eventos. Identidades e nomes de orçamentos são resolvidos na consulta administrativa global, com seleção explícita de campos; projetos continuam privados nos endpoints operacionais. Credenciais e documentos completos nunca entram no novo registro de acesso. Rollback: voltar código mantendo tabela, eventos e índices; opcionalmente remover somente os dois índices da migration 20261016140000.

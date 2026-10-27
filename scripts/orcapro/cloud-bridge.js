@@ -616,7 +616,7 @@ function installOrcaProCloud(API_BASE) {
     const element = event.target.closest('[data-act][data-code]');
     if (!element || !state.ready || !/^\d+$/.test(element.dataset.code)) return;
     const action = element.dataset.act;
-    const input = element.dataset.type === 'I' || ['regInspectInput', 'cloudAddInput'].includes(action);
+    const input = element.dataset.type === 'I' || ['regInspectInput', 'cloudAddInput', 'pipEdit'].includes(action);
     if (input ? A.base.ins(element.dataset.code) : A.base.comp(element.dataset.code)) return;
     event.preventDefault(); event.stopImmediatePropagation();
     try {

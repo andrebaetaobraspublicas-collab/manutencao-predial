@@ -75,3 +75,14 @@ test('SICRO: material and equipment CHP/CHI reprice nested services with unchang
   const tax=O.iva.budget(result);assert.equal(tax.total.creditCents,tax.total.ibsCents+tax.total.cbsCents);
   assert.notEqual(tax.total.creditCents,oldTax.total.creditCents);
 });
+test('SICRO server keeps the saved cycle identity and analytical calculator snapshots after a price change', () => {
+  const ctx=H.loadExtracted(), O=ctx.OP,A=O.app,P=O.inputPrices;
+  A.pj.sicroCycleId=A.base.id;
+  const original=O.ui.model(), input=O.abc.compute(original).rows.find(r=>/^M\d{4}$/.test(r.code)&&r.price>0);
+  const preview=P.preview(A.base,A.pj,{...change(input.code),priceCents:Math.round(input.price*2)});
+  P.apply(A.base,A.pj,preview);const browser=O.engine.compute(A.base,A.pj);A.model=browser;
+  const tax=O.iva.budget(browser), runtime=require('../../apps/api/src/modules/infraestrutura/assets/legacy-runtime.cjs');
+  const server=runtime.calculateProject(A.base.officialRaw||A.base.raw,A.pj,{pem:ctx.OP_DATA.pem});
+  assert.equal(server.totals.direct,browser.tot.direct);assert.equal(server.totals.price,browser.tot.price);
+  assert.equal(server.iva.creditCents,tax.total.creditCents);assert.equal(server.workDays,browser.T);
+});

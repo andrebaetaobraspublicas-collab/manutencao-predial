@@ -228,7 +228,7 @@ export class InfraService {
       let report: any;
       try {
         report = await new Promise<any>((resolve,reject) => {
-          const worker = new Worker(modulePath,{ workerData: { oldRaw,newRaw,project: parsed(row.data),targetUf,oldPem: pem(row.cycle_id),newPem: pem(targetId) },resourceLimits: { maxOldGenerationSizeMb: 256 } });
+          const worker = new Worker(modulePath,{ workerData: { oldRaw,newRaw,project: parsed(row.data),targetUf,oldCycleId: row.cycle_id,newCycleId: targetId,oldPem: pem(row.cycle_id),newPem: pem(targetId) },resourceLimits: { maxOldGenerationSizeMb: 256 } });
           let settled = false;
           const finish = (error?: Error,value?: unknown) => { if (settled) return; settled = true; clearTimeout(timer); void worker.terminate(); if (error) reject(error); else resolve(value); };
           const timer = setTimeout(() => finish(new BadRequestException('A comparação excedeu o tempo permitido. Reduza o projeto ou reveja sua estrutura.')),35000);

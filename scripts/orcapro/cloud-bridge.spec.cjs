@@ -9,6 +9,7 @@ const source = fs.readFileSync(path.join(__dirname, 'cloud-bridge.js'), 'utf8');
 const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 function setup(fetch) {
+  const listeners = [];
   const auditCalls = [];
   const transport = async (url, options) => {
     if (url.endsWith('/orcapro/activity/navigation')) { auditCalls.push(JSON.parse(options.body)); return json({ recorded: true }); }
@@ -25,15 +26,23 @@ function setup(fetch) {
   OP.app.inputs = []; OP.app.customs = [];
   OP.app.base = { raw: { ref: '08/2026' }, nComp: 0 };
   const context = { OP, fetch: transport, URL, URLSearchParams, location: { origin: 'https://example.test', search: '?project=' + id, reload: () => { reloads++; } },
-    document: { addEventListener() {}, getElementById: () => null }, addEventListener() {},
+    document: { addEventListener: (name, callback, capture) => listeners.push({name,callback,capture}), getElementById: () => null }, addEventListener() {},
     parent: { postMessage: (data, origin) => messages.push({ data, origin }) }, localStorage: {}, console, setTimeout, clearTimeout };
   context.window = context;
   vm.createContext(context);
   vm.runInContext('(' + source + ')("https://api.example.test/api/v1")', context);
   Object.assign(OP.cloud, { ready: true, wrapper: { id, referenceId: 'reference-1', version: 4 },
     access: { enabled: true, role: 'USER', tenantId: 'tenant', userId: 'user' } });
-  return { OP, messages, runtime, auditCalls, get reloads() { return reloads; } };
+  return { OP, messages, runtime, auditCalls, listeners, get reloads() { return reloads; } };
 }
+
+test('project price action lazily hydrates an input, never a composition with the same code', async () => {
+  const urls = [], { OP,listeners } = setup(async url => { urls.push(url);return json({ message: 'fixture stop' },400); });
+  OP.app.base.ins = () => null; OP.app.base.comp = () => null;
+  const element = { dataset: { act: 'pipEdit', code: '1379' } };
+  await listeners.find(l=>l.name==='click'&&l.capture).callback({target:{closest:()=>element},preventDefault(){},stopImmediatePropagation(){}});
+  assert.equal(urls.length,1);assert.match(urls[0],/inputCodes=1379/);assert.doesNotMatch(urls[0],/[?&]codes=/);
+});
 
 test('screen navigation is recorded once per screen change without saving the budget', () => {
   const { OP, auditCalls } = setup(async () => { throw new Error('Unexpected project mutation'); });

@@ -192,6 +192,7 @@ function installOrcaProCloud(API_BASE) {
     if (bundle.referenceId !== state.wrapper.referenceId) throw new Error('Referência do catálogo divergente.');
     state.raw = mergeRaw(state.raw, bundle.raw);
     A.base = N.makeBase(state.raw, state.wrapper.referenceId, A.inputs, A.customs, A.pj.sinapiPriceQuotes || []);
+    O.inputPrices?.bind(A.base, A.pj);
     A.model = null;
     O.iva.invalidate();
   }
@@ -615,7 +616,7 @@ function installOrcaProCloud(API_BASE) {
     const element = event.target.closest('[data-act][data-code]');
     if (!element || !state.ready || !/^\d+$/.test(element.dataset.code)) return;
     const action = element.dataset.act;
-    const input = element.dataset.type === 'I' || ['regInspectInput', 'cloudAddInput'].includes(action);
+    const input = element.dataset.type === 'I' || ['regInspectInput', 'cloudAddInput', 'pipEdit'].includes(action);
     if (input ? A.base.ins(element.dataset.code) : A.base.comp(element.dataset.code)) return;
     event.preventDefault(); event.stopImmediatePropagation();
     try {
@@ -674,6 +675,7 @@ function installOrcaProCloud(API_BASE) {
   state.loadGroup = loadGroup;
   if (typeof window.installOrcaProRisks === 'function') window.installOrcaProRisks();
   if (typeof window.installOrcaProManual === 'function') window.installOrcaProManual();
+  if (typeof window.installProjectInputPricesUI === 'function') window.installProjectInputPricesUI();
   if (document.getElementById('app')) boot().catch((error) => {
     state.error = error;
     notifyParent('error', error.message);

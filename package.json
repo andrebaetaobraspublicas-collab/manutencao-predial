@@ -18,7 +18,7 @@
     "build:web": "npm run build -w @gestaopredios/web && npm run hostinger:prepare -w @gestaopredios/web",
     "build:web:source": "npm run build -w @gestaopredios/web",
     "build:api": "npm run prisma:generate -w @gestaopredios/api && npm run build -w @gestaopredios/api",
-    "build:api:hostinger": "npm run hostinger:deploy -w @gestaopredios/api",
+    "build:api:hostinger": "npm run build:api && npm run hostinger:prepare -w @gestaopredios/api && npm run hostinger:verify-artifact -w @gestaopredios/api",
     "build:api:hostinger:source": "npm run prisma:generate -w @gestaopredios/api && npm run build -w @gestaopredios/api && npm run prisma:deploy -w @gestaopredios/api && npm run maintenance:deploy-seed -w @gestaopredios/api && npm run orcapro:deploy-seed -w @gestaopredios/api",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
@@ -33,7 +33,7 @@
   },
   "overrides": {
     "ajv@>=8": "8.20.0",
-    "fast-uri": "3.1.8",
+    "fast-uri": "3.1.9",
     "mysql2": "3.23.1",
     "qs": "6.16.0",
     "mariadb": "3.5.4",
@@ -53,7 +53,10 @@
     "proxy-addr": "2.0.8",
     "shell-quote": "1.11.0",
     "multer": "2.5.0",
-    "body-parser": "2.4.0"
+    "body-parser": "2.4.0",
+    "handlebars": "4.7.10",
+    "vite": "7.3.7",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "concurrently": "9.2.4"

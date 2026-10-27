@@ -22,6 +22,7 @@ function loadExtracted(){
  ctx.OP_SICRO_RAW=JSON.parse(read('sicro-sp-2026-07.json'));
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'extraction-manifest.json'),'utf8'));
  for(const module of manifest.modules)vm.runInContext(fs.readFileSync(path.join(root,'src/modules',module.file),'utf8'),ctx,{filename:module.file,timeout:30000});
+ vm.runInContext(fs.readFileSync(path.resolve(root,'../api/src/modules/orcapro/legacy/assets/project-input-prices.js'),'utf8'),ctx,{filename:'project-input-prices.js',timeout:30000});
  return prepare(ctx);
 }
 

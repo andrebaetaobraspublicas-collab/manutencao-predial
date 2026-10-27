@@ -1,5 +1,9 @@
 # Contrato inicial da API
 
+## Preços de insumos por orçamento — 27/10/2026
+
+Os endpoints existentes de gravação de projetos OrçaPro e Infraestrutura aceitam `data.inputPriceOverrides`: até 2.000 objetos `{code,uf,ref,regime,priceCents,chiCents?,source,date}`. `ref` é YYYY-MM, data YYYY-MM-DD, valores são centavos inteiros não negativos. O escopo continua proprietário+tenant autenticados, CSRF e versão esperada; conflito retorna409. Nenhum endpoint de catálogo global é alterado. `inputPriceHistory` conserva o histórico local e versões/auditoria registram a gravação. Prévia e confirmação acontecem no editor, com o mesmo motor usado no servidor. [Fluxo, metodologia e limites](project-input-prices.md).
+
 Base local: `/api/v1`. Em produção: `https://api.gestaodepredios.com.br/api/v1`.
 
 A busca administrativa `GET /infraestrutura/admin/accounts?search=...` localiza

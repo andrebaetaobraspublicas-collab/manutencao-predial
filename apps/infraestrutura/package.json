@@ -11,5 +11,5 @@
     "build:static": "node scripts/build-static.mjs",
     "build:runtime": "node scripts/build-runtime.mjs"
   },
-  "devDependencies": { "vite": "7.3.6" }
+  "devDependencies": { "vite": "7.3.7" }
 }

@@ -15,8 +15,9 @@ function runtime(raw,project,options={}){
  vm.createContext(ctx);
  for(const module of MODULES)vm.runInContext(module.code,ctx,{filename:module.name,timeout:30000});
  ctx.__project=project?clone(project):null;
+ ctx.__baseId=options.cycleId||project?.sicroCycleId||'runtime';
  vm.runInContext(`(() => { const O=OP,A=O.app;A.inputs=[];A.customs=[];O.register.library={inputs:[],compositions:[]};
-   A.base=O.register.makeBase(OP_SICRO_RAW,'runtime',[],[],[]);
+   A.base=O.register.makeBase(OP_SICRO_RAW,__baseId,[],[],[]);
    A.pj=O.engine.fix(__project||O.examples.build('rodovia',A.base));O.register.hydrate(A.pj);A.model=null;
  })()`,ctx,{filename:'initialize-project.js',timeout:30000});
  return ctx;

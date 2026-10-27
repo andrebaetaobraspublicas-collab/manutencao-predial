@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { validateInputPriceOverrides } from '../../common/project-input-prices';
 import { hash } from 'bcryptjs';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -48,6 +49,7 @@ export class InfraService {
   }
   private document(dataInput: unknown, id: string, name: string, uf: string, regime: string): { data: string; bdi: string } {
     const data = object(dataInput);
+    validateInputPriceOverrides(data.inputPriceOverrides);
     const bdi = data.bdi ?? 0;
     if (typeof bdi !== 'number' || !Number.isFinite(bdi) || bdi < 0 || bdi > 100000) throw new BadRequestException('Taxa de BDI inválida.');
     return { data: json({ ...data,id,name,uf,rg: regime },20 * 1024 * 1024,true), bdi: bdi.toFixed(8) };
@@ -149,7 +151,10 @@ export class InfraService {
     if (Number(result.affectedRows) !== 1) throw new ConflictException('Projeto alterado por outra operação.');
     const saved = await this.owned(db,user,row.id);
     await this.history(db,user,saved);
-    await this.audit(db,user,action,'project',row.id,{ version: saved.version,cycleId });
+    const previousPrices = parsed(row.data)?.inputPriceOverrides ?? [];
+    const nextPrices = parsed(document.data)?.inputPriceOverrides ?? [];
+    await this.audit(db,user,action,'project',row.id,{ version: saved.version,cycleId,
+      ...(JSON.stringify(previousPrices) !== JSON.stringify(nextPrices) ? { inputPricesChanged: true, previousInputPrices: previousPrices, nextInputPrices: nextPrices } : {}) });
     return this.shape(saved);
   }
   async saveProject(user: AuthenticatedUser, id: string, input: unknown) {

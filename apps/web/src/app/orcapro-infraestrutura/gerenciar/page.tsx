@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ApiError } from '@/lib/api';
 import { infraAccess, infraApi, infraDownload, infraItems, type InfraCycle, type InfraProject } from '@/lib/infra-api';
-import { ORCAPRO_ONLY } from '@/lib/product-config';
+import { ORCAPRO_ONLY, INFRA_ONLY } from '@/lib/product-config';
 import InfraShell from '../infra-shell';
 import styles from '../../orcapro/workspace.module.css';
 
@@ -18,7 +18,7 @@ export default function InfraProjects() {
   const [policies, setPolicies] = useState<{ name: string; data: { text: string }; version: number }[]>([]);
   const load = useCallback(async (archived = trash) => {
     const [access, documents, references] = await Promise.all([infraAccess(), infraApi<{ items: InfraProject[] }>('/projects?trash=' + archived), infraApi<{ items: InfraCycle[] }>('/cycles')]);
-    if (!access.enabled) throw new Error('Seu acesso ao Infraestrutura ainda não está ativo.');
+    if (!access.enabled) { if (INFRA_ONLY) window.location.replace('/orcapro-infraestrutura/assinatura'); throw new Error('Seu acesso ao Infraestrutura ainda não está ativo.'); }
     setAdmin(access.role === 'ADMIN'); setProjects(infraItems(documents)); setCycles(infraItems(references));
     const first = infraItems(references).find(c => c.status === 'PUBLISHED');
     setCycleId(previous => previous || first?.id || '');
@@ -27,7 +27,7 @@ export default function InfraProjects() {
     const requested = infraItems(documents).find(p => p.id === query.get('versoes'));
     if (requested) { setSelected(requested); setVersions(infraItems(await infraApi<{ items: Version[] }>('/projects/' + requested.id + '/versions'))); }
   }, [trash]);
-  useEffect(() => { let active = true; if (ORCAPRO_ONLY) return; void Promise.resolve().then(() => load(trash)).catch(cause => { if (!active) return; if (cause instanceof ApiError && cause.status === 401) window.location.assign('/login/?next=/orcapro-infraestrutura'); else setError(cause instanceof Error ? cause.message : 'Falha ao listar projetos.'); }); return () => { active = false; }; }, [load, trash]);
+  useEffect(() => { let active = true; if (ORCAPRO_ONLY) return; void Promise.resolve().then(() => load(trash)).catch(cause => { if (!active) return; if (INFRA_ONLY && cause instanceof ApiError && cause.status === 403) window.location.replace('/orcapro-infraestrutura/assinatura'); else if (cause instanceof ApiError && cause.status === 401) window.location.assign('/login/?next=/orcapro-infraestrutura'); else setError(cause instanceof Error ? cause.message : 'Falha ao listar projetos.'); }); return () => { active = false; }; }, [load, trash]);
   async function action(fn: () => Promise<void>) { setBusy(true); setError(''); try { await fn(); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Falha na operação.'); } finally { setBusy(false); } }
   async function create(event: FormEvent) { event.preventDefault(); await action(async () => { const project = await infraApi<InfraProject>('/projects', { method: 'POST', body: JSON.stringify({ cycleId, name, uf: projectUf, regime, example }) }); window.location.assign('/orcapro-infraestrutura/editor/?id=' + project.id); }); }
   async function history(project: InfraProject) { await action(async () => { setSelected(project); setMigration(null); setVersions(infraItems(await infraApi<{ items: Version[] }>('/projects/' + project.id + '/versions'))); }); }

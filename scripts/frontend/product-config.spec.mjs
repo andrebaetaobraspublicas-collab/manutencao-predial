@@ -66,7 +66,7 @@ test('OrçaPro login can resume an unpaid checkout without being sent to the oth
   assert.equal(authenticatedLoginDestination('/programas', { maintenanceAccess: false }), '/programas');
 });
 
-function renderLogin(orcaproOnly, next) {
+function renderLogin(orcaproOnly, next, infraOnly = false) {
   const source = readFileSync(fileURLToPath(new URL('../../apps/web/src/app/login/page.tsx', import.meta.url)), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const runtimeRequire = createRequire(import.meta.url);
@@ -78,10 +78,11 @@ function renderLogin(orcaproOnly, next) {
     if (path === '@/lib/api') return { apiFetch: () => { throw new Error('Rendering must not authenticate'); }, ApiError: Error };
     if (path === '@/lib/product-config') return {
       ORCAPRO_ONLY: orcaproOnly,
+      INFRA_ONLY: infraOnly, COMMERCIAL_ONLY: orcaproOnly || infraOnly, BILLING_NAME: infraOnly ? 'OrçaPro Infraestrutura' : 'OrçaPro', BILLING_PATH: infraOnly ? '/orcapro-infraestrutura' : '/orcapro',
       PRODUCT_NAME: orcaproOnly ? 'OrçaPro' : 'Gestão de Prédios',
       PRODUCT_DOMAIN: orcaproOnly ? 'orcaproobras.com.br' : 'gestaodepredios.com.br',
-      loginDestination: value => loginDestination(value, orcaproOnly),
-      loginConfiguration: value => loginConfiguration(value, orcaproOnly),
+      loginDestination: value => loginDestination(value, orcaproOnly, infraOnly),
+      loginConfiguration: value => loginConfiguration(value, orcaproOnly, infraOnly),
       authenticatedLoginDestination,
       exitDestination: () => 'https://orcaproobras.com.br/',
     };
@@ -162,4 +163,17 @@ test('failed logout keeps the page and returns an error instead of pretending th
   const fixture = logoutFixture(async () => { throw new Error('Network unavailable'); });
   await assert.rejects(fixture.endSession(), /Network unavailable/);
   assert.deepEqual(fixture.replacements, []);
+});
+
+
+test('standalone Infraestrutura hides other programs and sends unpaid users to its own subscription', () => {
+  assert.throws(() => resolveProductConfig({orcaproOnly:'true',infraOnly:'true'}));
+  assert.equal(loginDestination('/programas',false,true),'/orcapro-infraestrutura');
+  assert.equal(loginConfiguration('/dashboard',false,true).endpoint,'/infraestrutura/auth/login');
+  assert.equal(authenticatedLoginDestination('/orcapro-infraestrutura',{orcaproEnabled:false},true),'/orcapro-infraestrutura/assinatura');
+  assert.equal(authenticatedLoginDestination('/orcapro-infraestrutura',{orcaproEnabled:true},true),'/orcapro-infraestrutura');
+  const html=renderLogin(false,'/dashboard',true);
+  assert.doesNotMatch(html,/id="program"|id="tenantSlug"/);
+  assert.match(html,/Entrar no OrçaPro Infraestrutura/);
+  assert.match(html,/href="\/orcapro-infraestrutura\/cadastro"/);
 });

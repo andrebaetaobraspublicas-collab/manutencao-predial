@@ -46,6 +46,12 @@ export class OrcaproGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request & { user: AuthenticatedUser }>();
     if (!request.user?.userId || !request.user.tenantId) throw new UnauthorizedException();
+    if (this.config.get<string>('INFRA_COMMERCIAL') === 'true') {
+      const path = (request.originalUrl || request.path || '').split('?')[0].replace(/\/+$/, '');
+      if (!/^\/api\/v1\/orcapro\/(?:access$|billing(?:\/|$)|admin\/saas(?:\/|$)|admin\/logs(?:\/|$))/.test(path)) {
+        throw new ForbiddenException('Este ambiente é exclusivo do OrçaPro Infraestrutura.');
+      }
+    }
     if (!this.access.enabled()) throw new ServiceUnavailableException('OrçaPro ainda não habilitado neste ambiente.');
     const billingOnly = this.reflector.getAllAndOverride<boolean>(BILLING_KEY, [context.getHandler(), context.getClass()]) === true;
     if (!(await this.access.enabledFor(request.user, billingOnly))) throw new ForbiddenException('Acesso ao OrçaPro desativado ou assinatura vencida.');

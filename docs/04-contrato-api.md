@@ -551,3 +551,7 @@ Registros antigos sem esses detalhes permanecem válidos; eventos não capturado
 Terceiro aplicativo autorizado em03/10/2026, somente no ambiente DEV nesta entrega. O contrato aditivo `/api/v1/infraestrutura` compartilha a identidade central e usa outro banco para perfis do produto, catálogo SICRO/PEM e dados privados. [infraestrutura-api.md](infraestrutura-api.md) descreve todos os endpoints, envelopes, CSRF/login, importação incremental/hash, ETag, projetos/versões409, migração confirmada, administração e exportação/expurgo LGPD. Rotas da manutenção e do OrçaPro não mudam de versão ou formato.
 
 GET `/infraestrutura/health` é público; os demais recursos exigem perfil próprio, cookies e filtros de proprietário+tenant. Rotas administrativas verificam ADMIN local/configurado, sem herdar OWNER da organização. Senha permanece central; nenhuma nova API aceita hash/senha de outro produto como credencial de bridge.
+
+## Infraestrutura comercial isolado
+
+No modo INFRA_COMMERCIAL=true, o acesso a projetos exige licença individual ativa ou contrato manual além do perfil Infraestrutura. GET /infraestrutura/access retorna enabled=false para licença pendente, permitindo abrir Minha assinatura. As telas e os modelos de assinatura reutilizados pertencem somente à nova instância; o controle de acesso é manual. Chaves, produtos e webhooks Stripe não são configurados nesta etapa. Endpoints SINAPI e de orçamentos OrçaPro são bloqueados nessa instância. O modo DEV compartilhado mantém o comportamento anterior.

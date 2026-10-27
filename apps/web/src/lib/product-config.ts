@@ -1,7 +1,9 @@
-type ProductEnvironment = { orcaproOnly?: string; marketingUrl?: string };
+type ProductEnvironment = { orcaproOnly?: string; infraOnly?: string; marketingUrl?: string };
 
 export function resolveProductConfig(environment: ProductEnvironment) {
   const orcaproOnly = environment.orcaproOnly === 'true';
+  const infraOnly = environment.infraOnly === 'true';
+  if (orcaproOnly && infraOnly) throw new Error('Selecione somente um produto comercial.');
   const supplied = environment.marketingUrl?.trim();
   let marketingUrl: string | null = null;
   if (supplied || orcaproOnly) {
@@ -11,28 +13,34 @@ export function resolveProductConfig(environment: ProductEnvironment) {
     }
     marketingUrl = url.href;
   }
-  return { orcaproOnly, marketingUrl };
+  return { orcaproOnly, infraOnly, marketingUrl };
 }
 
 const product = resolveProductConfig({
   orcaproOnly: process.env.NEXT_PUBLIC_ORCAPRO_ONLY,
+  infraOnly: process.env.NEXT_PUBLIC_INFRA_ONLY,
   marketingUrl: process.env.NEXT_PUBLIC_MARKETING_URL,
 });
 
 export const ORCAPRO_ONLY = product.orcaproOnly;
+export const INFRA_ONLY = product.infraOnly;
+export const COMMERCIAL_ONLY = ORCAPRO_ONLY || INFRA_ONLY;
+export const BILLING_NAME = INFRA_ONLY ? 'OrçaPro Infraestrutura' : 'OrçaPro';
+export const BILLING_PATH = INFRA_ONLY ? '/orcapro-infraestrutura' : '/orcapro';
 export const MARKETING_URL = product.marketingUrl;
-export const PRODUCT_NAME = ORCAPRO_ONLY ? 'OrçaPro' : 'Gestão de Prédios';
-export const PRODUCT_DOMAIN = ORCAPRO_ONLY ? 'orcaproobras.com.br' : 'gestaodepredios.com.br';
+export const PRODUCT_NAME = INFRA_ONLY ? 'OrçaPro Infraestrutura' : ORCAPRO_ONLY ? 'OrçaPro' : 'Gestão de Prédios';
+export const PRODUCT_DOMAIN = INFRA_ONLY ? 'orcaproinfra.com.br' : ORCAPRO_ONLY ? 'orcaproobras.com.br' : 'gestaodepredios.com.br';
 
 export type LoginDestination = '/dashboard' | '/orcapro' | '/orcapro-infraestrutura' | '/programas';
 
-export function loginDestination(value: string | null, orcaproOnly = ORCAPRO_ONLY): LoginDestination {
+export function loginDestination(value: string | null, orcaproOnly = ORCAPRO_ONLY, infraOnly = INFRA_ONLY): LoginDestination {
+  if (infraOnly) return '/orcapro-infraestrutura';
   if (orcaproOnly) return '/orcapro';
   return value === '/orcapro' || value === '/programas' || value === '/orcapro-infraestrutura' ? value : '/dashboard';
 }
 
-export function loginConfiguration(destination: LoginDestination, orcaproOnly = ORCAPRO_ONLY) {
-  const target = loginDestination(destination, orcaproOnly);
+export function loginConfiguration(destination: LoginDestination, orcaproOnly = ORCAPRO_ONLY, infraOnly = INFRA_ONLY) {
+  const target = loginDestination(destination, orcaproOnly, infraOnly);
   const requiresOrganization = target !== '/orcapro' && target !== '/orcapro-infraestrutura';
   return {
     destination: target,
@@ -44,7 +52,9 @@ export function loginConfiguration(destination: LoginDestination, orcaproOnly = 
 export function authenticatedLoginDestination(
   destination: LoginDestination,
   access: { maintenanceAccess?: boolean; orcaproEnabled?: boolean },
-): LoginDestination | '/orcapro/assinatura' {
+  infraOnly = INFRA_ONLY,
+): LoginDestination | '/orcapro/assinatura' | '/orcapro-infraestrutura/assinatura' {
+  if (infraOnly && destination === '/orcapro-infraestrutura') return access.orcaproEnabled === true ? '/orcapro-infraestrutura' : '/orcapro-infraestrutura/assinatura';
   if (destination === '/orcapro') return access.orcaproEnabled === true ? '/orcapro' : '/orcapro/assinatura';
   return destination === '/dashboard' && access.maintenanceAccess === false ? '/programas' : destination;
 }

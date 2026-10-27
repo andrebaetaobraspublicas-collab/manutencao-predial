@@ -15,6 +15,18 @@ export function validateEnvironment(config: Record<string, unknown>): AppEnviron
     throw new Error('JWT_ACCESS_SECRET deve possuir pelo menos 32 caracteres.');
   }
 
+  if (config.INFRA_COMMERCIAL === 'true') {
+    const identity = new URL(databaseUrl);
+    const catalog = new URL(String(config.INFRA_DATABASE_URL || ''));
+    if (config.INFRA_ENABLED !== 'true' || config.ORCAPRO_ENABLED !== 'true'
+      || identity.pathname !== '/u528277311_infra_auth'
+      || catalog.pathname !== '/u528277311_infra_live'
+      || config.WEB_BASE_URL !== 'https://orcaproinfra.com.br'
+      || config.CORS_ORIGINS !== 'https://orcaproinfra.com.br') {
+      throw new Error('Infraestrutura comercial exige bancos novos exclusivos e domínio orcaproinfra.com.br.');
+    }
+  }
+
   const stripeKey = String(config.ORCAPRO_STRIPE_SECRET_KEY || (config.ORCAPRO_ENABLED === 'true' ? config.STRIPE_SECRET_KEY : '') || '');
   if (stripeKey) {
     const mode = String(config.ORCAPRO_STRIPE_MODE ?? '');

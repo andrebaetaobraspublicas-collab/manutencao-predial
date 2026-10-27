@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
-import { ORCAPRO_ONLY, PRODUCT_NAME } from '@/lib/product-config';
+import { ORCAPRO_ONLY, INFRA_ONLY, PRODUCT_NAME } from '@/lib/product-config';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
 
 export const metadata: Metadata = {
-  ...(ORCAPRO_ONLY ? { icons: { icon: '/orcapro-brand/icon.svg?v=20261006-auth3' } } : {}),
+  ...((ORCAPRO_ONLY || INFRA_ONLY) ? { icons: { icon: '/orcapro-brand/icon.svg?v=20261006-auth3' } } : {}),
   title: {
     default: PRODUCT_NAME,
     template: `%s | ${PRODUCT_NAME}`,
   },
-  description: ORCAPRO_ONLY ? 'Orçamentos de obras com SINAPI, BDI, planejamento e análise de riscos.' : 'Gestão integrada de manutenção predial, contratos e ordens de serviço.',
+  description: INFRA_ONLY ? 'Orçamentos e planejamento de infraestrutura com SICRO, BDI e riscos.' : ORCAPRO_ONLY ? 'Orçamentos de obras com SINAPI, BDI, planejamento e análise de riscos.' : 'Gestão integrada de manutenção predial, contratos e ordens de serviço.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

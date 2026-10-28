@@ -1,5 +1,9 @@
 # Contrato inicial da API
 
+## Auditoria Infraestrutura detalhada — 27/10/2026
+
+`GET /infraestrutura/admin/audit` aceita `user`, `from`, `to`, `category=all|access|activity|failure`, `page` e `pageSize` (máximo 100); requer administrador global do produto. Retorna itens enriquecidos, `total`, `page`, `pages`, `pageSize` e `timezone=America/Sao_Paulo`. Datas incluem o dia final completo. `POST /infraestrutura/activity/navigation` aceita `{screen,projectId?}` com guard, CSRF e validação de proprietário/tenant do projeto. Não altera o orçamento. [Contrato operacional e proteção dos detalhes](infraestrutura-audit.md).
+
 ## Preços de insumos por orçamento — 27/10/2026 (DEV)
 
 Os endpoints existentes de gravação de projetos OrçaPro e Infraestrutura aceitam `data.inputPriceOverrides`: até 2.000 objetos `{code,uf,ref,regime,priceCents,chiCents?,source,date}`. `ref` é YYYY-MM, data YYYY-MM-DD, valores são centavos inteiros não negativos. O escopo continua proprietário+tenant autenticados, CSRF e versão esperada; conflito retorna409. Nenhum endpoint de catálogo global é alterado. `inputPriceHistory` conserva o histórico local e versões/auditoria registram a gravação. Prévia e confirmação acontecem no editor, com o mesmo motor usado no servidor. [Fluxo, metodologia e limites](project-input-prices.md).

@@ -4,6 +4,7 @@ import './api-store.js';
 import riskEngineSource from './modules/risk-engine.js?raw';
 import '../../../scripts/shared/project-input-prices-ui.js';
 import '../../../scripts/shared/project-input-prices.css';
+import inputPriceManual from '../../../scripts/shared/project-input-prices-manual.json';
 
 const dataBase = new URL('data/', document.baseURI);
 const asset = (name) => new URL(name, dataBase).href;
@@ -29,7 +30,7 @@ async function boot() {
   document.getElementById('orcapro-risk-engine').textContent = riskEngineSource;
   await import('./modules/bootstrap.js');
   if (config.afterModules) await config.afterModules(window.OP);
-  window.installProjectInputPricesUI();
+  window.installProjectInputPricesUI(inputPriceManual);
   await window.OP.main.boot();
 }
 

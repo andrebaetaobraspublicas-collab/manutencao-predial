@@ -1,6 +1,6 @@
 (function (G) {
   'use strict';
-  G.installProjectInputPricesUI = function () {
+  G.installProjectInputPricesUI = function (manualGuide) {
     const O = G.OP, A = O.app, UI = O.ui, P = O.inputPrices, U = O.util, esc = U.esc;
     if (P.uiInstalled) return; P.uiInstalled = true;
     let editing = null, preview = null;
@@ -96,5 +96,24 @@
     view.after = (...args) => { const result = after?.(...args); decorate(); return result; };
     const main = document.getElementById('main');
     if (main && typeof MutationObserver !== 'undefined') new MutationObserver(decorate).observe(main, { childList: true, subtree: true });
+    if (manualGuide && O.sicro && UI.views.manual) {
+      const originalManual = UI.views.manual.render;
+      UI.views.manual.render = (...args) => {
+        const holder = document.createElement('div'); holder.innerHTML = originalManual(...args);
+        const nav = holder.querySelector('.mnav'), article = holder.querySelector('.mart'), state = A.man || {};
+        if (!nav || !article) return holder.innerHTML;
+        const query = U.norm(state.q || ''), title = manualGuide.title.replace(/^\d+\.\s*/, '');
+        let guideRead = false;
+        try { guideRead = JSON.parse(G.localStorage.getItem('orcaplan-infra-manual-v1') || '[]').includes(manualGuide.id); } catch (_) { /* The guide remains readable without storage. */ }
+        if (!query || U.norm(JSON.stringify(manualGuide)).includes(query)) {
+          const button = document.createElement('button'); button.dataset.act = 'manGo'; button.dataset.id = manualGuide.id;
+          button.className = state.cap === manualGuide.id ? 'on' : ''; button.textContent = (guideRead ? '✓ ' : '') + title; nav.appendChild(button);
+        }
+        const progress = holder.querySelector('.vh .muted'), count = progress?.textContent.match(/(\d+) de (\d+) capítulos lidos/);
+        if (count) { const total = Number(count[2]) + 1; progress.textContent = progress.textContent.replace(/de \d+ capítulos lidos/, `de ${total} capítulos lidos`); const bar = nav.querySelector('.mprog i'); if (bar) bar.style.width = (100 * Number(count[1]) / total).toFixed(0) + '%'; }
+        if (state.cap === manualGuide.id) article.innerHTML = `<h2>${esc(title)}</h2><p>${esc(manualGuide.summary)}</p><button class="btn pri" data-act="nav" data-v="inputs">Abrir Insumos</button>` + manualGuide.sections.map(section => `<section><h3>${esc(section.title)}</h3>${section.body ? `<p>${esc(section.body)}</p>` : ''}${section.steps ? `<ol class="msteps">${section.steps.map(step=>`<li>${esc(step)}</li>`).join('')}</ol>` : ''}${section.formula ? `<pre class="formula">${esc(section.formula)}</pre>` : ''}${section.table ? `<div class="tblw"><table class="tbl sm"><thead><tr>${section.table.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${section.table.rows.map(row=>`<tr>${row.map(cell=>`<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}${section.expected ? `<p class="notice">${esc(section.expected)}</p>` : ''}</section>`).join('') + `<div class="row"><button class="btn" data-act="manGo" data-id="mapa">Voltar ao mapa do sistema</button><button class="btn" data-act="manRead" data-id="${esc(manualGuide.id)}">Marcar / desmarcar como lido</button></div>`;
+        return holder.innerHTML;
+      };
+    }
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -151,10 +151,14 @@ export class InfraService {
     if (Number(result.affectedRows) !== 1) throw new ConflictException('Projeto alterado por outra operação.');
     const saved = await this.owned(db,user,row.id);
     await this.history(db,user,saved);
-    const previousPrices = parsed(row.data)?.inputPriceOverrides ?? [];
-    const nextPrices = parsed(document.data)?.inputPriceOverrides ?? [];
+    const previousDocument = parsed(row.data), nextDocument = parsed(document.data);
+    const previousPrices = previousDocument?.inputPriceOverrides ?? [];
+    const nextPrices = nextDocument?.inputPriceOverrides ?? [];
+    const changedSections = ['root','bdi','calendar','catalog','resources','tax','reforma','risks','inputPriceOverrides'].filter(key=>JSON.stringify(previousDocument?.[key])!==JSON.stringify(nextDocument?.[key]));
     await this.audit(db,user,action,'project',row.id,{ version: saved.version,cycleId,
+      previousVersion: row.version,changedSections,
       ...(JSON.stringify(previousPrices) !== JSON.stringify(nextPrices) ? { inputPricesChanged: true, previousInputPrices: previousPrices, nextInputPrices: nextPrices } : {}) });
+    if (changedSections.includes('inputPriceOverrides')) await this.audit(db,user,'project.input-prices.update','project',row.id,{ version: saved.version,previous: previousPrices,next: nextPrices });
     return this.shape(saved);
   }
   async saveProject(user: AuthenticatedUser, id: string, input: unknown) {
@@ -373,10 +377,6 @@ export class InfraService {
       await this.audit(db,user,'policy.update','policy',name);
       return { name,version: (old[0]?.version ?? 0) + 1 };
     });
-  }
-  async logs(query: InfraObject) {
-    const current = page(query.page), limit = page(query.pageSize,50,100);
-    return { items: await this.db.query('SELECT id,tenant_id AS tenantId,user_id AS userId,action,entity,entity_id AS entityId,payload,created_at AS createdAt FROM InfraAudit ORDER BY created_at DESC,id LIMIT ? OFFSET ?',[limit,(current - 1) * limit]),page: current,pageSize: limit };
   }
   async stats() {
     const users = await this.db.query<any[]>('SELECT status,COUNT(*) AS count FROM InfraUser GROUP BY status');

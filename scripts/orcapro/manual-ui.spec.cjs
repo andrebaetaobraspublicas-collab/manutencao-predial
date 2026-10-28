@@ -31,6 +31,18 @@ test('all chapters, journeys, module targets and primary references are internal
   assert.ok(['schedule', 'bdi', 'reforma', 'risks', 'evento', 'resources'].every(t => content.chapters.some(c => c.target === t)));
   for (const s of content.sources) { const url = new URL(s.url); assert.equal(url.protocol, 'https:'); assert.ok(/(?:caixa|ibge|tcu|planalto)\.gov\.br$|^www\.gov\.br$/.test(url.hostname)); }
 });
+test('the price replacement guide is shared by both products, searchable, complete and included in offline export', () => {
+  const guide = JSON.parse(fs.readFileSync(root + '/scripts/shared/project-input-prices-manual.json','utf8'));
+  assert.deepEqual(content.chapters.find(c=>c.id===guide.id),guide);
+  const { OP, downloads } = setup(), before = JSON.stringify(OP.app.pj);
+  OP.ui.inp.manualSearch({value:'restaurar preços'});
+  assert.ok(OP.ui.views.manual.render().includes(guide.title));
+  OP.ui.act.manualChapter({dataset:{id:guide.id}});
+  const html=OP.ui.views.manual.render();
+  for(const text of ['Conferir serviços afetados','Confirmar restauração','CHP','custos unitários fixos','UF','Cancelar','percentual de BDI']) assert.ok(html.toLowerCase().includes(text.toLowerCase()),text);
+  OP.ui.act.manualExport();assert.ok(downloads[0].text.includes(guide.title));assert.equal(JSON.stringify(OP.app.pj),before);
+});
+
 test('accent insensitive search finds tax methodology and keyboard fields retain input; navigation stays allowlisted', () => {
   const { OP, nodes } = setup(); let renders = 0; OP.ui.render = () => { renders++; };
   OP.ui.inp.manualSearch({ value: 'depreciacao' });

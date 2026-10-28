@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { infraApi } from '@/lib/infra-api';
 import styles from '../workspace.module.css';
 import css from './audit.module.css';
 
@@ -12,6 +13,9 @@ const actions: Record<string, string> = {
   'activity.navigation': 'Tela aberta',
   'access.login': 'Entrada no sistema', 'access.login.failed': 'Tentativa de entrada recusada', 'access.logout': 'Saída do sistema', 'access.request': 'Acesso / operação na API', 'access.request.failed': 'Operação com falha',
   'project.create': 'Orçamento criado', 'project.save': 'Orçamento salvo', 'project.archive': 'Orçamento arquivado', 'project.unarchive': 'Orçamento restaurado', 'project.restore': 'Versão do orçamento restaurada',
+  'project.input-prices.update': 'Preço de insumo alterado no orçamento', 'project.duplicate': 'Orçamento duplicado', 'project.migration.comparison': 'Comparação de referência SICRO', 'project.migrate': 'Referência do orçamento atualizada',
+  'own.save': 'Cadastro próprio salvo', 'own.archive': 'Cadastro próprio arquivado', 'cycle.create': 'Referência SICRO criada', 'cycle.finalize': 'Referência SICRO conferida', 'cycle.publish': 'Referência SICRO publicada', 'cycle.archive': 'Referência SICRO arquivada',
+  'user.create': 'Usuário cadastrado', 'user.grant': 'Acesso ao Infraestrutura concedido / alterado', 'user.archive': 'Acesso ao Infraestrutura encerrado', 'user.password': 'Senha alterada', 'user.password.request': 'Alteração de senha solicitada', 'user.password.failed': 'Falha ao alterar senha', 'admin.project.read': 'Orçamento consultado pelo administrador', 'policy.update': 'Política ou termos atualizados', 'lgpd.export': 'Exportação de dados solicitada', 'lgpd.export.complete': 'Exportação de dados concluída', 'lgpd.deletion.request': 'Exclusão de dados solicitada',
   'custom.revise': 'Cadastro próprio revisado', 'composition.adapt': 'Cópia de composição criada', 'template.update': 'Exemplo atualizado',
   'sinapi.import': 'Referência SINAPI importada', 'sinapi.validate': 'Referência conferida', 'sinapi.publish': 'Referência publicada', 'sinapi.default.change': 'Referência padrão alterada', 'sinapi.archive': 'Referência arquivada',
   'saas.user.create': 'Usuário cadastrado', 'saas.user.password': 'Senha alterada', 'saas.user.status': 'Acesso alterado', 'saas.user.revoke': 'Sessões revogadas', 'user.orcapro-access.change': 'Permissão OrçaPro alterada',
@@ -24,7 +28,10 @@ function operation(event: Event) {
   if (!event.action.startsWith('access.request')) return '';
   if (route.includes('catalog/inputs')) return 'Consulta de insumos';
   if (route.includes('catalog/compositions')) return 'Consulta de composições';
-  if (route.includes('catalog/navigation')) return 'Navegação no catálogo SINAPI';
+  if (route.includes('catalog/navigation')) return 'Navegação no catálogo';
+  if (route.includes('cycles') && route.includes('compositions')) return 'Consulta de composições SICRO';
+  if (route.includes('cycles') && route.includes('inputs')) return 'Consulta de insumos SICRO';
+  if (route.includes('snapshot') || route.includes('pem')) return 'Carregamento de referência SICRO / produções';
   if (route.includes('catalog/bundle')) return 'Carregamento de analíticos';
   if (route.includes('export')) return 'Exportação de orçamento';
   if (route.includes('risk')) return 'Riscos e contingências';
@@ -32,19 +39,19 @@ function operation(event: Event) {
   if (route.includes('admin')) return 'Administração do SaaS / referências';
   return route;
 }
-const screens: Record<string, string> = { catalog: 'Catálogo SINAPI', inputs: 'Insumos', comps: 'Composições', budget: 'Orçamento', bdi: 'BDI', teams: 'Equipes e produtividade', schedule: 'Cronograma', resources: 'Recursos e Curva S', tax: 'Reforma Tributária', risks: 'Riscos e contingências', manual: 'Manual', projects: 'Meus orçamentos', admin: 'Base de dados', videos: 'Vídeo-aulas' };
+const screens: Record<string, string> = { catalog: 'Catálogo', inputs: 'Insumos', comps: 'Composições', compositions: 'Composições', budget: 'Orçamento', bdi: 'BDI', teams: 'Equipes e produtividade', crews: 'Equipes e produtividade', schedule: 'Cronograma', resources: 'Recursos e Curva S', tax: 'Reforma Tributária', reforma: 'Reforma Tributária', risks: 'Riscos e contingências', manual: 'Manual', projects: 'Meus orçamentos', admin: 'Base de dados', base: 'Base de dados', videos: 'Vídeo-aulas', transports: 'Transportes (DMT)', fit: 'FIT', fic: 'FIC', pem: 'Produções Horárias', mobilization: 'Mobilização', canteiro: 'Canteiro de Obras', al: 'Administração Local', evento: 'Eventograma' };
 
-export default function AuditPanel() {
+export default function AuditPanel({ product = 'orcapro', title }: { product?: 'orcapro' | 'infra'; title?: string } = {}) {
   const [draft, setDraft] = useState(initial), [filter, setFilter] = useState(initial);
   const [page, setPage] = useState(1), [refresh, setRefresh] = useState(0);
   const [history, setHistory] = useState<History | null>(null), [loading, setLoading] = useState(true), [error, setError] = useState('');
   useEffect(() => {
     let active = true;
     const query = new URLSearchParams(Object.entries({ ...filter, page: String(page) }).filter(([, value]) => value.trim() !== ''));
-    Promise.resolve().then(() => { if (active) { setLoading(true); setError(''); } return apiFetch<History>(`/orcapro/admin/logs?${query}`); })
+    Promise.resolve().then(() => { if (active) { setLoading(true); setError(''); } return product === 'infra' ? infraApi<History>(`/admin/audit?${query}`) : apiFetch<History>(`/orcapro/admin/logs?${query}`); })
       .then(value => { if (active) setHistory(value); }).catch(cause => { if (active) { setHistory(null); setError(cause instanceof Error ? cause.message : 'Não foi possível consultar a auditoria.'); } }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [filter, page, refresh]);
+  }, [filter, page, refresh, product]);
   function apply(event: FormEvent) {
     event.preventDefault();
     if (draft.from && draft.to && draft.from > draft.to) { setError('A data inicial deve preceder a data final.'); return; }
@@ -52,7 +59,7 @@ export default function AuditPanel() {
   }
   const displayedPage = history?.page ?? page;
   return <section className={styles.panel} aria-busy={loading}>
-    <h2>Auditoria do OrçaPro</h2>
+    <h2>{title ?? `Auditoria do ${product === 'infra' ? 'OrçaPro Infraestrutura' : 'OrçaPro'}`}</h2>
     <p className={styles.muted}>Consulte todo o histórico disponível. Datas e horários de Brasília (America/Sao_Paulo); a data final inclui o dia inteiro.</p>
     <form className={css.filters} onSubmit={apply}>
       <label>Usuário<input placeholder="Nome ou e-mail do responsável" maxLength={150} value={draft.user} onChange={e => setDraft({ ...draft, user: e.target.value })} /></label>

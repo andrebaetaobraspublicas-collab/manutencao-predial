@@ -10,7 +10,7 @@ import { OrcaproAccess, OrcaproAdmin, OrcaproGuard } from './orcapro.guard';
 import { AdaptCompositionDto, AdminListQuery, BundleQuery, CatalogQuery, CloneTemplateDto, ContextQuery, CreateProjectDto, CustomRecordDto, ImportSinapiDto, ImportSinapiFileDto, ImportReportQuery, ProjectListQuery, ReferenceDto, RestoreDto, RevisionDto, SaveProjectDto, UserAccessDto } from './orcapro.dto';
 import { codeList } from './orcapro-domain';
 import { AuditListQuery, AuditNavigationDto } from './orcapro.dto';
-import { BmExportReceiptDto, PleExportReceiptDto } from '../../common/transferegov-bm';
+import { BmExportReceiptDto, PleExportReceiptDto, CompatibleCopyDto } from '../../common/transferegov-bm';
 
 @ApiTags('OrçaPro')
 @ApiCookieAuth('gp_access')
@@ -48,6 +48,9 @@ export class OrcaproController {
   @Post('projects/:id/transferegov/bm/receipt')
   @ApiOperation({summary:'DEV somente: registra preparação de cópia BM, vinculada à versão e hash do projeto privado; não altera o orçamento.'})
   bmExport(@CurrentUser() user:AuthenticatedUser,@Param('id') id:string,@Body() dto:BmExportReceiptDto,@Res({passthrough:true}) response:Response) { response.setHeader('Cache-Control','no-store');return this.service.recordBmExport(user,id,dto); }
+  @Post('projects/:id/transferegov/compatible-copy')
+  @ApiOperation({summary:'DEV: cria cópia privada compatível com TransfereGov após prévia, com versão/hash de origem e idempotência; preserva o orçamento original.'})
+  compatibleCopy(@CurrentUser() user:AuthenticatedUser,@Param('id') id:string,@Body() dto:CompatibleCopyDto,@Res({passthrough:true}) response:Response) {response.setHeader('Cache-Control','no-store');return this.service.createCompatibleCopy(user,id,dto);}
   @Post('projects/:id/transferegov/ple/receipt')
   @ApiOperation({summary:'DEV somente: registra preparação de cópia PLE, vinculada à versão e hash do projeto privado; não altera o orçamento.'})
   pleExport(@CurrentUser() user:AuthenticatedUser,@Param('id') id:string,@Body() dto:PleExportReceiptDto,@Res({passthrough:true}) response:Response) { response.setHeader('Cache-Control','no-store');return this.service.recordPleExport(user,id,dto); }

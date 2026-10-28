@@ -7,6 +7,8 @@ import '../../../scripts/shared/project-input-prices.css';
 import inputPriceManual from '../../../scripts/shared/project-input-prices-manual.json';
 import '../../api/src/modules/orcapro/legacy/assets/transferegov-bm.js';
 import '../../api/src/modules/orcapro/legacy/assets/transferegov-ple.js';
+import '../../api/src/modules/orcapro/legacy/assets/transferegov-events.js';
+import '../../api/src/modules/orcapro/legacy/assets/transferegov-compatibility.js';
 import '../../../scripts/shared/transferegov-bm-ui.js';
 import '../../../scripts/shared/transferegov-bm.css';
 import transferegovManual from '../../../scripts/shared/transferegov-bm-manual.json';
@@ -34,6 +36,7 @@ async function boot() {
   window.OP_SICRO_RAW=raw;
   document.getElementById('orcapro-risk-engine').textContent = riskEngineSource;
   await import('./modules/bootstrap.js');
+  window.TransferegovCompatibility.install(window.OP);
   if (config.afterModules) await config.afterModules(window.OP);
   window.installProjectInputPricesUI(inputPriceManual);
   window.installTransferegovBM(transferegovManual);

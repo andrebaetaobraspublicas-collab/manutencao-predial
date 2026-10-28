@@ -11,6 +11,7 @@ type History = { items: Event[]; total: number; page: number; pages: number; pag
 const initial = { user: '', from: '', to: '', category: 'all', pageSize: '50' };
 const actions: Record<string, string> = {
   'export.transferegov.bm': 'Cópia BM preparada para download',
+  'export.transferegov.compatible-copy': 'Orçamento compatível TransfereGov criado',
   'export.transferegov.ple': 'Cópia PLE preparada para download',
   'activity.navigation': 'Tela aberta',
   'access.login': 'Entrada no sistema', 'access.login.failed': 'Tentativa de entrada recusada', 'access.logout': 'Saída do sistema', 'access.request': 'Acesso / operação na API', 'access.request.failed': 'Operação com falha',

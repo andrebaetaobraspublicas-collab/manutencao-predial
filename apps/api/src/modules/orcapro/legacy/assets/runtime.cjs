@@ -55,6 +55,7 @@ function loadLegacyRuntime({ assetsDirectory = __dirname, nowISO } = {}) {
     { filename: 'reference-review.js', timeout: 10000 });
   vm.runInContext(fs.readFileSync(path.join(assetsDirectory, 'project-input-prices.js'), 'utf8'), context,
     { filename: 'project-input-prices.js', timeout: 10000 });
+  for (const name of ['transferegov-bm.js','transferegov-compatibility.js']) vm.runInContext(fs.readFileSync(path.join(assetsDirectory,name),'utf8'), context, {filename:name,timeout:10000});
   const clone = (value) => JSON.parse(JSON.stringify(value));
 
   function validateContext(raw, project) {

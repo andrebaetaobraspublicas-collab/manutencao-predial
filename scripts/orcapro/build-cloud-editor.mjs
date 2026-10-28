@@ -53,6 +53,8 @@ const inputPricesUi = fs.readFileSync(path.join(root,'scripts/shared/project-inp
 const inputPricesCss = fs.readFileSync(path.join(root,'scripts/shared/project-input-prices.css'),'utf8');
 const bmCore=fs.readFileSync(path.join(root,'apps/api/src/modules/orcapro/legacy/assets/transferegov-bm.js'),'utf8');
 const pleCore=fs.readFileSync(path.join(root,'apps/api/src/modules/orcapro/legacy/assets/transferegov-ple.js'),'utf8');
+const compatibilityCore=fs.readFileSync(path.join(root,'apps/api/src/modules/orcapro/legacy/assets/transferegov-compatibility.js'),'utf8');
+const eventCore=fs.readFileSync(path.join(root,'apps/api/src/modules/orcapro/legacy/assets/transferegov-events.js'),'utf8');
 const bmUi=fs.readFileSync(path.join(root,'scripts/shared/transferegov-bm-ui.js'),'utf8');
 const bmCss=fs.readFileSync(path.join(root,'scripts/shared/transferegov-bm.css'),'utf8');
 const manualCss = fs.readFileSync(path.join(root,'scripts/orcapro/manual-ui.css'),'utf8').replaceAll('\r\n','\n');
@@ -64,7 +66,7 @@ html = html.replace('<title>', `<meta http-equiv="Content-Security-Policy" conte
 // the document's final closing body, otherwise the browser terminates JS early.
 const bodyEnd = html.lastIndexOf('</body>');
 if (bodyEnd < html.lastIndexOf('</script>')) throw new Error('Original final body boundary missing');
-html = html.slice(0, bodyEnd) + `<script>${referenceReview}</script><script>${inputPrices}</script><style>${inputPricesCss}</style><script>${inputPricesUi}</script><script>${bmCore}</script><script>${pleCore}</script><style>${bmCss}</style><script>${bmUi}</script><style>${riskCss}</style><script>${riskUi}</script><style>${manualCss}</style><script>window.ORCAPRO_MANUAL=${manualData};</script><script>${manualUi}</script><script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
+html = html.slice(0, bodyEnd) + `<script>${referenceReview}</script><script>${inputPrices}</script><style>${inputPricesCss}</style><script>${inputPricesUi}</script><script>${bmCore}</script><script>${pleCore}</script><script>${eventCore}</script><script>${compatibilityCore}</script><style>${bmCss}</style><script>${bmUi}</script><style>${riskCss}</style><script>${riskUi}</script><style>${manualCss}</style><script>window.ORCAPRO_MANUAL=${manualData};</script><script>${manualUi}</script><script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
 html=html.split(/(<script\b[^>]*>[\s\S]*?<\/script>)/gi).map(part=>/^<script\b/i.test(part)?part:part.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi,(_,attrs,css)=>`<style${attrs}>${bluePalette(css)}</style>`)).join('');
 html=html.replace('</head>','<link rel="stylesheet" href="/orcapro-brand/production.css?v=20261006-dev1"><link rel="icon" href="/orcapro-brand/icon.svg"></head>');
 if (html.includes('id="op-base"') || /M\.boot\(\)\.catch/.test(html)) throw new Error('Offline catalog or bootstrap survived cloud derivation');
@@ -75,7 +77,7 @@ fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify({ sourceSha2
   bridgeSha256: sha(bridge), editorSha256: sha(html), sourceVersion: '1.8.3', apiBase,
   referenceReviewSha256: sha(referenceReview),
   inputPricesSha256: sha(inputPrices), inputPricesUiSha256: sha(inputPricesUi),
-  transferegovPleVersion:'transferegov-ple-2026.1',transferegovPleSha256:sha(pleCore),
+  transferegovCompatibilitySha256:sha(compatibilityCore),transferegovEventogramSha256:sha(eventCore),transferegovPleVersion:'transferegov-ple-2026.1',transferegovPleSha256:sha(pleCore),
   transferegovBmVersion:'transferegov-bm-2026.1',transferegovBmSha256:sha(bmCore),transferegovBmUiSha256:sha(bmUi),
   riskUiSha256:sha(riskUi),riskCssSha256:sha(riskCss),riskEngineVersion:'orcapro-risk-1.0.0',
   manualVersion:manual.version,manualReviewedAt:manual.reviewedAt,manualContentSha256:sha(manualContent),manualUiSha256:sha(manualUi),manualCssSha256:sha(manualCss),

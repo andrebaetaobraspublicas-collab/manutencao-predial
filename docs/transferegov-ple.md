@@ -25,3 +25,9 @@ Custos, BDI, quantidades e produtos da cópia truncam duas casas; ausência de r
 Evento `export.transferegov.ple` acrescenta apenas auditoria PREPARED com versão/hash da origem, hash do XLSX/configuração, perfil, submeta, contagens declaradas e totais. Não armazena o documento integral nem certifica cálculos do cliente ou importação/aprovação. Nenhum schema, migration ou seed novo. O navegador gera o XLSX depois da revisão e registra o recibo antes do download.
 
 Testes: contrato do exemplo, roundtrip XLSX, mesclagens, literais seguros, múltiplas frentes/eventos/macros, períodos inválidos/duplicados, identidade de configuração, CSRF, isolamento de owner/tenant, conflito e bloqueio em produção. Regressões BM e dos motores permanecem obrigatórias. Publicar exclusivamente DEV após backup privado e comparação de hashes/contagens. Rollback por artefato anterior; nunca restaurar banco antigo sobre registros atuais. Importação gov.br não é automática e permanece pendente de homologação autorizada.
+
+### Cópia compatível e aproveitamento do Eventograma
+
+O mesmo fluxo de cópia compatível do BM está disponível no PLE, criando outro orçamento privado com aritmética decimal compartilhada entre motor e exportação. A origem permanece com sua precisão e histórico intactos; igualdade com a nova cópia não significa igualdade com o total original. Custos e quantidades normalizados são apresentados antes da criação.
+
+Na etapa 2, Refazer sugestões a partir do Eventograma oferece eventos principais ou subeventos finais, prévia e confirmação. Vínculos efetivos inequívocos são aproveitados; múltiplos eventos, diluição e ausência de vínculo ficam pendentes. Prazos do Eventograma sugerem o mês de conclusão; sem prazo usa-se o cronograma. A origem não possui planejamento independente por frente: confira cada par evento/frente. Retenções, recebimentos e multas não se tornam linhas exportadas. A homologação no importador oficial continua necessária.

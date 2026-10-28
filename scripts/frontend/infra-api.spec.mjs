@@ -97,7 +97,7 @@ test('Administração abre contexto solicitado, aliases SICRO e padrão seguro',
       '@/lib/api': { ApiError: class extends Error {} }, '@/lib/product-config': { ORCAPRO_ONLY: false },
       '@/lib/infra-api': { infraAccess: async () => ({ enabled: true, role: 'ADMIN', userId: 'fixture-user' }), infraItems: value => value.items,
         infraApi: async route => route === '/admin/stats' ? { users: [], projects: { total: 0 }, cycles: [] } : { items: [] } },
-      '@/lib/infra-import': {}, '../infra-shell': () => {}, '../../orcapro/workspace.module.css': {},
+      '@/lib/infra-import': {}, '../infra-shell': () => {}, '../../orcapro/workspace.module.css': {}, '../../orcapro/administracao/audit-panel': () => {},
     };
     const context = vm.createContext({ URLSearchParams, window: { location: { search: query }, addEventListener: () => {}, removeEventListener: () => {} } });
     const module = { exports: {} }, fn = vm.runInContext('(function(module,exports,require){' + code + '\n})', context, { timeout: 10000 });

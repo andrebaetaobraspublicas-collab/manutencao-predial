@@ -337,6 +337,16 @@ async function afterModules(O) {
     await navigate('/orcapro-infraestrutura/editor?id=' + encodeURIComponent(created.id), true);
   };
   installReferences(O, checkEditors);
+  const render = UI.render;
+  let lastAuditScreen = '';
+  UI.render = (...args) => {
+    const result = render(...args), screen = String(A.view || '');
+    if (/^[a-z][a-z0-9-]{0,49}$/.test(screen) && screen !== lastAuditScreen) {
+      lastAuditScreen = screen;
+      void request('/infraestrutura/activity/navigation', { method: 'POST', body: JSON.stringify({ screen, projectId: state.project.id }) }).catch(() => undefined);
+    }
+    return result;
+  };
   window.addEventListener('beforeunload', event => { if (state.saving || state.error || state.conflict || edits.size || JSON.stringify(projectData(O)) !== state.lastSaved) { event.preventDefault(); event.returnValue = ''; } });
 }
 const config = window.ORCAPRO_INFRA_CONFIG = { prepare, loadSnapshot: snapshot, loadPem: pem, installAdapter, afterModules };

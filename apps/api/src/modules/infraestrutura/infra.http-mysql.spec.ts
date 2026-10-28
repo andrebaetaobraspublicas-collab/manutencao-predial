@@ -18,6 +18,7 @@ import { InfraDatabase } from './infra-db';
 import { InfraAccess, InfraGuard } from './infra.guard';
 import { InfraService } from './infra.service';
 import { InfraController } from './infra.controller';
+import { InfraAuditService } from './infra-audit.service';
 import { sha } from './infra-domain';
 
 const supplied = process.env.INFRA_TEST_DATABASE_URL;
@@ -72,7 +73,7 @@ suite('Infraestrutura HTTP/MySQL — autorização, histórico e conflito', () =
     // this additional field; this is test-fixture reconciliation, never a deploy migration.
     const erasureColumn = await db.query<unknown[]>('SHOW COLUMNS FROM InfraUser LIKE \'erasure_requested_at\'');
     if (!erasureColumn.length) await db.query('ALTER TABLE InfraUser ADD COLUMN erasure_requested_at DATETIME(3) NULL');
-    const module = await Test.createTestingModule({ controllers: [InfraController], providers: [InfraService, InfraAccess, InfraGuard, { provide: ConfigService, useValue: config }, { provide: InfraDatabase, useValue: db }, { provide: PrismaService, useValue: {} }] }).compile();
+    const module = await Test.createTestingModule({ controllers: [InfraController], providers: [InfraService, InfraAccess, InfraGuard, InfraAuditService, { provide: ConfigService, useValue: config }, { provide: InfraDatabase, useValue: db }, { provide: PrismaService, useValue: {} }] }).compile();
     app = module.createNestApplication<NestExpressApplication>();
     app.useBodyParser('json', { limit: '22mb' });
     app.use(cookieParser());

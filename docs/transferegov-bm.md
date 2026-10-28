@@ -53,3 +53,8 @@ Prévia com situação por serviço, proteção padrão de ajustes manuais e con
 `frontDistribution` existe somente na configuração exportada: versão `tg-fronts-2026.1`, defaultRule, unit, weights, rules, protected, preserveManual e lastApplied. Reutilização via baixar/carregar configuração, com validação de IDs e limites. O relatório JSON contém a última aplicação automática; o layout oficial não ganha colunas. Nenhuma rota, migration ou gravação de orçamento foi acrescentada. A habilitação continua exclusiva do desenvolvimento e dos dois sistemas.
 
 Frentes sem quantidade são omitidas da distribuição automática, evitando linhas com zero e conclusões PLE sem execução. Um serviço cuja quantidade de origem já é zero conserva uma única ocorrência explícita. A prévia e o relatório distinguem a variação financeira causada pelo rateio da diferença que o arquivo já apresentava em relação à origem.
+
+
+### Atualização: ajustes temporários de precisão (desenvolvimento)
+
+O assistente BM/PLE deixou de oferecer criação de orçamento compatível. `exportPrecision=temporary-half-up-2` é confirmado em prévia, serializado somente na configuração exportada e calculado sobre a fotografia original imutável. O relatório conserva o total original e a diferença por serviço/frente. Não há novos projetos, versões, conversão de riscos ou alteração do motor do orçamento. As cópias antigas e seu motor de compatibilidade permanecem suportados; o endpoint legado não é utilizado pela nova interface. O registro de geração continua limitado ao recibo de auditoria com hashes e totais. Não há migração de banco.

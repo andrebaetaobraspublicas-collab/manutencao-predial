@@ -130,6 +130,6 @@ test('release manifest pins manual content/UI/styles with normalized checksums',
  test('TransfereGov development guide is shared, searchable, navigable and complete in the offline manual',()=>{
   const guide=JSON.parse(fs.readFileSync(root+'/scripts/shared/transferegov-bm-manual.json','utf8'));assert.equal(guide.developmentOnly,true);assert.deepEqual(content.chapters.find(c=>c.id===guide.id),guide);
   const {OP,downloads}=setup(),before=JSON.stringify(OP.app.pj);OP.ui.inp.manualSearch({value:'TransfereGov'});OP.ui.act.manualChapter({dataset:{id:guide.id}});const html=OP.ui.views.manual.render();
-  for(const value of ['Planilha de Levantamento de Eventos','Preparar cópia compatível','Preservar ajustes manuais','Variação causada pela distribuição','0,34 m³','Checklist antes de concluir','Resolver os problemas mais comuns','mandatarias.transferegov.sistema.gov.br'])assert.ok(html.includes(value),value);
+  for(const value of ['Planilha de Levantamento de Eventos','Preparar prévia temporária','Preservar ajustes manuais','Variação causada pela distribuição','0,34 m³','Checklist antes de concluir','Resolver os problemas mais comuns','mandatarias.transferegov.sistema.gov.br'])assert.ok(html.includes(value),value);
   assert.ok(html.includes('<table>'));OP.ui.act.manualExport();assert.ok(downloads[0].text.includes('Checklist antes de concluir'));assert.equal(JSON.stringify(OP.app.pj),before);
  });

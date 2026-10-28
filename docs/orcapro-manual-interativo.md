@@ -36,3 +36,6 @@ O capítulo 31 foi reorganizado em 23 seções, a partir da funcionalidade já i
 Fonte editorial comum: `scripts/shared/transferegov-bm-manual.json`, espelhada no capítulo de `manual-content.json`. O renderizador Infraestrutura passa a exibir o índice de seções, tabelas, fórmulas textuais, resultados esperados e links HTTPS desse capítulo. O manual OrçaPro conserva sua busca, navegação e exportação offline. Glossário e referências oficiais atualizados.
 
 Sem alterar preços, orçamento, fluxo de exportação, API, permissões ou banco. O capítulo mantém `developmentOnly=true`. Publicação desta revisão limitada aos dois editores de www.gestaodepredios.com.br; produções excluídas. A aceitação do XLSX no importador oficial continua pendente de homologação.
+
+
+Revisão 1.1.6: o capítulo TransfereGov passa a ensinar a prévia temporária, confirmação e restauração do critério financeiro somente na exportação, sem criar orçamentos ou versões. Cópias anteriores continuam preservadas.

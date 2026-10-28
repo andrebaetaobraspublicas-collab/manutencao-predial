@@ -27,7 +27,7 @@
   const differs = (v,q,scale=100n) => {const [n,d]=rational(v),delta=n*scale-BigInt(q)*d;return (delta<0n?-delta:delta)*1000000n>d;};
   const codeValid = (code,profile) => (profile?.numericCodes?/^\d{1,13}$/:/^[A-Za-z0-9._-]{1,13}$/).test(String(code??''));
   function normalize(snapshot,input){
-    const config=JSON.parse(JSON.stringify(input)),profile=PROFILES[config.profile],reserved=new Set(),assigned=new Map();let next=9990000000000n;config.arithmetic=snapshot.compatibilityVersion==='tg-compatible-2026.1'?'half-up-2':'truncate-2';
+    const config=JSON.parse(JSON.stringify(input)),profile=PROFILES[config.profile],reserved=new Set(),assigned=new Map();let next=9990000000000n;if(config.exportPrecision!=null&&!['temporary-half-up-2','truncate-2'].includes(config.exportPrecision))throw Error('Critério de precisão da exportação inválido.');config.arithmetic=snapshot.compatibilityVersion==='tg-compatible-2026.1'||config.exportPrecision==='temporary-half-up-2'?'half-up-2':'truncate-2';
     for(const code of [...snapshot.items.map(r=>r.code),...config.items.map(c=>c.code)])if(/^\d{1,13}$/.test(String(code??'')))reserved.add(BigInt(code).toString());
     for(const row of snapshot.items){const c=config.items.find(x=>x.id===row.id);if(!c)continue;
       if(!codeValid(c.code,profile)){
@@ -142,7 +142,7 @@
     if(codeMappings.length)warn('codes',`${codeMappings.length} serviço(s) com código adaptado somente na cópia. Correspondências disponíveis no relatório.`);
     if(adjustments.length)warn('precision',`${adjustments.length} serviço(s) com truncamentos, referências adaptadas ou diferenças financeiras. A conferência não bloqueia a geração por essas diferenças; detalhes no relatório.`);
     const otherSources=items.filter(i=>i.source!=='SINAPI').length;if(otherSources)warn('sources',`${otherSources} serviço(s) exportado(s) como Composição, Cotação ou Outros; fontes originais preservadas no relatório.`);
-    return {version:VERSION,profile:config.profile,sheetNames:[profile?.po,profile?.cff],documentation:DOCUMENTATION,submeta:config.submeta,project:{id:snapshot.projectId,name:snapshot.name,version:snapshot.version,uf:snapshot.uf,reference:snapshot.ref,regime:snapshot.regime},arithmetic:config.arithmetic,eventogramMapping:config.eventogramMapping||null,codeStart:'9990000000000',errors,warnings,adjustments,codeMappings,items,groups,fronts:config.fronts,duration,originalCents:String(original),exportCents:String(total),differenceCents:String(total-original),homologated:false};
+    return {version:VERSION,profile:config.profile,sheetNames:[profile?.po,profile?.cff],documentation:DOCUMENTATION,submeta:config.submeta,project:{id:snapshot.projectId,name:snapshot.name,version:snapshot.version,uf:snapshot.uf,reference:snapshot.ref,regime:snapshot.regime},arithmetic:config.arithmetic,exportPrecision:config.exportPrecision||'truncate-2',temporary:true,eventogramMapping:config.eventogramMapping||null,codeStart:'9990000000000',errors,warnings,adjustments,codeMappings,items,groups,fronts:config.fronts,duration,originalCents:String(original),exportCents:String(total),differenceCents:String(total-original),homologated:false};
   }
   const xml = value => String(value??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   function workbook(plan) {

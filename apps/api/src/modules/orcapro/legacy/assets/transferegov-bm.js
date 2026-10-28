@@ -141,5 +141,6 @@
     sheets.forEach((s,i)=>files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${col(s.rows[0].length-1)}${s.rows.length}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>${s.rows.map((r,ri)=>`<row r="${ri+1}">${r.map((c,ci)=>{if(c===''||c==null)return '';const cell=typeof c==='object'?c:{v:c},ref=col(ci)+(ri+1);return typeof cell.v==='number'?`<c r="${ref}" s="${cell.style||1}"><v>${cell.v}</v></c>`:`<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xml(cell.v)}</t></is></c>`;}).join('')}</row>`).join('')}</sheetData>${s.merges.length?`<mergeCells count="${s.merges.length}">${s.merges.map(r=>`<mergeCell ref="${r}"/>`).join('')}</mergeCells>`:''}</worksheet>`}));return files;
   }
   const api={VERSION,PO,CFF,UNITS,PROFILES,canonical,rational,round,scaled,exact,decimal,unit,enabled,distribute,defaults,suggested,validateConfiguration,prepare,workbook};
-  if(typeof module!=='undefined'&&module.exports)module.exports=api;else G.TransferegovBM=api;
+  G.TransferegovBM=api;
+  if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

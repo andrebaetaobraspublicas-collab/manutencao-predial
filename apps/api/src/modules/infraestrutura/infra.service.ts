@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { validateInputPriceOverrides } from '../../common/project-input-prices';
-import { assertBmDevelopment, bmReceipt, BmExportReceiptDto, pleReceipt, PleExportReceiptDto } from '../../common/transferegov-bm';
+import { assertBmDevelopment, bmReceipt, BmExportReceiptDto, pleReceipt, PleExportReceiptDto, CompatibleCopyDto, compatibleCopyData } from '../../common/transferegov-bm';
 import { hash } from 'bcryptjs';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -116,6 +116,21 @@ export class InfraService {
     await this.audit(this.db as unknown as InfraSql,user,'export.transferegov.ple','project',id,receipt);
     return {...receipt,recorded:true};
   }
+
+  async createCompatibleCopy(user:AuthenticatedUser,id:string,dto:CompatibleCopyDto) {
+    assertBmDevelopment(this.config.get<string>('WEB_BASE_URL'));
+    return this.db.transaction(async db=>{
+      const source=await this.owned(db,user,id,true),data=compatibleCopyData({id:source.id,version:source.version,data:parsed(source.data)},dto);
+      const existing=await db.query<ProjectRow[]>('SELECT * FROM InfraProject WHERE id=? AND tenant_id=? AND user_id=?',[dto.requestId,user.tenantId,user.userId]);
+      if(existing[0]){const meta=parsed(existing[0].data).transferegovCompatibility;if(meta?.sourceProjectId!==id||meta?.sourceHash!==dto.sourceHash)throw new ConflictException('Identificador de cópia já utilizado.');return this.shape(existing[0]);}
+      const cycle=await this.cycle(db,user,source.cycle_id,true),name=source.name.slice(0,135)+' — TransfereGov';
+      this.assertCycleUf(cycle,source.uf);
+      const document=this.document(data,dto.requestId,name,source.uf,source.regime);
+      await db.query('INSERT INTO InfraProject(id,user_id,tenant_id,cycle_id,name,uf,regime,bdi,data) VALUES(?,?,?,?,?,?,?,?,?)',[dto.requestId,user.userId,user.tenantId,source.cycle_id,name,source.uf,source.regime,document.bdi,document.data]);
+      const copy=await this.owned(db,user,dto.requestId);await this.history(db,user,copy);await this.audit(db,user,'export.transferegov.compatible-copy','project',dto.requestId,{sourceProjectId:id,sourceVersion:source.version,sourceHash:dto.sourceHash,arithmetic:'half-up-2',services:dto.rows.length});return this.shape(copy);
+    });
+  }
+
   async adminReadProject(user: AuthenticatedUser, id: string) {
     const rows = await this.db.query<ProjectRow[]>('SELECT * FROM InfraProject WHERE id=?',[uuid(id)]);
     if (!rows[0]) throw new NotFoundException('Projeto não encontrado.');

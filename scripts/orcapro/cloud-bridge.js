@@ -83,6 +83,7 @@ function installOrcaProCloud(API_BASE) {
     return {projectId,version:state.wrapper.version,sourceData:clone(state.wrapper.data)};
   };
   state.transferegovReceipt = (dto,kind='BM') => request(`/orcapro/projects/${projectId}/transferegov/${kind==='PLE'?'ple':'bm'}/receipt`,{method:'POST',body:JSON.stringify(dto)});
+  state.transferegovCompatibleCopy = dto => request(`/orcapro/projects/${projectId}/transferegov/compatible-copy`,{method:'POST',body:JSON.stringify(dto)});
 
   async function refreshLibrary() {
     const [inputs, compositions] = await Promise.all([

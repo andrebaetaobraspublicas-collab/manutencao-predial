@@ -27,7 +27,7 @@
   const differs = (v,q,scale=100n) => {const [n,d]=rational(v),delta=n*scale-BigInt(q)*d;return (delta<0n?-delta:delta)*1000000n>d;};
   const codeValid = (code,profile) => (profile?.numericCodes?/^\d{1,13}$/:/^[A-Za-z0-9._-]{1,13}$/).test(String(code??''));
   function normalize(snapshot,input){
-    const config=JSON.parse(JSON.stringify(input)),profile=PROFILES[config.profile],reserved=new Set(),assigned=new Map();let next=9990000000000n;config.arithmetic='truncate-2';
+    const config=JSON.parse(JSON.stringify(input)),profile=PROFILES[config.profile],reserved=new Set(),assigned=new Map();let next=9990000000000n;config.arithmetic=snapshot.compatibilityVersion==='tg-compatible-2026.1'?'half-up-2':'truncate-2';
     for(const code of [...snapshot.items.map(r=>r.code),...config.items.map(c=>c.code)])if(/^\d{1,13}$/.test(String(code??'')))reserved.add(BigInt(code).toString());
     for(const row of snapshot.items){const c=config.items.find(x=>x.id===row.id);if(!c)continue;
       if(!codeValid(c.code,profile)){
@@ -112,12 +112,12 @@
         if(reference>MAX||cost>MAX||bdi>10000n)throw Error('Custo ou BDI fora dos limites do layout (BDI de 0 a 100%).');
         if(c.source==='SINAPI'&&(row.source!=='SINAPI'||code!==row.code||c.description!==row.description||c.unit!==unit(row.unit)||row.referenceCents==null||reference!==truncated(row.referenceCents,1n)))throw Error('SINAPI exige código, descrição, unidade e custo referencial originais; revise a fonte do serviço adaptado.');
         const changes=[];if(c.descriptionTruncated)changes.push('Descrição abreviada a 500 caracteres na cópia; texto original integral neste relatório.');if(differs(row.costCents,cost,1n))changes.push('Custo adotado truncado a centavos.');if(differs(row.bdi,bdi,10000n))changes.push('BDI truncado a duas casas percentuais.');if(c.referenceFallback)changes.push('Referência ausente: custo adotado usado na cópia, como composição adaptada.');
-        const price=cost*(10000n+bdi)/10000n;if(price>MAX)throw Error('Preço unitário excede o limite.');
+        const price=config.arithmetic==='half-up-2'?round(cost*(10000n+bdi),10000n):cost*(10000n+bdi)/10000n;if(price>MAX)throw Error('Preço unitário excede o limite.');
         const allocations=[];let qty=0n,total=0n;
         for(const [key,value]of Object.entries(c.allocations||{})){if(value===''||value==null)continue;const q=truncated(value);if(differs(value,q))changes.push(`Quantidade da frente ${key} truncada a duas casas.`);
           const front=config.fronts.find(f=>String(f.number)===key);if(!front)throw Error('Há quantidade vinculada a frente inexistente.');
           if(q>9999999999n)throw Error('Quantidade por frente acima de 99.999.999,99.');
-          const v=q*price/100n;qty+=q;total+=v;allocations.push({front:Number(front.number),name:front.name,quantity:decimal(q),totalCents:String(v)});
+          const v=config.arithmetic==='half-up-2'?round(q*price,100n):q*price/100n;qty+=q;total+=v;allocations.push({front:Number(front.number),name:front.name,quantity:decimal(q),totalCents:String(v)});
         }
         if(!allocations.length)throw Error('Informe uma quantidade, inclusive zero quando aplicável, em ao menos uma frente.');
         if(qty>MAX||total>MAX)throw Error('Quantidade ou valor total excede o limite.');
@@ -142,7 +142,7 @@
     if(codeMappings.length)warn('codes',`${codeMappings.length} serviço(s) com código adaptado somente na cópia. Correspondências disponíveis no relatório.`);
     if(adjustments.length)warn('precision',`${adjustments.length} serviço(s) com truncamentos, referências adaptadas ou diferenças financeiras. A conferência não bloqueia a geração por essas diferenças; detalhes no relatório.`);
     const otherSources=items.filter(i=>i.source!=='SINAPI').length;if(otherSources)warn('sources',`${otherSources} serviço(s) exportado(s) como Composição, Cotação ou Outros; fontes originais preservadas no relatório.`);
-    return {version:VERSION,profile:config.profile,sheetNames:[profile?.po,profile?.cff],documentation:DOCUMENTATION,submeta:config.submeta,project:{id:snapshot.projectId,name:snapshot.name,version:snapshot.version,uf:snapshot.uf,reference:snapshot.ref,regime:snapshot.regime},arithmetic:'truncate-2',codeStart:'9990000000000',errors,warnings,adjustments,codeMappings,items,groups,fronts:config.fronts,duration,originalCents:String(original),exportCents:String(total),differenceCents:String(total-original),homologated:false};
+    return {version:VERSION,profile:config.profile,sheetNames:[profile?.po,profile?.cff],documentation:DOCUMENTATION,submeta:config.submeta,project:{id:snapshot.projectId,name:snapshot.name,version:snapshot.version,uf:snapshot.uf,reference:snapshot.ref,regime:snapshot.regime},arithmetic:config.arithmetic,eventogramMapping:config.eventogramMapping||null,codeStart:'9990000000000',errors,warnings,adjustments,codeMappings,items,groups,fronts:config.fronts,duration,originalCents:String(original),exportCents:String(total),differenceCents:String(total-original),homologated:false};
   }
   const xml = value => String(value??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   function workbook(plan) {

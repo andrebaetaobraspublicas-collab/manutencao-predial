@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { assertBmDevelopment, bmReceipt, BmExportReceiptDto, pleReceipt, PleExportReceiptDto } from '../../common/transferegov-bm';
+import { assertBmDevelopment, bmReceipt, BmExportReceiptDto, pleReceipt, PleExportReceiptDto, CompatibleCopyDto, compatibleCopyData } from '../../common/transferegov-bm';
 import { createHash, randomUUID } from 'node:crypto';
 import { Prisma, OrcaproReferenceStatus, type OrcaproProject } from '../../generated/prisma/client';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
@@ -42,6 +42,22 @@ export class OrcaproService {
     const event=await this.prisma.orcaproAudit.create({data:{actorUserId:user.userId,tenantId:user.tenantId,action:'export.transferegov.ple',entityId:id,metadata:receipt}});
     return {...receipt,eventId:event.id};
   }
+
+  async createCompatibleCopy(user:AuthenticatedUser,id:string,dto:CompatibleCopyDto) {
+    assertBmDevelopment(this.config?.get<string>('WEB_BASE_URL'));
+    return this.prisma.$transaction(async db=>{
+      await db.$queryRaw(Prisma.sql`SELECT id FROM OrcaproProject WHERE id=${id} AND tenantId=${user.tenantId} AND ownerUserId=${user.userId} AND archivedAt IS NULL FOR UPDATE`);
+      const source=await this.project(user,id,db),data=compatibleCopyData(source,dto);
+      const existing=await db.orcaproProject.findFirst({where:{id:dto.requestId,...this.owner(user)}});
+      if(existing){const meta=(existing.data as JsonRecord).transferegovCompatibility as JsonRecord;if(meta?.sourceProjectId!==id||meta?.sourceHash!==dto.sourceHash)throw new ConflictException('Identificador de cópia já utilizado.');return existing;}
+      const name=source.name.slice(0,135)+' — TransfereGov';
+      const canonical=this.canonicalData(data,{id:dto.requestId,name,referenceId:source.referenceId,uf:source.uf,regime:source.regime});
+      const codes=projectOfficialCodes(canonical);await this.graph(source.referenceId,codes.compositions,codes.inputs,source.uf,source.regime,db,false,new Set(codes.optional));
+      const copy=await db.orcaproProject.create({data:{id:dto.requestId,...this.owner(user),name,referenceId:source.referenceId,uf:source.uf,regime:source.regime,data:json(canonical)}});
+      await this.snapshot(db,user,copy);await this.audit(db,user,'export.transferegov.compatible-copy',copy.id,{sourceProjectId:id,sourceVersion:source.version,sourceHash:dto.sourceHash,arithmetic:'half-up-2',services:dto.rows.length});return copy;
+    },{timeout:30000});
+  }
+
   private owner(user: AuthenticatedUser) { return { tenantId: user.tenantId, ownerUserId: user.userId }; }
   private audit(db: Db, user: AuthenticatedUser, action: string, entityId: string, metadata?: unknown) {
     return db.orcaproAudit.create({ data: { actorUserId: user.userId, tenantId: user.tenantId, action, entityId, ...(metadata === undefined ? {} : { metadata: json(metadata) }) } });

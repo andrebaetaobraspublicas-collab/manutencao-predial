@@ -561,3 +561,9 @@ Registros antigos sem esses detalhes permanecem válidos; eventos não capturado
 Terceiro aplicativo autorizado em03/10/2026, somente no ambiente DEV nesta entrega. O contrato aditivo `/api/v1/infraestrutura` compartilha a identidade central e usa outro banco para perfis do produto, catálogo SICRO/PEM e dados privados. [infraestrutura-api.md](infraestrutura-api.md) descreve todos os endpoints, envelopes, CSRF/login, importação incremental/hash, ETag, projetos/versões409, migração confirmada, administração e exportação/expurgo LGPD. Rotas da manutenção e do OrçaPro não mudam de versão ou formato.
 
 GET `/infraestrutura/health` é público; os demais recursos exigem perfil próprio, cookies e filtros de proprietário+tenant. Rotas administrativas verificam ADMIN local/configurado, sem herdar OWNER da organização. Senha permanece central; nenhuma nova API aceita hash/senha de outro produto como credencial de bridge.
+
+### Cópia compatível TransfereGov (somente desenvolvimento)
+
+`POST /orcapro/projects/:id/transferegov/compatible-copy` e `POST /infraestrutura/projects/:id/transferegov/compatible-copy` exigem autenticação, permissão do produto, CSRF e propriedade pelo usuário/tenant do token. Corpo: `expectedVersion`, `sourceHash` SHA-256 canônico, `requestId` UUID idempotente e `rows` de 1 a 10.000 `{id,quantity,cost}` com strings decimais de duas casas. A API valida cobertura exata dos IDs do orçamento salvo, limites financeiros e conflito de versão/hash (409).
+
+Cria apenas um novo orçamento privado, versão inicial e auditoria `export.transferegov.compatible-copy`; nunca atualiza a origem, biblioteca ou referência. Repetir o mesmo requestId/origem/hash retorna a cópia já criada. O ambiente é validado antes da transação; produção responde 404. As rotas de recibo BM/PLE existentes continuam somente acrescentando auditoria.

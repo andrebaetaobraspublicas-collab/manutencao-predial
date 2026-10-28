@@ -1,7 +1,9 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsInt, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class BmExportReceiptDto {
   @ApiProperty() @IsInt() @Min(1) expectedVersion!: number;
@@ -19,6 +21,22 @@ export class BmExportReceiptDto {
 export class PleExportReceiptDto extends BmExportReceiptDto {
   @ApiProperty() @IsInt() @Min(1) @Max(999) events!: number;
   @ApiProperty() @IsInt() @Min(1) @Max(100000) completions!: number;
+}
+export class CompatibleCopyRowDto {
+  @ApiProperty() @IsString() @Matches(/^[A-Za-z0-9_.:-]{1,160}$/) id!: string;
+  @ApiProperty() @Matches(/^\d{1,8}\.\d{2}$/) quantity!: string;
+  @ApiProperty() @Matches(/^\d{1,10}\.\d{2}$/) cost!: string;
+}
+export class CompatibleCopyDto {
+  @ApiProperty() @IsInt() @Min(1) expectedVersion!: number;
+  @ApiProperty() @Matches(/^[a-f0-9]{64}$/) sourceHash!: string;
+  @ApiProperty({description:'Identificador da nova cópia; repetir a mesma solicitação não cria outra cópia.'}) @IsUUID() requestId!: string;
+  @ApiProperty({type:[CompatibleCopyRowDto]}) @IsArray() @ArrayMinSize(1) @ArrayMaxSize(10000) @ValidateNested({each:true}) @Type(()=>CompatibleCopyRowDto) rows!: CompatibleCopyRowDto[];
+}
+export function compatibleCopyData(project:{id:string;version:number;data:unknown},dto:CompatibleCopyDto):Record<string,any> {
+  if(project.version!==dto.expectedVersion||createHash('sha256').update(canonicalBm(project.data)).digest('hex')!==dto.sourceHash)throw new ConflictException('A origem mudou após a prévia. Reabra o assistente; nenhuma cópia foi criada.');
+  const engine=require(path.join(__dirname,'../modules/orcapro/legacy/assets/transferegov-compatibility.js')) as {makeDocument:(source:unknown,rows:unknown,meta:unknown)=>Record<string,any>};
+  try{return engine.makeDocument(project.data,dto.rows,{sourceProjectId:project.id,sourceVersion:project.version,sourceHash:dto.sourceHash,requestId:dto.requestId});}catch(error){throw new BadRequestException(error instanceof Error?error.message:'Normalização inválida.');}
 }
 export const canonicalBm = (value: unknown) => JSON.stringify(value,(_key,v)=>v && typeof v==='object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])) : v);
 export function assertBmDevelopment(webBase: string | undefined) {

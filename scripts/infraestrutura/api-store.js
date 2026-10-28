@@ -204,6 +204,12 @@ async function afterModules(O) {
     state.access=fresh;
     return request(`/infraestrutura/projects/${state.project.id}/transferegov/${kind==='PLE'?'ple':'bm'}/receipt`,{method:'POST',body:JSON.stringify(dto)});
   };
+  state.transferegovCompatibleCopy = async dto => {
+    const previous=state.access,fresh=await request('/infraestrutura/access');
+    if(!fresh.enabled||fresh.userId!==previous.userId||fresh.tenantId!==previous.tenantId)throw new Error('O acesso ou a conta mudou. Reabra o programa antes de criar a cópia.');
+    state.access=fresh;
+    return request(`/infraestrutura/projects/${state.project.id}/transferegov/compatible-copy`,{method:'POST',body:JSON.stringify(dto)});
+  };
   const checkEditors = () => {
     if (O.risks?.busy) throw new Error('Aguarde a conclusão da simulação de riscos antes de sair desta tela.');
     if (O.risks?.dirty) throw new Error('Salve ou descarte as alterações da análise de riscos antes de sair desta tela.');

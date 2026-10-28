@@ -7,6 +7,7 @@ const manifest=JSON.parse(await fs.readFile(path.join(root,'extraction-manifest.
 const sources=[];
 for(const item of manifest.modules)sources.push({name:item.file,code:await fs.readFile(path.join(root,'src/modules',item.file),'utf8')});
 sources.push({name:'project-input-prices.js',code:await fs.readFile(path.resolve(root,'../api/src/modules/orcapro/legacy/assets/project-input-prices.js'),'utf8')});
+for(const name of ['transferegov-bm.js','transferegov-compatibility.js'])sources.push({name,code:await fs.readFile(path.resolve(root,'../api/src/modules/orcapro/legacy/assets',name),'utf8')});
 const alSeed=JSON.parse(await fs.readFile(path.join(root,'public/data/administracao-local-seed.json'),'utf8'));
 const mobilizationSeed=JSON.parse(await fs.readFile(path.join(root,'public/data/mobilizacao-seed.json'),'utf8'));
 const template=await fs.readFile(path.join(root,'scripts/runtime-template.cjs'),'utf8');

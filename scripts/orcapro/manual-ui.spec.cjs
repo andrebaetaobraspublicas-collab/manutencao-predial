@@ -117,6 +117,10 @@ test('full offline manual and search escape HTML; export includes every chapter,
 test('release manifest pins manual content/UI/styles with normalized checksums', () => {
   const manifest = JSON.parse(fs.readFileSync(root + '/apps/web/public/orcapro-legacy/manifest.json'));
   assert.equal(manifest.manualVersion, content.version);
+  const html=fs.readFileSync(root+'/apps/web/public/orcapro-legacy/editor.html','utf8'),marker='window.ORCAPRO_MANUAL=',start=html.indexOf(marker),end=html.indexOf(';</script>',start);
+  assert.ok(start>0&&end>start);const embedded=JSON.parse(html.slice(start+marker.length,end));
+  const development=['api.gestaodepredios.com.br','gestaodepredios.com.br','www.gestaodepredios.com.br','localhost','127.0.0.1','[::1]'].includes(new URL(manifest.apiBase).hostname);
+  assert.equal(embedded.chapters.some(c=>c.id==='transferegov-bm'),development,'development API must retain the guide; commercial APIs must omit it');
   for (const [name, prop] of [['manual-content.json', 'manualContentSha256'], ['manual-ui.js', 'manualUiSha256'], ['manual-ui.css', 'manualCssSha256']]) {
     const source = fs.readFileSync(__dirname + '/' + name, 'utf8').replaceAll('\r\n', '\n');
     assert.equal(manifest[prop], crypto.createHash('sha256').update(source).digest('hex'));

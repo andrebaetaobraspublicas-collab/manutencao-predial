@@ -23,7 +23,8 @@
     const q=BigInt(quantity),sum=weights.reduce((n,w)=>n+w.value,0n);if(sum<=0n)throw Error('Informe uma dimensão positiva em pelo menos uma frente.');
     const parts=weights.map(w=>({...w,quantity:q*w.value/sum,remainder:q*w.value%sum})),order=[...parts].sort((a,b)=>a.remainder===b.remainder?a.front-b.front:a.remainder>b.remainder?-1:1);
     let rest=q-parts.reduce((n,p)=>n+p.quantity,0n);for(let i=0;rest>0n;i++,rest--)order[i].quantity++;
-    return Object.fromEntries(parts.map(p=>[String(p.front),B.decimal(p.quantity)]));
+    const active=parts.filter(p=>p.quantity>0n);if(!active.length)active.push([...parts].filter(p=>p.value>0n).sort((a,b)=>a.front-b.front)[0]);
+    return Object.fromEntries(active.map(p=>[String(p.front),B.decimal(p.quantity)]));
   }
   function propose(s,input){
     const config=setup(s,input),d=config.frontDistribution,errors=[],rows=[],byStage=new Map(stages(s).map(st=>[String(st.number),st])),rules=new Map(d.rules.map(r=>[r.stageId,r.rule])),byItem=new Map(s.items.map(r=>[r.id,r])),protectedIds=new Set(d.protected);
@@ -38,7 +39,7 @@
       else if(rule!=='keep'){
         const shared=/ADMINISTRACAO LOCAL|MOBILIZACAO|DESMOBILIZACAO|CANTEIRO/.test(String(r.description).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase());
         if(rule==='dimensions'&&shared&&!ancestor){record.status='pending';record.reason='Possível serviço compartilhado: defina uma regra específica na etapa ou distribua manualmente.';}
-        else try{const q=B.truncated(r.quantity);record.after=rule==='dimensions'?apportioned(q,dimensions()):Object.fromEntries(config.fronts.map(f=>[String(f.number),B.decimal(String(f.number)===rule.slice(6)?q:0n)]));
+        else try{const q=B.truncated(r.quantity);record.after=rule==='dimensions'?apportioned(q,dimensions()):{[rule.slice(6)]:B.decimal(q)};
           record.status=equal(record.before,record.after)?'unchanged':'changed';record.reason=rule==='dimensions'?'Proporção das dimensões físicas; resíduos distribuídos por maiores restos.':'Frente única definida pela regra.';
           item.allocations=clone(record.after);if(!d.preserveManual)protectedIds.delete(item.id);
         }catch(e){record.status='pending';record.reason=e.message;errors.push(e.message);}

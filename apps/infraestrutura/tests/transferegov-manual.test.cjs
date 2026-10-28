@@ -7,5 +7,5 @@ test('Infraestrutura manual renders the shared walkthrough, tables, examples and
  ctx.document.createElement=()=>{const article={innerHTML:''},nav={appendChild:()=>{}};let original='';return{dataset:{},set innerHTML(v){original=v;},get innerHTML(){return article.innerHTML||original;},querySelector:selector=>selector==='.mnav'?nav:selector==='.mart'?article:null};};
  vm.runInContext(fs.readFileSync(root+'/scripts/shared/transferegov-bm-ui.js','utf8'),ctx);ctx.installTransferegovBM(guide);O.app.man={cap:guide.id,q:''};const html=O.ui.views.manual.render();
  for(const value of ['Neste capítulo','<table','0,34 m³','Resultado esperado','Checklist antes de concluir','mandatarias.transferegov.sistema.gov.br','tg-manual-section-0'])assert.ok(html.includes(value),value);
- assert.ok(html.includes('&lt;unsafe&gt;'));assert.ok(html.includes('&lt;value&gt;'));assert.ok(!html.includes('<img src=x'));assert.ok(!html.includes('<script>'));assert.ok(!html.includes('href="javascript:'));assert.equal(JSON.stringify(O.app.pj),source);
+ assert.ok(html.includes('&lt;unsafe&gt;'));assert.ok(html.includes('&lt;value&gt;'));assert.ok(html.includes('white-space:pre-wrap;overflow-wrap:anywhere'));assert.ok(!html.includes('<img src=x'));assert.ok(!html.includes('<script>'));assert.ok(!html.includes('href="javascript:'));assert.equal(JSON.stringify(O.app.pj),source);
 });

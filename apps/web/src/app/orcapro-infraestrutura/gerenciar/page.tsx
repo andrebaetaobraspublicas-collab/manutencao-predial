@@ -6,6 +6,7 @@ import { infraAccess, infraApi, infraDownload, infraItems, type InfraCycle, type
 import { ORCAPRO_ONLY } from '@/lib/product-config';
 import InfraShell from '../infra-shell';
 import styles from '../../orcapro/workspace.module.css';
+import { useInfraActivity } from '@/lib/use-infra-activity';
 
 type Version = { version: number; createdAt?: string };
 type Migration = { confirmationToken: string; report: { before: { workDays: number }; after: { workDays: number }; items: { id: string; code: string; description: string; quantity: number; oldUnitCostCents: number | null; newUnitCostCents: number | null; deltaDirectCents: number | null }[] } };
@@ -16,10 +17,12 @@ export default function InfraProjects() {
   const [name, setName] = useState('Novo orçamento'), [cycleId, setCycleId] = useState(''), [uf, setUf] = useState('SP'), [regime, setRegime] = useState('SD');
   const [selected, setSelected] = useState<InfraProject | null>(null), [versions, setVersions] = useState<Version[]>([]), [migration, setMigration] = useState<Migration | null>(null), [targetCycle, setTarget] = useState('');
   const [policies, setPolicies] = useState<{ name: string; data: { text: string }; version: number }[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  useInfraActivity('projects',loaded);
   const load = useCallback(async (archived = trash) => {
     const [access, documents, references] = await Promise.all([infraAccess(), infraApi<{ items: InfraProject[] }>('/projects?trash=' + archived), infraApi<{ items: InfraCycle[] }>('/cycles')]);
     if (!access.enabled) throw new Error('Seu acesso ao Infraestrutura ainda não está ativo.');
-    setAdmin(access.role === 'ADMIN'); setProjects(infraItems(documents)); setCycles(infraItems(references));
+    setAdmin(access.role === 'ADMIN'); setProjects(infraItems(documents)); setCycles(infraItems(references)); setLoaded(true);
     const first = infraItems(references).find(c => c.status === 'PUBLISHED');
     setCycleId(previous => previous || first?.id || '');
     const query = new URLSearchParams(window.location.search);

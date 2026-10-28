@@ -2,6 +2,9 @@ const test = require('node:test'), assert = require('node:assert/strict');
 const H = require('./harness.cjs');
 const { fixture, cycleId, projectId } = require('./bridge-harness.cjs');
 const copy = x => JSON.parse(JSON.stringify(x));
+// Navigation telemetry is permitted during consultation; budget persistence
+// and reference migration remain forbidden until the user confirms.
+const businessRequests = requests => requests.filter(x => !(x.method === 'POST' && x.route === '/activity/navigation'));
 const rj = { id: '44444444-4444-4444-8444-444444444444', uf: 'RJ', ref: '2026-07', status: 'PUBLISHED' };
 const sp = { id: cycleId, uf: 'SP', ref: '2026-07', status: 'PUBLISHED' };
 const cycles = [rj, sp];
@@ -127,7 +130,7 @@ test('Catálogo, Insumos e Composições têm consulta independente, inclusive m
   assert.throws(() => O.infra.withConsultation(() => { throw Error('falha de renderização'); }), /renderização/);
   assert.equal(O.app.base, originalBase); assert.equal(JSON.stringify(O.app.pj), projectBefore);
   assert.equal(JSON.stringify(originalBase.officialRaw), rawBefore, 'consultation must not rewrite shared flat analytical vectors');
-  assert.equal(f.requests.filter(x => x.method !== 'GET').length, 0, 'consultation makes no POST/PUT/flush');
+  assert.equal(businessRequests(f.requests).filter(x => x.method !== 'GET').length, 0, 'consultation never persists or migrates a budget');
   O.register.editor = { draft: {} }; await O.ui.chg.infraUF({ value: 'SP' });
   assert.equal(O.infra.consultation.cycle.id, august.id); O.register.editor = null;
   O.app.view = 'budget'; await O.ui.chg.infraUF({ value: 'RJ' });
@@ -150,7 +153,7 @@ test('Respostas atrasadas de consulta não substituem a última UF selecionada n
   await f.O.infra.consultReference(sp); release(); await first;
   assert.equal(f.O.infra.consultation.cycle.id, sp.id); assert.equal(f.O.infra.consultation.loading, false);
   assert.equal(f.O.app.pj.uf, 'SP'); assert.equal(f.project().version, 1);
-  assert.ok(f.requests.every(x => x.method === 'GET'));
+  assert.ok(businessRequests(f.requests).every(x => x.method === 'GET'));
 });
 
 test('Telas originais, filtro, CSV e cópia própria usam a consulta; adicionar usa a referência da obra', async () => {
@@ -181,5 +184,5 @@ test('Telas originais, filtro, CSV e cópia própria usam a consulta; adicionar 
   assert.equal(O.app.pj.uf, 'SP'); assert.equal(O.app.base, base);
   // The input-add test mutates the project deliberately; preceding consultation
   // actions must not have performed any persistence or whole-budget migration.
-  assert.ok(f.requests.every(x => x.method === 'GET'));
+  assert.ok(businessRequests(f.requests).every(x => x.method === 'GET'));
 });

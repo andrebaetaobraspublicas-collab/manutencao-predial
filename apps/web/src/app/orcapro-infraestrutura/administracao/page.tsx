@@ -6,11 +6,11 @@ import { infraAccess, infraApi, infraItems, type InfraCycle } from '@/lib/infra-
 import { uploadInfraCatalog, type CatalogBundle } from '@/lib/infra-import';
 import InfraShell from '../infra-shell';
 import styles from '../../orcapro/workspace.module.css';
+import AuditPanel from '../../orcapro/administracao/audit-panel';
 
 type Member = { userId: string; tenantId: string; name: string; email: string; role: string; status: string; deletedAt?: string };
 type Account = { userId: string; tenantId: string; name: string; email: string; organizationName: string };
 type Policy = { name: string; data: { text: string }; version: number };
-type Audit = { id: string; action: string; entity: string; createdAt: string; payload: unknown };
 type Stats = { users: { status: string; count: number }[]; projects: { total: number; bytes: number }; cycles: { status: string; count: number }[] };
 const situations: Record<string, string> = { ACTIVE: 'Ativo', PENDING: 'Aguardando aprovação', BLOCKED: 'Bloqueado', DRAFT: 'Rascunho', PUBLISHED: 'Publicado', ARCHIVED: 'Arquivado', UPLOADING: 'Recebendo arquivos', QUEUED: 'Aguardando conferência', PROCESSING: 'Conferindo custos', PASSED: 'Conferência aprovada', FAILED: 'Conferência reprovada' };
 const download = (value: unknown, name: string) => { const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
@@ -19,7 +19,7 @@ export default function InfraAdmin() {
   const [allowed, setAllowed] = useState(false), [self, setSelf] = useState(''), [tab, setTab] = useState('users');
   const [error, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false);
   const [users, setUsers] = useState<Member[]>([]), [cycles, setCycles] = useState<InfraCycle[]>([]), [policies, setPolicies] = useState<Policy[]>([]), [stats, setStats] = useState<Stats | null>(null);
-  const [search, setSearch] = useState(''), [accounts, setAccounts] = useState<Account[]>([]), [audits, setAudits] = useState<Audit[]>([]), [auditPage, setAuditPage] = useState(1);
+  const [search, setSearch] = useState(''), [accounts, setAccounts] = useState<Account[]>([]);
   const [create, setCreate] = useState(false), [form, setForm] = useState({ name: '', email: '', password: '', organizationName: '', organizationSlug: '', role: 'USER', status: 'ACTIVE' });
   const [passwordFor, setPasswordFor] = useState<Member | null>(null), [password, setPassword] = useState('');
   const [bundle, setBundle] = useState<CatalogBundle | null>(null), [files, setFiles] = useState<string[]>([]), [uf, setUf] = useState('SP'), [ref, setRef] = useState(''), [importing, setImporting] = useState(false);
@@ -39,12 +39,7 @@ export default function InfraAdmin() {
     }).catch(cause => { if (!active) return; if (cause instanceof ApiError && cause.status === 401) window.location.assign('/login/?next=/orcapro-infraestrutura'); else setError(cause instanceof Error ? cause.message : 'Falha ao validar a administração.'); });
     return () => { active = false; };
   }, [reload]);
-  useEffect(() => {
-    if (!allowed || tab !== 'audit') return;
-    let active = true;
-    void infraApi<{ items: Audit[] }>('/admin/audit?page=' + auditPage + '&pageSize=50').then(result => { if (active) setAudits(infraItems(result)); }).catch(cause => { if (active) setError(cause instanceof Error ? cause.message : 'Falha ao consultar auditoria.'); });
-    return () => { active = false; };
-  }, [allowed, tab, auditPage]);
+
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       const frame = document.getElementById('infra-importer') as HTMLIFrameElement | null;
@@ -115,6 +110,6 @@ export default function InfraAdmin() {
       </section>
     </> : null}
     {tab === 'policies' ? <section className={styles.panel}><h2>Política de privacidade e termos</h2><p className={styles.muted}>Os textos abaixo são exibidos aos usuários. Revise-os conforme a operação e a política de retenção adotadas antes de oferecer o serviço comercialmente.</p>{policies.map(p => <form key={p.name} onSubmit={event => { event.preventDefault(); void action(async () => { await infraApi('/admin/policies/' + p.name, { method: 'PUT', body: JSON.stringify({ text: p.data.text, version: p.version }) }); await reload(); setNotice('Texto atualizado.'); }); }}><label>{p.name === 'privacy' ? 'Política de privacidade' : 'Termos de uso'}<textarea required maxLength={100000} rows={12} style={{ display: 'block', width: '100%', margin: '12px 0', padding: 12, font: 'inherit', border: '1px solid #c9d1d7' }} value={p.data.text} onChange={e => setPolicies(policies.map(item => item.name === p.name ? { ...item, data: { text: e.target.value } } : item))} /></label><button disabled={busy}>Salvar texto</button></form>)}</section> : null}
-    {tab === 'audit' ? <section className={styles.panel}><h2>Auditoria</h2><p className={styles.muted}>Importações, publicação de referências, alterações de acesso e gravações de projetos são registradas. Senhas não são registradas.</p><div className={styles.tablewrap}><table><thead><tr><th>Data</th><th>Ação</th><th>Registro</th><th>Detalhes</th></tr></thead><tbody>{audits.map(a => <tr key={a.id}><td>{new Date(a.createdAt).toLocaleString('pt-BR')}</td><td>{a.action}</td><td>{a.entity}</td><td><details><summary>Ver registro</summary><pre style={{ whiteSpace: 'pre-wrap' }}>{typeof a.payload === 'string' ? a.payload : JSON.stringify(a.payload, null, 2)}</pre></details></td></tr>)}</tbody></table></div><div className={styles.pager}><button disabled={auditPage === 1} onClick={() => setAuditPage(auditPage - 1)}>Anterior</button><span>Página {auditPage}</span><button disabled={audits.length < 50} onClick={() => setAuditPage(auditPage + 1)}>Próxima</button></div></section> : null}
+    {tab === 'audit' ? <AuditPanel product="infra" /> : null}
   </InfraShell>;
 }

@@ -1,5 +1,9 @@
 # Modelo e dicionário de dados
 
+## Auditoria Infraestrutura detalhada — 27/10/2026
+
+`InfraAudit` mantém colunas e todos os eventos existentes. A migration independente `002_detailed_audit.sql` acrescenta apenas índices `(created_at,id)` e `(user_id,created_at,id)`. Os novos eventos de acesso/navegação usam payload limitado e sanitizado; não gravam documentos de projetos nem credenciais. Consulta global somente por administrador Infraestrutura; navegação continua validando tenant e proprietário. [Operação, privacidade e rollback](infraestrutura-audit.md).
+
 ## Preços de insumos no orçamento — 27/10/2026
 
 Campos JSON aditivos em `OrcaproProject.data` e `InfraProject.data`: `inputPriceOverrides` (chave código/UF/mês/regime, preço em centavos, CHP/CHI quando aplicável, fonte e data) e `inputPriceHistory` (alterações confirmadas). São dados privados do projeto, presentes nas versões e exportações, sem atualizar catálogos referenciais ou biblioteca privada. Não exige migration nem modifica usuários/orçamentos existentes. [Especificação](project-input-prices.md).

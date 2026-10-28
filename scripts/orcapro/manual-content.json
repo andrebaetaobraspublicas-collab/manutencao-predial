@@ -1,6 +1,6 @@
 {
-  "version": "1.0.3",
-  "reviewedAt": "09/10/2026",
+  "version": "1.0.4",
+  "reviewedAt": "27/10/2026",
   "title": "Manual interativo do OrçaPro",
   "sources": [
     {
@@ -54,6 +54,7 @@
         "sinapi",
         "catalogo",
         "orcamento",
+        "precos-orcamento",
         "bdi",
         "verificacao",
         "arquivos"
@@ -349,7 +350,8 @@
         "bdi",
         "equipes",
         "verificacao",
-        "integracoes"
+        "integracoes",
+        "precos-orcamento"
       ]
     },
     {
@@ -1833,6 +1835,139 @@
         "sinapi",
         "arquivos"
       ]
+    },
+    {
+      "id": "precos-orcamento",
+      "title": "30. Alterar um insumo em todo o orçamento e restaurar preços",
+      "category": "Orçamentar",
+      "summary": "Cote uma única vez, confira as ocorrências diretas e auxiliares e confirme a substituição somente no orçamento aberto. Aprenda também a retirar a substituição e conferir a restauração.",
+      "target": "inputs",
+      "related": [
+        "orcamento",
+        "abc-insumos",
+        "arquivos",
+        "verificacao"
+      ],
+      "sections": [
+        {
+          "title": "O que significa mudar o preço no orçamento inteiro",
+          "body": "O botão Preço no orçamento cria uma substituição do valor de um código na combinação de UF, data-base e regime do orçamento aberto. Todas as ocorrências analíticas desse mesmo insumo passam a usá-la: insumos lançados diretamente, serviços repetidos, composições próprias analíticas e composições auxiliares em vários níveis. O código referencial permanece o mesmo; não é necessário copiar cada composição para trocar seu preço.",
+          "expected": "O catálogo oficial, a biblioteca privada, os outros orçamentos e os projetos de outros usuários conservam seus valores. Um serviço incluído depois também usa a substituição quando pertence à mesma combinação."
+        },
+        {
+          "title": "Passo a passo: informar uma cotação e gerar a prévia",
+          "steps": [
+            "Abra o orçamento que pretende revisar. Confira na barra superior a UF, a referência mensal e o regime; Ano do IVA é o ano da simulação tributária e não a data-base dos preços.",
+            "Entre em Insumos, procure pelo código ou descrição e clique em Preço no orçamento na linha do recurso.",
+            "No formulário Preço do insumo em todo o orçamento, confira o nome do orçamento, o código, a unidade e o contexto apresentado. No Infraestrutura, consultar outra UF no catálogo não muda esse contexto: a edição sempre se destina à referência do orçamento.",
+            "Preencha Novo preço unitário (R$), Data da cotação e Fonte ou justificativa. Registre fornecedor, proposta ou motivo para que a decisão possa ser conferida depois. Use até duas casas decimais. Zero é um valor informado; deixar o campo vazio não equivale a zero.",
+            "Informe o preço final para o regime mostrado. Os encargos sociais não serão adicionados novamente. Para um equipamento SICRO com código E, informe separadamente o custo horário produtivo (CHP) e o improdutivo (CHI).",
+            "Clique em Conferir serviços afetados. Essa ação apenas simula a mudança; ainda não altera nem salva o orçamento."
+          ]
+        },
+        {
+          "title": "Como conferir os serviços afetados e os totais",
+          "table": {
+            "headers": [
+              "Informação da prévia",
+              "Como interpretar"
+            ],
+            "rows": [
+              [
+                "Serviços vinculados",
+                "Número de ocorrências da planilha cujo analítico utiliza o insumo, inclusive por auxiliares. O mesmo código de serviço pode aparecer em mais de uma linha do orçamento."
+              ],
+              [
+                "Recalculáveis",
+                "Linhas que podem receber o novo custo a partir do analítico. Revise cada ocorrência antes de confirmar."
+              ],
+              [
+                "Com custo fixo preservado",
+                "Itens com custo unitário informado manualmente mantêm esse valor. A troca do insumo não sobrepõe um preço fechado."
+              ],
+              [
+                "Custo direto e preço total com BDI",
+                "Compare a coluna Atual com Após aplicar. A diferença mostra o efeito no orçamento inteiro, respeitando quantidades, regras de arredondamento e percentuais de BDI vigentes."
+              ],
+              [
+                "Ocorrências afetadas no orçamento",
+                "Confira item, código, descrição, quantidade, custo unitário atual, novo custo unitário, variação direta e situação. A quantidade é apresentada para conferência; ela não é editada nessa tela."
+              ],
+              [
+                "Nenhum serviço utiliza o insumo",
+                "Não há impacto imediato nos totais. Se confirmada, a substituição fica disponível para novas inclusões na mesma UF, mês e regime."
+              ]
+            ]
+          },
+          "expected": "Se o resultado não corresponder à cotação desejada, clique em Voltar para corrigir o formulário ou em Cancelar para sair sem aplicar. Uma composição com preço fechado, sem consumo analítico, não é uma ocorrência recalculável."
+        },
+        {
+          "title": "Confirmar, salvar na nuvem e verificar o resultado",
+          "steps": [
+            "Depois de revisar a lista e os totais, marque Conferi os serviços e autorizo a alteração neste orçamento. O botão Aplicar ao orçamento permanece desabilitado enquanto a confirmação não estiver marcada.",
+            "Clique em Aplicar ao orçamento e aguarde a indicação de salvamento no servidor. A prévia precisa ser refeita se o documento ou a referência tiver mudado desde a comparação.",
+            "Volte ao Orçamento e confira custo direto, total com BDI e os serviços que aparecem na prévia. Use as curvas ABC de serviços e de insumos para revisar o novo peso dos recursos.",
+            "Consulte o histórico de versões e a auditoria para rastrear a gravação. A informação da substituição, sua fonte, data e histórico ficam no documento deste orçamento.",
+            "Se houver conflito entre abas, preserve o rascunho e resolva a divergência ou salve como cópia. Não interprete uma falha de gravação como confirmação de que o preço já está na nuvem."
+          ]
+        },
+        {
+          "title": "Restaurar o preço da referência ou do cadastro próprio",
+          "steps": [
+            "No menu Insumos, clique em Preços deste orçamento. A lista mostra os códigos, contextos, preços e respectivas fontes e datas.",
+            "Na substituição ativa, clique em Revisar / restaurar. Também é possível abrir novamente Preço no orçamento na linha do mesmo insumo.",
+            "Clique em Restaurar preço anterior à substituição… e confira a tela Conferir restauração do preço. Ela lista os serviços e compara os totais atuais com os que resultarão da retirada da substituição.",
+            "Marque a confirmação somente depois de conferir os impactos e clique em Confirmar restauração. Aguarde novamente a confirmação de salvamento.",
+            "Confira a planilha e as curvas ABC. A substituição foi removida somente daquela combinação: o preço volta a vir da referência ativa ou do cadastro próprio usado pelo orçamento. O catálogo oficial não é regravado."
+          ],
+          "expected": "Restaurar não apaga o insumo, o serviço ou as versões históricas e não desfaz outras edições da obra. Se outra UF, mês ou regime estiver selecionado, a substituição aparece fora do contexto atual; retorne ao contexto correto para revisá-la. Novas pendências de preço impedem a confirmação e precisam ser resolvidas."
+        },
+        {
+          "title": "Exemplo para entender o alcance da substituição",
+          "body": "Considere um cimento que custa R$ 0,70/kg e recebe cotação de R$ 0,90/kg. Se houver 100 kg de consumo analítico em uma linha, sua parcela de cimento aumenta R$ 20,00 antes dos arredondamentos do serviço. O sistema percorre também os concretos e argamassas auxiliares usados por outros serviços; não é necessário editar cada um deles. A prévia do seu orçamento é a conferência definitiva do impacto, pois considera os coeficientes, quantidades e regras de cada motor.",
+          "formula": "Variação da parcela do insumo = consumo analítico × (preço novo − preço anterior)\nExemplo didático: 100 kg × (R$ 0,90 − R$ 0,70) = R$ 20,00",
+          "expected": "Este exemplo é explicativo e não preenche ou modifica o seu orçamento. Custos unitários fixos permanecem preservados mesmo quando há vínculos analíticos com o cimento."
+        },
+        {
+          "title": "Efeitos no BDI, IVA, cronograma e riscos",
+          "table": {
+            "headers": [
+              "Módulo / informação",
+              "O que acontece"
+            ],
+            "rows": [
+              [
+                "BDI e preço de venda",
+                "O percentual de BDI é mantido e aplicado aos novos custos. A substituição não escolhe uma nova taxa de BDI. Revise separadamente suas premissas quando necessário."
+              ],
+              [
+                "IVA, IBS e CBS",
+                "Os créditos são recalculados pelo motor tributário quando a valoração usa os preços do orçamento. A opção fiscal explícita de preços de origem continua respeitada. Créditos não são descontados automaticamente do preço de venda."
+              ],
+              [
+                "Curvas ABC e valores financeiros",
+                "Custos, totais e participações são atualizados. Releia a classificação ABC e os valores financeiros do planejamento após a mudança."
+              ],
+              [
+                "Equipes e cronograma",
+                "Quantidades, coeficientes, equipes, duração, calendário e vínculos são preservados. Trocar preço não significa alterar produtividade ou prazo."
+              ],
+              [
+                "Riscos e contingências",
+                "As análises anteriores conservam a fotografia de custos usada na simulação. Refaça a análise para que Monte Carlo, tornado e a decisão sobre a parcela R considerem o novo orçamento."
+              ],
+              [
+                "Equipamentos SICRO",
+                "CHP e CHI são distintos. A memória de parcelas e créditos do equipamento usa rateio proporcional estimado; confira o enquadramento e a fonte da cotação."
+              ],
+              [
+                "Troca de UF, data-base ou regime",
+                "A substituição não migra silenciosamente para outro contexto. Consulte Preços deste orçamento para identificar os valores que deixaram de estar ativos."
+              ]
+            ]
+          }
+        }
+      ]
     }
   ],
   "glossary": [
@@ -2015,6 +2150,24 @@
       ],
       "answer": 0,
       "explanation": "A série anual não distribui compras pelo cronograma. Uma análise temporal real requer escopos e premissas documentados."
+    },
+    {
+      "question": "Cliquei em Conferir serviços afetados. O novo preço já foi aplicado?",
+      "options": [
+        "Sim, a prévia salva a mudança",
+        "Não: é preciso revisar, marcar a confirmação, aplicar e aguardar o salvamento"
+      ],
+      "answer": 1,
+      "explanation": "A prévia é somente leitura. Cancelar preserva o orçamento; a gravação ocorre após a confirmação explícita."
+    },
+    {
+      "question": "Restaurar o preço retira a substituição de qual escopo?",
+      "options": [
+        "De todos os usuários e de todas as UFs",
+        "Somente da combinação de código, UF, data-base e regime daquele orçamento"
+      ],
+      "answer": 1,
+      "explanation": "A referência ou o cadastro próprio volta a fornecer o preço naquele contexto; outros orçamentos e os catálogos oficiais são preservados."
     }
   ]
 }

@@ -1,0 +1,23 @@
+# Auditoria detalhada do OrçaPro Infraestrutura
+
+A tela Administração → Auditoria usa o mesmo painel de consulta do OrçaPro. Oferece busca literal por nome/e-mail do responsável, período inclusivo de dias de Brasília, categorias de acessos/atividades/falhas, 20/50/100 registros por página, total e navegação até a primeira/última página. Responsáveis históricos e nomes de orçamentos são resolvidos independentemente da lista corrente de usuários. Contas removidas continuam identificáveis enquanto a política de retenção permitir; dados já anonimizados aparecem sem identidade.
+
+O endpoint administrativo `GET /infraestrutura/admin/audit` continua reservado ao administrador global do produto. Agora devolve `total`, `pages`, `timezone`, `actor`, `entityName` e `metadata`, preservando `items`, `page`, `pageSize`, `userId` e `payload` (este último também sanitizado). Ordenação estável: `created_at DESC,id DESC`. Não há corte nos registros mais antigos. O fim do período é a meia-noite seguinte exclusiva em UTC. Buscas de texto são parametrizadas e têm collation UTF-8 explícita para as bases históricas da Hostinger.
+
+O interceptor registra login dedicado, saída de sessão verificada, operações autenticadas e falhas de processamento com método, rota-modelo, status, duração, IP observado pela API e identificação limitada do navegador. No desenvolvimento, logins compartilhados sem perfil Infraestrutura não são copiados para esta auditoria. Na implantação comercial isolada, operações das rotas de cobrança também são observadas. Falhas anteriores à execução dos interceptors (por exemplo, rejeição pelo guard JWT) não geram um evento de processamento do controlador. Eventos sem identidade comprovada usam identificadores anônimos; não se deduz um usuário a partir do e-mail de uma tentativa recusada.
+
+`POST /infraestrutura/activity/navigation` registra a tela aberta, com o projeto opcional. O projeto, quando informado, precisa pertencer ao usuário e tenant autenticados; CSRF e guard do produto são mantidos. O editor emite uma vez por mudança de tela, sem alterar ou versionar o orçamento. A lista de projetos também registra sua abertura. Consultas da própria auditoria, health checks e o endpoint de navegação não provocam eventos automáticos de realimentação.
+
+Eventos de negócio já existentes permanecem na tabela InfraAudit. Novas gravações indicam a versão anterior e as seções relevantes alteradas; substituições de preço recebem também `project.input-prices.update`. As trilhas antigas não são reconstituídas artificialmente. A nova captura começa com a atualização. Histórico financeiro de assinaturas já existente na identidade comercial permanece preservado no seu banco.
+
+Credenciais, tokens, cookies, cabeçalhos de autorização, corpos de requisição, documentos integrais e query strings não entram nos novos eventos de acesso. A resposta administrativa filtra e limita os detalhes de eventos anteriores. Falha na escrita de um evento de observabilidade não transforma uma operação de negócio já concluída em erro/repetição. Eventos transacionais de negócio continuam comprometidos com a transação correspondente.
+
+## Migration e publicação
+
+`002_detailed_audit.sql` adiciona somente índices em InfraAudit. Executar pelo CLI `infraestrutura-migrate.mjs` no banco Infraestrutura, com `INFRA_ENV_FILE` privado e endereço exato conferido; nunca no DATABASE_URL da identidade. Não há mudança de colunas, importação de catálogos, seed, remoção de usuários/projetos/versões ou exclusão de eventos. Fazer backup e comparar contagens/assinaturas dos dados existentes antes e depois. A tabela InfraMigration recebe apenas a nova entrada do ledger.
+
+Rollback: voltar os artefatos anteriores preservando a tabela, todos os eventos e os índices adicionados. Se necessário em uma manutenção planejada, os índices `infra_audit_page` e `infra_audit_actor` podem ser removidos separadamente; não apagar a tabela nem restaurar um banco antigo sobre dados atuais. O esquema anterior continua compatível com os eventos novos. Logs seguem as políticas de acesso e LGPD já existentes; esta entrega não cria uma rotina de purga.
+
+## Verificação
+
+Testes verificam paginação histórica e total coerente, ordenação, filtro de datas com dia final inteiro, collation/busca literal, anonimização de detalhes, escopo administrador global, proprietário/tenant de navegação, ausência de realimentação, falhas de login e de observabilidade. A suíte MySQL usa exclusivamente um banco descartável explicitamente configurado; testa limites UTC reais e categorias. O teste do adaptador comprova que navegar não cria PUT nem nova versão de orçamento.

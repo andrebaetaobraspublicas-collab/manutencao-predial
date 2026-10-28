@@ -74,6 +74,7 @@ async function fixture(options = {}) {
       const row = { code, kind, revision: (old?.revision || 0) + 1, data: body.data, deleted: method === 'DELETE' };
       own.set(kind + ':' + code, row); return respond(row);
     }
+    if (route === '/activity/navigation' && method === 'POST') return respond({ recorded: true });
     return respond({ message: 'Rota de fixture não implementada: ' + route }, 404);
   };
   if (!ctx.OP) ctx.OP = { store: {}, app: { pj: copy(project.data) }, util: {}, main: { boot: async () => {}, useBase: () => {} },

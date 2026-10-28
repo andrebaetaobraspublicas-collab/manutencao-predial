@@ -3,7 +3,7 @@
   "title": "31. TransfereGov: exportar BM e PLE passo a passo",
   "category": "SaaS e registros",
   "developmentOnly": true,
-  "summary": "Do orçamento à planilha: escolha BM ou PLE, prepare uma cópia compatível, aproveite o Eventograma, distribua as frentes e confira o arquivo antes da importação manual. Roteiro comum ao OrçaPro SINAPI e ao OrçaPro Infraestrutura SICRO, disponível no desenvolvimento.",
+  "summary": "Do orçamento à planilha: escolha BM ou PLE, prepare ajustes temporários de precisão, aproveite o Eventograma, distribua as frentes e confira o arquivo antes da importação manual. Roteiro comum ao OrçaPro SINAPI e ao OrçaPro Infraestrutura SICRO, disponível no desenvolvimento.",
   "target": "budget",
   "related": [
     "orcamento",
@@ -89,7 +89,7 @@
       "expected": "O nome da modalidade aparece no título do assistente e no botão Gerar e baixar XLSX BM ou PLE. Configurações BM e PLE são independentes."
     },
     {
-      "title": "Distinguir origem, exportação e novo orçamento",
+      "title": "Distinguir orçamento e prévia temporária de exportação",
       "table": {
         "headers": [
           "Ação",
@@ -101,12 +101,12 @@
             "Somente na configuração da exportação aberta; o orçamento e seu Eventograma não são reescritos."
           ],
           [
-            "Preparar prévia ou cancelar sugestões",
-            "Nenhuma alteração é aplicada ao orçamento. Cancelar a prévia não apaga um orçamento compatível já criado."
+            "Preparar ou cancelar prévia",
+            "Os ajustes ficam somente na memória do assistente. Nenhum orçamento ou versão é criado."
           ],
           [
-            "Confirmar e criar orçamento compatível",
-            "Cria outro orçamento privado, com versão e auditoria próprias. A origem continua intacta."
+            "Confirmar ajustes somente na exportação",
+            "Aplica o critério financeiro à configuração temporária. O orçamento mantém todas as quantidades, custos, BDI, equipes, riscos e prazos."
           ],
           [
             "Abrir BM/PLE em uma cópia compatível",
@@ -134,16 +134,17 @@
       "expected": "A identificação mostra o nome, a versão e o contexto da fotografia. Se houver edição ou conflito pendente, a captura é recusada."
     },
     {
-      "title": "Quando usar Preparar cópia compatível",
+      "title": "Preparar prévia temporária, conferir e confirmar",
       "steps": [
-        "Se a origem tem quantidades, custos ou BDI com precisão maior que duas casas, a exportação direta pode apresentar diferença. Truncar somente o preço unitário original não resolve todas essas causas.",
-        "Na Identificação ou Conferência, clique em Preparar cópia compatível. Leia o valor da origem, o valor proposto e a relação das entradas que serão adequadas.",
-        "Confirme em Confirmar e criar orçamento compatível. Será criado outro orçamento com o sufixo TransfereGov. Abra-o pelo link Abrir cópia compatível e exportar; não continue exportando o original esperando que seu valor tenha mudado.",
-        "A nova cópia fixa custos adotados por serviço, quantidades periódicas em duas casas e BDI em duas casas percentuais. A sincronização automática de eventos pelas equipes fica desligada. Quantidades normalizadas podem alterar prazos da cópia.",
-        "Análises de risco vinculadas à versão anterior não são transferidas; refaça-as se necessário. O perfil financeiro da cópia aparece fixo no Orçamento.",
-        "Com a seleção integral e uma única frente, confira a igualdade entre a cópia e seu arquivo. Dividir quantidades entre várias frentes pode gerar centavos por produto. Igualdade com a cópia não significa manter o mesmo total do orçamento original."
+        "Na Identificação ou Conferência, clique em Preparar prévia temporária. Não é necessário criar ou abrir outro orçamento.",
+        "Confira Original selecionado, Exportação com ajustes e Diferença para o original. Quando houver pendências estruturais os valores serão parciais.",
+        "Expanda Conferir ajustes por serviço: compare quantidade, custo adotado, BDI e total originais com os valores exportados. Entradas são truncadas em duas casas; preço com BDI e produtos por frente usam arredondamento decimal convencional.",
+        "Clique em Confirmar ajustes somente na exportação. A configuração é temporária; não modifica nem duplica o orçamento e não cria uma versão. Se mudar a configuração após a prévia, prepare outra antes de confirmar.",
+        "Voltar ao truncamento da exportação restaura o critério direto apenas na configuração. Cancelar prévia descarta a proposta sem alterar o critério aplicado anteriormente.",
+        "Baixe a configuração para reutilizar suas escolhas. Ao fechar e reabrir o assistente elas são reiniciadas; não há gravação automática de um novo orçamento.",
+        "Cópias compatíveis criadas anteriormente continuam disponíveis e não são excluídas ou convertidas. A abertura de uma cópia antiga ainda pode salvar suas próprias memórias derivadas; isso não altera o orçamento de origem."
       ],
-      "expected": "Você passa a trabalhar em outro orçamento, com o total proposto na prévia; a origem mantém seus valores e histórico."
+      "expected": "A planilha e o relatório refletem o critério confirmado. A diferença para o orçamento original permanece explícita; normalização e rateio por frente podem impedir igualdade exata."
     },
     {
       "title": "Etapa 1 — Identificar a submeta e o perfil",
@@ -286,9 +287,9 @@
             "Total original dos serviços selecionados versus valor do arquivo; diferenças são informadas."
           ],
           [
-            "Exportação de orçamento compatível",
-            "A nova cópia adota entradas em duas casas e usa arredondamento decimal convencional, meio para cima, nos preços e produtos.",
-            "Total dessa cópia versus arquivo, com a mesma seleção e distribuição."
+            "Ajustes temporários confirmados",
+            "Entradas truncadas em duas casas; preço com BDI e produtos arredondados meio para cima apenas no exportador.",
+            "Original selecionado versus arquivo, sem gerar outro orçamento."
           ],
           [
             "Redistribuição entre várias frentes",
@@ -356,7 +357,7 @@
           ],
           [
             "JSON de configuração",
-            "Guarda perfis, mapeamentos, frentes, dimensões, regras, proteções e escolhas de cronograma. Use Baixar configuração e depois Carregar configuração."
+            "Guarda o critério de precisão, perfis, mapeamentos, frentes, dimensões, regras, proteções e escolhas de cronograma. Use Baixar configuração e depois Carregar configuração."
           ]
         ]
       }
@@ -410,7 +411,7 @@
           ],
           [
             "Diferença de valor mesmo com aparência de duas casas",
-            "Confira a precisão interna, o perfil de cálculo e os produtos por frente. Considere a cópia compatível; compare também Arquivo antes e Variação causada pela distribuição."
+            "Confira a precisão interna, o perfil de cálculo e os produtos por frente. Prepare a prévia temporária; compare também Arquivo antes e Variação causada pela distribuição."
           ],
           [
             "Total parcial",

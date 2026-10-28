@@ -82,7 +82,7 @@ function installOrcaProCloud(API_BASE) {
     if(!state.ready||state.saving||state.conflict||state.error||pendingUi.size||O.register.editor?.dirty||O.risks?.dirty||JSON.stringify(projectDocument())!==state.lastSaved)throw new Error('Salve as alterações e resolva os conflitos antes de exportar a versão do orçamento.');
     return {projectId,version:state.wrapper.version,sourceData:clone(state.wrapper.data)};
   };
-  state.transferegovReceipt = dto => request(`/orcapro/projects/${projectId}/transferegov/bm/receipt`,{method:'POST',body:JSON.stringify(dto)});
+  state.transferegovReceipt = (dto,kind='BM') => request(`/orcapro/projects/${projectId}/transferegov/${kind==='PLE'?'ple':'bm'}/receipt`,{method:'POST',body:JSON.stringify(dto)});
 
   async function refreshLibrary() {
     const [inputs, compositions] = await Promise.all([

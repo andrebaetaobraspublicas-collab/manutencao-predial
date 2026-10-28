@@ -6,6 +6,7 @@ import '../../../scripts/shared/project-input-prices-ui.js';
 import '../../../scripts/shared/project-input-prices.css';
 import inputPriceManual from '../../../scripts/shared/project-input-prices-manual.json';
 import '../../api/src/modules/orcapro/legacy/assets/transferegov-bm.js';
+import '../../api/src/modules/orcapro/legacy/assets/transferegov-ple.js';
 import '../../../scripts/shared/transferegov-bm-ui.js';
 import '../../../scripts/shared/transferegov-bm.css';
 import transferegovManual from '../../../scripts/shared/transferegov-bm-manual.json';

@@ -1,5 +1,5 @@
 {
-  "version": "1.1.1",
+  "version": "1.1.2",
   "reviewedAt": "2026-10-28",
   "title": "Manual interativo do OrçaPro",
   "sources": [
@@ -1971,10 +1971,10 @@
     },
     {
       "id": "transferegov-bm",
-      "title": "31. Exportar orçamento e cronograma BM para o TransfereGov",
+      "title": "31. Exportar orçamento BM e PLE para o TransfereGov",
       "category": "SaaS e registros",
       "developmentOnly": true,
-      "summary": "Prepare uma cópia da versão salva por submeta, confira frentes, mapeamentos, parcelas e diferenças antes de baixar o XLSX.",
+      "summary": "Prepare uma cópia por submeta, confira serviços, frentes, eventos e cronograma antes de baixar o XLSX BM ou PLE.",
       "target": "budget",
       "related": [
         "orcamento",
@@ -1983,8 +1983,8 @@
       ],
       "sections": [
         {
-          "title": "Alcance da primeira etapa BM",
-          "body": "Disponível somente no desenvolvimento. No Orçamento, clique em TransfereGov (BM). O assistente usa a versão salva, sem aplicar mudanças de preço, quantidade, EAP ou cronograma. BM é acompanhamento por boletins de medição; PLE por eventos será implementado em outra etapa. O arquivo ainda precisa de homologação no importador oficial."
+          "title": "Escolher BM ou PLE no desenvolvimento",
+          "body": "No Orçamento, abra TransfereGov (BM) para acompanhamento por boletins de medição ou TransfereGov (PLE) para acompanhamento por eventos. Ambos usam a versão salva e preservam preços, quantidades, EAP, Eventograma e cronograma originais. Não há envio automático; os arquivos ainda precisam de homologação no importador oficial."
         },
         {
           "title": "Preparar a cópia por submeta",
@@ -2014,6 +2014,27 @@
         {
           "title": "Descrição e grafia das unidades na cópia",
           "body": "Descrições acima de 500 caracteres são abreviadas somente na cópia, com aviso e texto original completo no relatório. As grafias equivalentes tkm/TXKM e dm³/DM3 são normalizadas sem conversão dimensional, de quantidade ou de custo. Descrições ausentes e unidades realmente incompatíveis continuam exigindo revisão. Enquanto houver pendência estrutural, o total BM é identificado como parcial e a diferença financeira não é apresentada como comparação final."
+        },
+        {
+          "title": "PLE: organizar eventos e vincular os serviços",
+          "steps": [
+            "Abra TransfereGov (PLE), confira a submeta sugerida com o nome do orçamento, a referência e a duração. A opção de acompanhamento por eventos deve estar selecionada nos Dados Gerais da PO no TransfereGov.",
+            "Escolha o perfil: documentação usa PO-PLE e CFF-PLE; exemplo oficial usa PO-PLE e CFF - PLE. Os cabeçalhos de cada perfil reproduzem a respectiva fonte. O importador deve ser homologado antes do uso oficial.",
+            "Na etapa Macrosserviços e eventos, o assistente sugere um evento por etapa principal. Cada evento tem número único de 1 a 999 e título de até 100 caracteres. Acrescente os marcos físicos necessários; para remover um evento em uso, reatribua seus serviços primeiro.",
+            "Em Frentes e serviços, expanda cada serviço, confira sua inclusão e selecione um único evento de execução. Distribua as quantidades entre as frentes. Um evento pode conter serviços de vários macrosserviços; sua identificação não depende do código SINAPI ou SICRO.",
+            "A atribuição no PLE é uma configuração da cópia exportada. O Eventograma pode ter subeventos, custos diluídos, retenções e rateios que não têm equivalência automática com o layout PLE. Esses ajustes não são transferidos nem modificados."
+          ]
+        },
+        {
+          "title": "PLE: definir a conclusão em cada frente",
+          "steps": [
+            "A etapa Conclusões por evento mostra cada par de evento e frente que possui serviço incluído. Informe um único mês inteiro de conclusão para cada par, entre 1 e a duração da obra. Mês 1 é o primeiro mês civil mostrado pelo assistente.",
+            "A sugestão usa o último mês com execução dos serviços vinculados no cronograma existente. Não é distribuição percentual de pagamentos. Como a origem não possui um cronograma independente por frente, a sugestão usa o mesmo planejamento nas frentes; ajuste os meses quando a sequência real for diferente.",
+            "Depois de alterar serviços, eventos ou frentes, avance novamente para conferir as conclusões. Meses já revisados são preservados nos mesmos pares; novos pares recebem sugestão. Refazer sugestão substitui explicitamente os meses da cópia pelo cronograma atual.",
+            "Na Conferência, revise eventos, frentes, quantidades, totais, diferenças e meses de conclusão. Vínculo ausente, numeração duplicada ou mês fora da duração impedem gerar. Diferenças financeiras decorrentes do truncamento são avisos.",
+            "Confirme a conferência e gere o XLSX PLE, com 19 colunas na PO e cinco no CFF, e o relatório JSON separado. O arquivo contém valores literais e mesclagens do modelo. A auditoria registra somente a preparação vinculada à versão/hash da origem; não cria uma versão nova do orçamento.",
+            "Baixe a configuração PLE para reutilização no mesmo projeto. Configurações BM e PLE são independentes e não podem ser carregadas na modalidade errada. Importar no TransfereGov substitui os dados correspondentes da PO no destino: confira a submeta e preserve o arquivo anterior."
+          ]
         }
       ]
     }

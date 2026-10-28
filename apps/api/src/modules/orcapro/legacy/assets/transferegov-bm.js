@@ -43,14 +43,14 @@
   }
   function defaults(snapshot) {
     return { version:VERSION,profile:'documentation',submeta:'',duration:snapshot.periods.length,groups:snapshot.groups.map((g,i)=>({...g,number:i+1,name:g.name})),fronts:[{number:1,name:'Frente de obra 1'}],
-      items:snapshot.items.map(r=>({id:r.id,include:true,group:r.group,source:['SINAPI'].includes(r.source)?r.source:/^\d+$/.test(r.code)?'Outros':'Composição',code:r.code,description:r.description,unit:UNITS.includes(unit(r.unit))?unit(r.unit):'',reference:r.referenceCents==null?'':decimal(r.referenceCents),note:`${r.source} · ${snapshot.uf} · ${snapshot.ref} · ${snapshot.regime}`,allocations:{'1':decimal(scaled(r.quantity))}})),schedule:[] };
+      items:snapshot.items.map(r=>({id:r.id,include:true,group:r.group,source:['SINAPI'].includes(r.source)?r.source:/^\d+$/.test(r.code)?'Outros':'Composição',code:r.code,description:r.description,unit:UNITS.includes(unit(r.unit))?unit(r.unit):'',reference:r.referenceCents==null?'':decimal(scaled(r.referenceCents,1n)),note:`${r.source} · ${snapshot.uf} · ${snapshot.ref} · ${snapshot.regime}`,allocations:{'1':decimal(scaled(r.quantity))}})),schedule:[] };
   }
   function suggested(snapshot,config) {
     const result=[];
     for(const group of config.groups){
       const weights=Array.from({length:Number(config.duration)},()=>0n);
       for(const item of snapshot.items){const c=config.items.find(x=>x.id===item.id);if(!c?.include||c.group!==group.id)continue;
-        const days=item.periodDays.reduce((a,b)=>a+b,0)||1,total=BigInt(item.totalCents ?? 0);
+        const days=item.periodDays.reduce((a,b)=>a+b,0)||1,total=scaled(item.totalCents ?? 0,1n);
         item.periodDays.forEach((d,i)=>{if(i<weights.length)weights[i]+=total*BigInt(d)*100000000n/BigInt(days);});
       }
       distribute(weights).forEach((p,i)=>result.push({group:group.id,period:i+1,percent:decimal(p)}));
@@ -82,9 +82,10 @@
         if(typeof c.description!=='string'||!c.description.trim()||c.description.length>500)throw Error('Descrição deve ter de 1 a 500 caracteres.');
         if(!UNITS.includes(c.unit))throw Error('Selecione uma unidade aceita; conversões dimensionais não são automáticas.');
         if(typeof c.note!=='string'||c.note.length>500)throw Error('Observação limitada a 500 caracteres.');
-        const reference=exact(c.reference),cost=exact(row.costCents,1n),bdi=scaled(row.bdi,10000n);
+        const reference=exact(c.reference),cost=scaled(row.costCents,1n),bdi=scaled(row.bdi,10000n);
         if(reference>MAX||cost>MAX||bdi>10000n)throw Error('Custo ou BDI fora dos limites do layout (BDI de 0 a 100%).');
-        if(c.source==='SINAPI'&&(row.source!=='SINAPI'||code!==row.code||c.description!==row.description||c.unit!==unit(row.unit)||row.referenceCents==null||reference!==BigInt(row.referenceCents)))throw Error('SINAPI exige código, descrição, unidade e custo referencial originais; revise a fonte do serviço adaptado.');
+        if(c.source==='SINAPI'&&(row.source!=='SINAPI'||code!==row.code||c.description!==row.description||c.unit!==unit(row.unit)||row.referenceCents==null||reference!==scaled(row.referenceCents,1n)))throw Error('SINAPI exige código, descrição, unidade e custo referencial originais; revise a fonte do serviço adaptado.');
+        const [cn,cd]=rational(row.costCents);if(cn!==cost*cd)warn(row.id,'Custo adotado aproximado a centavos no arquivo BM.');
         const price=round(cost*(10000n+bdi),10000n);if(price>MAX)throw Error('Preço unitário excede o limite.');
         const allocations=[];let qty=0n,total=0n;
         for(const [key,value]of Object.entries(c.allocations||{})){if(value===''||value==null)continue;const q=exact(value);
@@ -95,10 +96,10 @@
         if(!allocations.length)throw Error('Informe uma quantidade, inclusive zero quando aplicável, em ao menos uma frente.');
         if(qty>MAX||total>MAX)throw Error('Quantidade ou valor total excede o limite.');
         if(scaled(row.quantity)!==qty||rational(row.quantity)[0]*100n!==qty*rational(row.quantity)[1])warn(row.id,`Item ${row.number}: quantidade original ${row.quantity}; exportação ${decimal(qty)}. Confira a adaptação de precisão e a distribuição por frentes.`);
-        if(BigInt(row.totalCents ?? 0)!==total)warn(row.id,`Item ${row.number}: diferença financeira de R$ ${signed(total-BigInt(row.totalCents ?? 0))} em relação ao orçamento.`);
+        if(scaled(row.totalCents ?? 0,1n)!==total)warn(row.id,`Item ${row.number}: diferença financeira de R$ ${signed(total-scaled(row.totalCents ?? 0,1n))} em relação ao orçamento.`);
         const [bn,bd]=rational(row.bdi);if(bn*10000n!==bdi*bd)warn(row.id,'BDI aproximado a duas casas percentuais.');
         if(c.source!=='SINAPI')warn(row.id,`Item ${row.number}: conferir fonte ${c.source} e código ${code} no destino; origem ${row.source} preservada no relatório.`);
-        const item={id:row.id,number:row.number,group:g.id,groupNumber:Number(g.number),code,originalCode:row.code,source:c.source,description:c.description,unit:c.unit,referenceCents:String(reference),costCents:String(cost),bdiPoints:Number(bdi),priceCents:String(price),quantity:decimal(qty),totalCents:String(total),originalTotalCents:String(row.totalCents??0),note:c.note,allocations};
+        const item={id:row.id,number:row.number,group:g.id,groupNumber:Number(g.number),code,originalCode:row.code,source:c.source,description:c.description,unit:c.unit,referenceCents:String(reference),costCents:String(cost),bdiPoints:Number(bdi),priceCents:String(price),quantity:decimal(qty),totalCents:String(total),originalTotalCents:String(scaled(row.totalCents??0,1n)),note:c.note,allocations};
         if(errors.length===startErrors)items.push(item);
       }catch(e){error(row.id,`Item ${row.number} (${row.code}): ${e.message}`);}
     }
@@ -110,7 +111,7 @@
       if(sum!==10000n)error(g.id,`Cronograma de ${g.name}: o planejamento completo deve fechar em 100,00% (atual ${decimal(sum)}%).`);
       groups.push({id:g.id,number:Number(g.number),name:g.name,totalCents:String(total),schedule:schedule.sort((a,b)=>a.period-b.period)});
     }
-    const original=selected.reduce((a,c)=>a+BigInt(snapshot.items.find(r=>r.id===c.id)?.totalCents??0),0n),total=items.reduce((a,i)=>a+BigInt(i.totalCents),0n);
+    const original=selected.reduce((a,c)=>a+scaled(snapshot.items.find(r=>r.id===c.id)?.totalCents??0,1n),0n),total=items.reduce((a,i)=>a+BigInt(i.totalCents),0n);
     if(total>MAX)error('total','Total da submeta acima do limite do layout.');
     return {version:VERSION,profile:config.profile,sheetNames:[profile?.po,profile?.cff],documentation:DOCUMENTATION,submeta:config.submeta,project:{id:snapshot.projectId,name:snapshot.name,version:snapshot.version,uf:snapshot.uf,reference:snapshot.ref,regime:snapshot.regime},errors,warnings,items,groups,fronts:config.fronts,duration,originalCents:String(original),exportCents:String(total),differenceCents:String(total-original),homologated:false};
   }

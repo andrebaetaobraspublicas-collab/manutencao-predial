@@ -27,7 +27,7 @@
   const differs = (v,q,scale=100n) => {const [n,d]=rational(v),delta=n*scale-BigInt(q)*d;return (delta<0n?-delta:delta)*1000000n>d;};
   const codeValid = (code,profile) => (profile?.numericCodes?/^\d{1,13}$/:/^[A-Za-z0-9._-]{1,13}$/).test(String(code??''));
   function normalize(snapshot,input){
-    const config=JSON.parse(JSON.stringify(input)),profile=PROFILES[config.profile],reserved=new Set(),assigned=new Map();let next=9990000000000n;
+    const config=JSON.parse(JSON.stringify(input)),profile=PROFILES[config.profile],reserved=new Set(),assigned=new Map();let next=9990000000000n;config.arithmetic='truncate-2';
     for(const code of [...snapshot.items.map(r=>r.code),...config.items.map(c=>c.code)])if(/^\d{1,13}$/.test(String(code??'')))reserved.add(BigInt(code).toString());
     for(const row of snapshot.items){const c=config.items.find(x=>x.id===row.id);if(!c)continue;
       if(!codeValid(c.code,profile)){
@@ -35,6 +35,7 @@
         if(!assigned.has(identity)){while(reserved.has(String(next)))next++;if(next>9999999999999n)throw Error('Faixa de códigos automáticos esgotada.');assigned.set(identity,String(next));reserved.add(String(next++));}
         c.code=assigned.get(identity);c.autoCode=c.code;
       }
+      if(typeof c.description==='string'&&c.description.length>500){c.description=c.description.slice(0,499)+'…';c.descriptionTruncated=true;if(c.source==='SINAPI')c.source='Composição';}
       if(c.source==='SINAPI'&&String(c.code)!==String(row.code))c.source='Composição';
       if((c.reference===''||c.reference==null)&&row.costCents!=null){
         try{c.reference=decimal(truncated(row.costCents,1n));c.referenceFallback=true;if(c.source==='SINAPI')c.source='Composição';}catch(_){/* Missing/invalid adopted costs remain explicit errors. */}
@@ -46,7 +47,7 @@
   const decimal = cents => { const n=BigInt(cents);return `${n/100n}.${String(n%100n).padStart(2,'0')}`; };
   const signed = n => n<0n ? '-'+decimal(-n) : decimal(n);
   const money = cents => Number(cents)/100;
-  const unit = text => ({'M²':'M2','M³':'M3','M³XKM':'M3XKM','T X KM':'TXKM','M2XMÊS':'M2XMES'})[String(text).trim().toUpperCase()] || String(text).trim().toUpperCase();
+  const unit = text => ({'TKM':'TXKM','T.KM':'TXKM','DM³':'DM3','M²':'M2','M³':'M3','M³XKM':'M3XKM','T X KM':'TXKM','M2XMÊS':'M2XMES'})[String(text).trim().toUpperCase()] || String(text).trim().toUpperCase();
   const enabled = host => ['gestaodepredios.com.br','www.gestaodepredios.com.br','localhost','127.0.0.1','[::1]'].includes(host);
   function validateConfiguration(snapshot,c){
     const record=x=>x&&typeof x==='object'&&!Array.isArray(x),str=(x,max)=>typeof x==='string'&&x.length<=max;
@@ -102,15 +103,15 @@
         const g=config.groups.find(g=>g.id===c.group);if(!g)throw Error('Escolha o macrosserviço de destino.');
         if(!['SINAPI','Composição','Cotação','Outros'].includes(c.source))throw Error('Fonte inválida para o layout BM.');
         const code=String(c.code ?? '');if(!codeValid(code,profile))throw Error('Não foi possível atribuir um código de exportação válido.');
-        if(typeof c.description!=='string'||!c.description.trim()||c.description.length>500)throw Error('Descrição deve ter de 1 a 500 caracteres.');
-        if(!UNITS.includes(c.unit))throw Error('Selecione uma unidade aceita; conversões dimensionais não são automáticas.');
+        if(typeof c.description!=='string'||!c.description.trim())throw Error('Descrição do serviço ausente na cópia.');
+        if(!UNITS.includes(c.unit))throw Error(`Unidade original ${row.unit}: selecione uma unidade aceita na cópia; conversões dimensionais não são automáticas.`);
         if(typeof c.note!=='string'||c.note.length>500)throw Error('Observação limitada a 500 caracteres.');
         if(row.costCents==null)throw Error('Custo unitário adotado ausente no orçamento.');
         if(c.reference===''||c.reference==null)throw Error('Custo unitário referencial ausente na cópia.');
         const reference=truncated(c.reference),cost=truncated(row.costCents,1n),bdi=truncated(row.bdi,10000n);
         if(reference>MAX||cost>MAX||bdi>10000n)throw Error('Custo ou BDI fora dos limites do layout (BDI de 0 a 100%).');
         if(c.source==='SINAPI'&&(row.source!=='SINAPI'||code!==row.code||c.description!==row.description||c.unit!==unit(row.unit)||row.referenceCents==null||reference!==truncated(row.referenceCents,1n)))throw Error('SINAPI exige código, descrição, unidade e custo referencial originais; revise a fonte do serviço adaptado.');
-        const changes=[];if(differs(row.costCents,cost,1n))changes.push('Custo adotado truncado a centavos.');if(differs(row.bdi,bdi,10000n))changes.push('BDI truncado a duas casas percentuais.');if(c.referenceFallback)changes.push('Referência ausente: custo adotado usado na cópia, como composição adaptada.');
+        const changes=[];if(c.descriptionTruncated)changes.push('Descrição abreviada a 500 caracteres na cópia; texto original integral neste relatório.');if(differs(row.costCents,cost,1n))changes.push('Custo adotado truncado a centavos.');if(differs(row.bdi,bdi,10000n))changes.push('BDI truncado a duas casas percentuais.');if(c.referenceFallback)changes.push('Referência ausente: custo adotado usado na cópia, como composição adaptada.');
         const price=cost*(10000n+bdi)/10000n;if(price>MAX)throw Error('Preço unitário excede o limite.');
         const allocations=[];let qty=0n,total=0n;
         for(const [key,value]of Object.entries(c.allocations||{})){if(value===''||value==null)continue;const q=truncated(value);if(differs(value,q))changes.push(`Quantidade da frente ${key} truncada a duas casas.`);
@@ -124,7 +125,7 @@
         const original=scaled(row.totalCents??0,1n),difference=total-original;
         if(changes.length||difference)adjustments.push({id:row.id,number:row.number,changes,originalTotalCents:String(original),exportTotalCents:String(total),differenceCents:String(difference),referenceFallback:!!c.referenceFallback});
         if(code!==String(row.code??''))codeMappings.push({id:row.id,number:row.number,originalCode:String(row.code??''),exportCode:code,automatic:c.autoCode===code,originalSource:row.source,exportSource:c.source});
-        const item={id:row.id,number:row.number,group:g.id,groupNumber:Number(g.number),code,originalCode:row.code,source:c.source,description:c.description,unit:c.unit,referenceCents:String(reference),costCents:String(cost),bdiPoints:Number(bdi),priceCents:String(price),quantity:decimal(qty),totalCents:String(total),originalTotalCents:String(scaled(row.totalCents??0,1n)),note:c.note,allocations};
+        const item={id:row.id,number:row.number,group:g.id,groupNumber:Number(g.number),code,originalCode:row.code,originalSource:row.source,originalDescription:row.description,originalUnit:row.unit,descriptionTruncated:!!c.descriptionTruncated,source:c.source,description:c.description,unit:c.unit,referenceCents:String(reference),costCents:String(cost),bdiPoints:Number(bdi),priceCents:String(price),quantity:decimal(qty),totalCents:String(total),originalTotalCents:String(scaled(row.totalCents??0,1n)),note:c.note,allocations};
         if(errors.length===startErrors)items.push(item);
       }catch(e){error(row.id,`Item ${row.number} (${row.code}): ${e.message}`);}
     }

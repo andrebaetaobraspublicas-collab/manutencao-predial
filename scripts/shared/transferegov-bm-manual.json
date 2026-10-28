@@ -39,6 +39,10 @@
     {
       "title": "Diferenças de precisão e preservação",
       "body": "Na cópia, quantidades, custos e BDI são truncados em duas casas; preço unitário e produtos por frente também são truncados. Os valores originais não são alterados. Diferenças financeiras não bloqueiam gerar; correspondências de códigos e ajustes por serviço constam do relatório. Resíduos binários insignificantes próximos de um centésimo são normalizados antes do truncamento. O TransfereGov recalcula campos derivados com arredondamento próprio, portanto a igualdade dos totais no destino ainda exige homologação. O assistente não cria linhas artificiais de compensação nem grava nova versão do orçamento."
+    },
+    {
+      "title": "Descrição e grafia das unidades na cópia",
+      "body": "Descrições acima de 500 caracteres são abreviadas somente na cópia, com aviso e texto original completo no relatório. As grafias equivalentes tkm/TXKM e dm³/DM3 são normalizadas sem conversão dimensional, de quantidade ou de custo. Descrições ausentes e unidades realmente incompatíveis continuam exigindo revisão. Enquanto houver pendência estrutural, o total BM é identificado como parcial e a diferença financeira não é apresentada como comparação final."
     }
   ]
 }

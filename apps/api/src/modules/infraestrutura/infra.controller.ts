@@ -85,7 +85,7 @@ export class InfraController {
   @InfraAdmin() @Delete('admin/cycles/:id') cycleDelete(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string) { return this.service.cycleState(user,id,'delete'); }
   @InfraAdmin() @Get('admin/audit')
   @ApiOperation({ summary: 'Histórico global Infraestrutura com filtros por responsável, datas de Brasília e tipo de registro, total e paginação estável.' })
-  audit(@CurrentUser() user: AuthenticatedUser,@Query() query: AuditListQuery) { return this.auditService.logs(user,query); }
+  audit(@CurrentUser() user: AuthenticatedUser,@Query() query: AuditListQuery,@Res({ passthrough: true }) response: Response) { response.setHeader('Cache-Control','no-store'); return this.auditService.logs(user,query); }
   @InfraAdmin() @Get('admin/stats') stats() { return this.service.stats(); }
   @InfraAdmin() @Get('admin/projects/:id') adminRead(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string) { return this.service.adminReadProject(user,id); }
   @InfraAdmin() @Get('admin/users') users() { return this.service.users(); }

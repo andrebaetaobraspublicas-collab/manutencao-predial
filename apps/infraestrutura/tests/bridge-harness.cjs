@@ -55,7 +55,7 @@ async function fixture(options = {}) {
     if (route.endsWith('/pem')) return respond(options.pem || { pem: [] });
     if (route === `/projects/${projectId}` && method === 'GET') return respond(project);
     if (method !== 'GET' && init.headers?.['X-Infra-CSRF'] !== 'csrf-fixture') return respond({ message: 'CSRF ausente' }, 403);
-    if (route === `/projects/${projectId}/transferegov/bm/receipt` && method === 'POST') return respond({ recorded: true });
+    if ([`/projects/${projectId}/transferegov/bm/receipt`,`/projects/${projectId}/transferegov/ple/receipt`].includes(route) && method === 'POST') return respond({ recorded: true });
     if (route === `/projects/${projectId}/migrate-cycle`) {
       if (body.version !== project.version) return respond({ message: 'Faça a comparação novamente: versão alterada.' }, 409);
       const target = options.cycles?.find(c => c.id === body.cycleId);

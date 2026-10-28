@@ -11,6 +11,7 @@ type History = { items: Event[]; total: number; page: number; pages: number; pag
 const initial = { user: '', from: '', to: '', category: 'all', pageSize: '50' };
 const actions: Record<string, string> = {
   'export.transferegov.bm': 'Cópia BM preparada para download',
+  'export.transferegov.ple': 'Cópia PLE preparada para download',
   'activity.navigation': 'Tela aberta',
   'access.login': 'Entrada no sistema', 'access.login.failed': 'Tentativa de entrada recusada', 'access.logout': 'Saída do sistema', 'access.request': 'Acesso / operação na API', 'access.request.failed': 'Operação com falha',
   'project.create': 'Orçamento criado', 'project.save': 'Orçamento salvo', 'project.archive': 'Orçamento arquivado', 'project.unarchive': 'Orçamento restaurado', 'project.restore': 'Versão do orçamento restaurada',
@@ -42,7 +43,7 @@ function operation(event: Event) {
 }
 const screens: Record<string, string> = { catalog: 'Catálogo', inputs: 'Insumos', comps: 'Composições', compositions: 'Composições', budget: 'Orçamento', bdi: 'BDI', teams: 'Equipes e produtividade', crews: 'Equipes e produtividade', schedule: 'Cronograma', resources: 'Recursos e Curva S', tax: 'Reforma Tributária', reforma: 'Reforma Tributária', risks: 'Riscos e contingências', manual: 'Manual', projects: 'Meus orçamentos', admin: 'Base de dados', base: 'Base de dados', videos: 'Vídeo-aulas', transports: 'Transportes (DMT)', fit: 'FIT', fic: 'FIC', pem: 'Produções Horárias', mobilization: 'Mobilização', canteiro: 'Canteiro de Obras', al: 'Administração Local', evento: 'Eventograma' };
 
-screens.transferegov = 'Exportar para o TransfereGov — BM';
+screens.transferegov = 'Exportar para o TransfereGov — BM / PLE';
 
 export default function AuditPanel({ product = 'orcapro', title }: { product?: 'orcapro' | 'infra'; title?: string } = {}) {
   const [draft, setDraft] = useState(initial), [filter, setFilter] = useState(initial);

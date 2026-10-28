@@ -1,8 +1,10 @@
 # Contrato inicial da API
 
-## Exportação TransfereGov BM — DEV
+## Exportação TransfereGov BM / PLE — DEV
 
 `POST /orcapro/projects/:id/transferegov/bm/receipt` e `POST /infraestrutura/projects/:id/transferegov/bm/receipt`: guard/CSRF do produto, proprietário e tenant autenticados. Recebem expectedVersion, sourceHash/fileHash/configHash SHA-256, profile documentation|example, services/groups/fronts, submeta e totais em centavos textuais. Exigem versão/hash da origem salva; retornam409 para divergência e404 fora do desenvolvimento. Acrescentam somente auditoria PREPARED, sem alteração de projeto ou nova versão. Não enviam ao TransfereGov. [Contrato e metodologia](transferegov-bm.md).
+
+PLE: os endpoints paralelos /orcapro/projects/:id/transferegov/ple/receipt e /infraestrutura/projects/:id/transferegov/ple/receipt recebem os mesmos campos e vents (1 a 999), completions (1 a 100000). Mesmos guards, CSRF, owner/tenant, conflito409 e bloqueio em produção. Registram somente auditoria xport.transferegov.ple, sem alterar orçamento ou versões. [Layout e metodologia PLE](transferegov-ple.md).
 
 ## Auditoria Infraestrutura detalhada — 27/10/2026
 

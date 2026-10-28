@@ -1,6 +1,6 @@
 # TransfereGov BM — somente desenvolvimento
 
-Orçamento → **TransfereGov (BM)** abre o assistente nos dois editores. A exportação é uma cópia da versão salva por submeta do QCI. Não modifica orçamento, catálogo, cronograma, biblioteca ou histórico de versões. PLE não está implementado nesta etapa. Estes produtos de orçamento são independentes do agregado de manutenção/OS; nenhuma OS é criada pela exportação.
+Orçamento → **TransfereGov (BM)** abre o assistente nos dois editores. A exportação é uma cópia da versão salva por submeta do QCI. Não modifica orçamento, catálogo, cronograma, biblioteca ou histórico de versões. PLE também está disponível em assistente separado; consulte [contrato PLE](transferegov-ple.md). Estes produtos de orçamento são independentes do agregado de manutenção/OS; nenhuma OS é criada pela exportação.
 
 ## Contrato e fontes
 

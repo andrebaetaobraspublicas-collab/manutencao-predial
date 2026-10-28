@@ -1,15 +1,44 @@
 {
-  "id":"transferegov-bm",
-  "title":"31. Exportar orçamento e cronograma BM para o TransfereGov",
-  "category":"SaaS e registros",
-  "developmentOnly":true,
-  "summary":"Prepare uma cópia da versão salva por submeta, confira frentes, mapeamentos, parcelas e diferenças antes de baixar o XLSX.",
-  "target":"budget",
-  "related":["orcamento","arquivos","verificacao"],
-  "sections":[
-    {"title":"Alcance da primeira etapa BM","body":"Disponível somente no desenvolvimento. No Orçamento, clique em TransfereGov (BM). O assistente usa a versão salva, sem aplicar mudanças de preço, quantidade, EAP ou cronograma. BM é acompanhamento por boletins de medição; PLE por eventos será implementado em outra etapa. O arquivo ainda precisa de homologação no importador oficial."},
-    {"title":"Preparar a cópia por submeta","steps":["Aguarde o cálculo do Orçamento e a confirmação de salvamento. Resolva qualquer conflito entre abas antes de exportar.","Identifique a submeta do QCI, confira UF, data-base, regime e duração. Escolha o perfil: documentação (PO-BM/CFF-BM) ou exemplo oficial (BM/CFF-BM). Há divergência no nome da aba principal entre as fontes; não se presume que ambos sejam aceitos.","Revise os macrosserviços propostos a partir das etapas principais. Renomear ou numerar no assistente muda somente a cópia; subetapas e códigos originais ficam relacionados no relatório.","Cadastre as frentes de obra. Expanda cada serviço para marcar sua inclusão, escolher o macrosserviço, conferir fonte/código/unidade e informar a quantidade em cada frente.","Quantidades do arquivo usam até duas casas decimais. A sugestão arredondada deve ser conferida. Códigos próprios incompatíveis exigem um código de exportação informado por você; nenhum prefixo é removido automaticamente.","Confira a sugestão do cronograma mensal ou refaça-a após mudar os serviços selecionados. Para este planejamento completo, feche cada macrosserviço em 100,00%. Os meses começam em 1, vinculados ao primeiro mês exibido."]},
-    {"title":"Conferir valores e gerar os arquivos","steps":["Na Conferência, compare valor original dos serviços selecionados, valor BM e diferença. Revise pendências impeditivas e avisos por item. A geração permanece bloqueada enquanto houver erro.","Confira o custo referencial separado do custo adotado. SINAPI exige a tupla original; para SICRO e cadastros próprios, revise o enquadramento nas fontes admitidas pelo perfil. Créditos de IVA não são deduzidos e o risco não é acrescentado novamente.","Marque a conferência expressa dos mapeamentos, quantidades, percentuais e diferenças. Gere o XLSX e o relatório JSON separado. A auditoria registra preparação da cópia, versão de origem e hashes; não comprova importação ou aprovação no TransfereGov.","Baixar configuração permite reaproveitar o mapeamento em outro acesso ao mesmo projeto. Carregar configuração exige serviços compatíveis com a fotografia atual; não importa ou altera o orçamento.","No TransfereGov, confira os Dados Gerais da PO e a submeta antes da importação manual. A importação substitui as informações correspondentes já cadastradas no destino; preserve previamente sua exportação anterior."]},
-    {"title":"Diferenças de precisão e preservação","body":"O preço unitário e as parcelas por frente seguem o cálculo decimal do perfil BM. Quantidades, BDI e rateio podem produzir diferenças em relação ao orçamento original. Elas aparecem explicitamente na prévia e no relatório. O assistente não cria linhas artificiais de ajuste. Consultar, configurar e gerar a cópia não cria uma nova versão do orçamento, nem modifica o catálogo, a biblioteca ou projetos de outros usuários. Se o projeto mudar depois da fotografia, feche e reabra o assistente."}
+  "id": "transferegov-bm",
+  "title": "31. Exportar orçamento e cronograma BM para o TransfereGov",
+  "category": "SaaS e registros",
+  "developmentOnly": true,
+  "summary": "Prepare uma cópia da versão salva por submeta, confira frentes, mapeamentos, parcelas e diferenças antes de baixar o XLSX.",
+  "target": "budget",
+  "related": [
+    "orcamento",
+    "arquivos",
+    "verificacao"
+  ],
+  "sections": [
+    {
+      "title": "Alcance da primeira etapa BM",
+      "body": "Disponível somente no desenvolvimento. No Orçamento, clique em TransfereGov (BM). O assistente usa a versão salva, sem aplicar mudanças de preço, quantidade, EAP ou cronograma. BM é acompanhamento por boletins de medição; PLE por eventos será implementado em outra etapa. O arquivo ainda precisa de homologação no importador oficial."
+    },
+    {
+      "title": "Preparar a cópia por submeta",
+      "steps": [
+        "Aguarde o cálculo do Orçamento e a confirmação de salvamento. Resolva qualquer conflito entre abas antes de exportar.",
+        "O nome do orçamento preenche inicialmente a descrição da submeta do QCI (limitada a 100 caracteres na cópia); edite se necessário. Confira UF, data-base, regime e duração. Os perfis documentação (PO-BM/CFF-BM) e exemplo (BM/CFF-BM) refletem a divergência das fontes oficiais.",
+        "Revise os macrosserviços propostos a partir das etapas principais. Renomear ou numerar no assistente muda somente a cópia; subetapas e códigos originais ficam relacionados no relatório.",
+        "Cadastre as frentes de obra. Expanda cada serviço para marcar sua inclusão, escolher o macrosserviço, conferir fonte/código/unidade e informar a quantidade em cada frente.",
+        "Códigos ausentes ou incompatíveis recebem automaticamente números de 13 dígitos começando em 9990000000000. Códigos existentes são reservados para evitar colisões; repetições do mesmo código de origem compartilham a correspondência. Quantidades e valores da cópia são truncados em duas casas. Consulte as correspondências e ajustes na conferência e no relatório.",
+        "Confira ou refaça o cronograma mensal após mudar os serviços selecionados. Uma soma abaixo de 100,00% gera aviso; uma soma acima de 100,00% ou sem parcelas válidas impede a geração. O planejamento completo deve fechar em 100,00%."
+      ]
+    },
+    {
+      "title": "Conferir valores e gerar os arquivos",
+      "steps": [
+        "Na Conferência, compare valor original dos serviços selecionados, valor BM e diferença. Revise pendências impeditivas e avisos por item. A geração permanece bloqueada enquanto houver erro.",
+        "Custo referencial e custo adotado são separados. Se faltar referência e houver custo adotado, a cópia utiliza esse valor e identifica o item como composição adaptada, sem atribuí-lo ao SINAPI oficial. Ausência de custo adotado continua sendo pendência. Créditos de IVA não são deduzidos e risco não é acrescentado novamente.",
+        "Marque a conferência expressa dos mapeamentos, quantidades, percentuais e diferenças. Gere o XLSX e o relatório JSON separado. A auditoria registra preparação da cópia, versão de origem e hashes; não comprova importação ou aprovação no TransfereGov.",
+        "Baixar configuração permite reaproveitar o mapeamento em outro acesso ao mesmo projeto. Carregar configuração exige serviços compatíveis com a fotografia atual; não importa ou altera o orçamento.",
+        "No TransfereGov, confira os Dados Gerais da PO e a submeta antes da importação manual. A importação substitui as informações correspondentes já cadastradas no destino; preserve previamente sua exportação anterior."
+      ]
+    },
+    {
+      "title": "Diferenças de precisão e preservação",
+      "body": "Na cópia, quantidades, custos e BDI são truncados em duas casas; preço unitário e produtos por frente também são truncados. Os valores originais não são alterados. Diferenças financeiras não bloqueiam gerar; correspondências de códigos e ajustes por serviço constam do relatório. Resíduos binários insignificantes próximos de um centésimo são normalizados antes do truncamento. O TransfereGov recalcula campos derivados com arredondamento próprio, portanto a igualdade dos totais no destino ainda exige homologação. O assistente não cria linhas artificiais de compensação nem grava nova versão do orçamento."
+    }
   ]
 }

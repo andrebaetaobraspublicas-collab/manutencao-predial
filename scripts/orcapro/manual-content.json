@@ -1,5 +1,5 @@
 {
-  "version": "1.1.4",
+  "version": "1.1.5",
   "reviewedAt": "2026-10-28",
   "title": "Manual interativo do OrçaPro",
   "sources": [
@@ -42,6 +42,11 @@
       "id": "simples",
       "title": "LC 123/2006 — Simples Nacional, texto atualizado",
       "url": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm"
+    },
+    {
+      "id": "transferegov",
+      "title": "TransfereGov — orientações oficiais de importação e exportação de PO/CFF",
+      "url": "https://mandatarias.transferegov.sistema.gov.br/projeto-basico/public/helpImport.html#anexos"
     }
   ],
   "journeys": [
@@ -1971,104 +1976,444 @@
     },
     {
       "id": "transferegov-bm",
-      "title": "31. Exportar orçamento BM e PLE para o TransfereGov",
+      "title": "31. TransfereGov: exportar BM e PLE passo a passo",
       "category": "SaaS e registros",
       "developmentOnly": true,
-      "summary": "Prepare uma cópia por submeta, confira serviços, frentes, eventos e cronograma antes de baixar o XLSX BM ou PLE.",
+      "summary": "Do orçamento à planilha: escolha BM ou PLE, prepare uma cópia compatível, aproveite o Eventograma, distribua as frentes e confira o arquivo antes da importação manual. Roteiro comum ao OrçaPro SINAPI e ao OrçaPro Infraestrutura SICRO, disponível no desenvolvimento.",
       "target": "budget",
       "related": [
         "orcamento",
         "arquivos",
         "verificacao"
       ],
+      "sources": [
+        "transferegov"
+      ],
+      "references": [
+        {
+          "title": "TransfereGov — orientações oficiais de importação e exportação de PO/CFF",
+          "url": "https://mandatarias.transferegov.sistema.gov.br/projeto-basico/public/helpImport.html#anexos"
+        }
+      ],
       "sections": [
         {
-          "title": "Escolher BM ou PLE no desenvolvimento",
-          "body": "No Orçamento, abra TransfereGov (BM) para acompanhamento por boletins de medição ou TransfereGov (PLE) para acompanhamento por eventos. Ambos usam a versão salva e preservam preços, quantidades, EAP, Eventograma e cronograma originais. Não há envio automático; os arquivos ainda precisam de homologação no importador oficial."
+          "title": "Começar: onde acessar e qual será o resultado",
+          "body": "Nos dois programas, abra o orçamento e entre em Orçamento → TransfereGov (BM) ou TransfereGov (PLE). O assistente tem cinco etapas: Identificação; Macrosserviços (e eventos no PLE); Frentes e serviços; Cronograma BM ou Conclusões por evento PLE; Conferência. O recurso está habilitado somente no ambiente de desenvolvimento www.gestaodepredios.com.br.",
+          "expected": "Ao concluir, você terá um arquivo XLSX para importação manual, um relatório JSON para conferência e, se desejar, uma configuração JSON reutilizável. Gerar o arquivo não o envia ao governo nem comprova sua aceitação."
         },
         {
-          "title": "Preparar a cópia por submeta",
+          "title": "Entender os termos antes de preencher",
+          "table": {
+            "headers": [
+              "Termo",
+              "Como utilizar no assistente"
+            ],
+            "rows": [
+              [
+                "QCI e submeta",
+                "Identificam o escopo a ser levado ao destino. Prepare um arquivo para cada submeta e confira sua correspondência no TransfereGov."
+              ],
+              [
+                "Macrosserviço",
+                "Agrupamento de serviços no arquivo, como fundações ou pavimentação. Pode ser sugerido a partir das etapas do orçamento."
+              ],
+              [
+                "Serviço",
+                "Item com código, descrição, unidade, quantidade, custo adotado e BDI. A numeração de exportação não renumera a EAP original."
+              ],
+              [
+                "Frente de obra",
+                "Local ou trecho de execução, como Bloco A, áreas externas, Trecho 1 ou Trecho 2. Recebe uma parcela da quantidade de cada serviço."
+              ],
+              [
+                "Evento",
+                "Marco de execução do PLE. Um serviço incluído precisa de um único evento na configuração exportada."
+              ],
+              [
+                "PO / CFF",
+                "Planilha Orçamentária e Cronograma Físico-Financeiro: são as duas abas produzidas no XLSX."
+              ],
+              [
+                "Configuração / relatório",
+                "A configuração guarda suas escolhas para reutilização. O relatório registra o resultado da conferência e a rastreabilidade; não substitui a configuração."
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Escolher entre BM e PLE",
+          "body": "A modalidade deve corresponder à forma de acompanhamento definida nos Dados Gerais da PO no TransfereGov. Não escolha apenas pelo nome da planilha.",
+          "table": {
+            "headers": [
+              "Modalidade",
+              "Quando usar",
+              "O que revisar na etapa 4"
+            ],
+            "rows": [
+              [
+                "BM — Boletim de Medição",
+                "Acompanhamento sem eventos.",
+                "Parcelas mensais e percentuais dos macrosserviços."
+              ],
+              [
+                "PLE — Planilha de Levantamento de Eventos",
+                "Acompanhamento por eventos.",
+                "Mês de conclusão de cada par evento/frente, sem distribuição percentual de pagamento."
+              ]
+            ]
+          },
+          "expected": "O nome da modalidade aparece no título do assistente e no botão Gerar e baixar XLSX BM ou PLE. Configurações BM e PLE são independentes."
+        },
+        {
+          "title": "Distinguir origem, exportação e novo orçamento",
+          "table": {
+            "headers": [
+              "Ação",
+              "Onde fica a alteração"
+            ],
+            "rows": [
+              [
+                "Renomear macrosserviço, distribuir frentes, escolher evento ou mês no assistente",
+                "Somente na configuração da exportação aberta; o orçamento e seu Eventograma não são reescritos."
+              ],
+              [
+                "Preparar prévia ou cancelar sugestões",
+                "Nenhuma alteração é aplicada ao orçamento. Cancelar a prévia não apaga um orçamento compatível já criado."
+              ],
+              [
+                "Confirmar e criar orçamento compatível",
+                "Cria outro orçamento privado, com versão e auditoria próprias. A origem continua intacta."
+              ],
+              [
+                "Abrir BM/PLE em uma cópia compatível",
+                "O sistema pode salvar memórias derivadas dessa própria cópia antes de capturar sua versão. Isso não grava o orçamento original."
+              ],
+              [
+                "Gerar XLSX e relatório",
+                "Acrescenta registro de preparação na auditoria. Não registra aprovação no TransfereGov."
+              ],
+              [
+                "Importar no TransfereGov",
+                "É uma ação manual no destino e pode substituir as informações da PO/CFF correspondente. Preserve o arquivo anterior antes de executá-la."
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Antes de abrir: preparar o orçamento",
           "steps": [
-            "Aguarde o cálculo do Orçamento e a confirmação de salvamento. Resolva qualquer conflito entre abas antes de exportar.",
-            "O nome do orçamento preenche inicialmente a descrição da submeta do QCI (limitada a 100 caracteres na cópia); edite se necessário. Confira UF, data-base, regime e duração. Os perfis documentação (PO-BM/CFF-BM) e exemplo (BM/CFF-BM) refletem a divergência das fontes oficiais.",
-            "Revise os macrosserviços propostos a partir das etapas principais. Renomear ou numerar no assistente muda somente a cópia; subetapas e códigos originais ficam relacionados no relatório.",
-            "Cadastre as frentes de obra. Expanda cada serviço para marcar sua inclusão, escolher o macrosserviço, conferir fonte/código/unidade e informar a quantidade em cada frente.",
-            "Códigos ausentes ou incompatíveis recebem automaticamente números de 13 dígitos começando em 9990000000000. Códigos existentes são reservados para evitar colisões; repetições do mesmo código de origem compartilham a correspondência. Quantidades e valores da cópia são truncados em duas casas. Consulte as correspondências e ajustes na conferência e no relatório.",
-            "Confira ou refaça o cronograma mensal após mudar os serviços selecionados. Uma soma abaixo de 100,00% gera aviso; uma soma acima de 100,00% ou sem parcelas válidas impede a geração. O planejamento completo deve fechar em 100,00%."
+            "Abra o projeto correto, confira seu nome, a referência SINAPI ou SICRO, UF, data-base e regime. A referência padrão de novos projetos não modifica automaticamente um orçamento existente.",
+            "Aguarde o cálculo e a confirmação de salvamento. Resolva conflitos entre abas e conclua edições pendentes de cadastros e riscos antes de abrir o assistente.",
+            "Confira quantidades, custos adotados, preços sem referência, BDI geral e diferenciado, EAP, calendário e cronograma. Ausência de preço não deve ser preenchida como zero apenas para exportar.",
+            "Decida quais serviços pertencem à submeta. A fotografia usa a versão salva; se alterar a origem depois de abrir, feche e reabra o assistente para capturar os dados atuais."
+          ],
+          "expected": "A identificação mostra o nome, a versão e o contexto da fotografia. Se houver edição ou conflito pendente, a captura é recusada."
+        },
+        {
+          "title": "Quando usar Preparar cópia compatível",
+          "steps": [
+            "Se a origem tem quantidades, custos ou BDI com precisão maior que duas casas, a exportação direta pode apresentar diferença. Truncar somente o preço unitário original não resolve todas essas causas.",
+            "Na Identificação ou Conferência, clique em Preparar cópia compatível. Leia o valor da origem, o valor proposto e a relação das entradas que serão adequadas.",
+            "Confirme em Confirmar e criar orçamento compatível. Será criado outro orçamento com o sufixo TransfereGov. Abra-o pelo link Abrir cópia compatível e exportar; não continue exportando o original esperando que seu valor tenha mudado.",
+            "A nova cópia fixa custos adotados por serviço, quantidades periódicas em duas casas e BDI em duas casas percentuais. A sincronização automática de eventos pelas equipes fica desligada. Quantidades normalizadas podem alterar prazos da cópia.",
+            "Análises de risco vinculadas à versão anterior não são transferidas; refaça-as se necessário. O perfil financeiro da cópia aparece fixo no Orçamento.",
+            "Com a seleção integral e uma única frente, confira a igualdade entre a cópia e seu arquivo. Dividir quantidades entre várias frentes pode gerar centavos por produto. Igualdade com a cópia não significa manter o mesmo total do orçamento original."
+          ],
+          "expected": "Você passa a trabalhar em outro orçamento, com o total proposto na prévia; a origem mantém seus valores e histórico."
+        },
+        {
+          "title": "Etapa 1 — Identificar a submeta e o perfil",
+          "steps": [
+            "Confira Submeta do QCI. O sistema sugere o nome do orçamento, limitado a 100 caracteres na exportação; ajuste a identificação para corresponder ao destino.",
+            "Escolha conscientemente o perfil de arquivo. No BM, Documentação usa PO-BM / CFF-BM e Exemplo oficial usa BM / CFF-BM. No PLE, os nomes são PO-PLE / CFF-PLE ou PO-PLE / CFF - PLE, conforme o perfil.",
+            "A divergência de grafia entre a documentação e os exemplos oficiais motivou os dois perfis. Nenhum deles representa uma homologação já concluída no importador.",
+            "Confira a duração e o primeiro mês exibido. Os períodos do arquivo são meses civis numerados a partir de 1; não equivalem ao número de dias úteis do orçamento. Uma obra iniciada em outubro tem outubro como mês 1.",
+            "Use Continuar para avançar ou os botões das etapas para revisar suas escolhas. Não misture serviços de outra submeta apenas para fechar valores."
           ]
         },
         {
-          "title": "Conferir valores e gerar os arquivos",
+          "title": "Etapa 2 — Mapear macrosserviços e serviços",
           "steps": [
-            "Na Conferência, compare valor original dos serviços selecionados, valor BM e diferença. Revise pendências impeditivas e avisos por item. A geração permanece bloqueada enquanto houver erro.",
-            "Custo referencial e custo adotado são separados. Se faltar referência e houver custo adotado, a cópia utiliza esse valor e identifica o item como composição adaptada, sem atribuí-lo ao SINAPI oficial. Ausência de custo adotado continua sendo pendência. Créditos de IVA não são deduzidos e risco não é acrescentado novamente.",
-            "Marque a conferência expressa dos mapeamentos, quantidades, percentuais e diferenças. Gere o XLSX e o relatório JSON separado. A auditoria registra preparação da cópia, versão de origem e hashes; não comprova importação ou aprovação no TransfereGov.",
-            "Baixar configuração permite reaproveitar o mapeamento em outro acesso ao mesmo projeto. Carregar configuração exige serviços compatíveis com a fotografia atual; não importa ou altera o orçamento.",
-            "No TransfereGov, confira os Dados Gerais da PO e a submeta antes da importação manual. A importação substitui as informações correspondentes já cadastradas no destino; preserve previamente sua exportação anterior."
+            "Revise os agrupamentos sugeridos pelas etapas principais. Ajuste seus nomes e números no destino; a EAP original permanece com sua hierarquia.",
+            "Use números únicos de 1 a 999 e nomes objetivos. Subetapas continuam identificadas na correspondência do relatório, ainda que o arquivo apresente macrosserviços e serviços em dois níveis.",
+            "No PLE, revise também os eventos de execução sugeridos. É possível editar ou acrescentar eventos. Antes de remover um evento utilizado, reatribua seus serviços.",
+            "Macrosserviço e evento não são sinônimos obrigatórios: um evento pode reunir serviços de diferentes macrosserviços. A escolha deve representar o modo real de acompanhar a execução."
           ]
         },
         {
-          "title": "Diferenças de precisão e preservação",
-          "body": "Na cópia, quantidades, custos e BDI são truncados em duas casas; preço unitário e produtos por frente também são truncados. Os valores originais não são alterados. Diferenças financeiras não bloqueiam gerar; correspondências de códigos e ajustes por serviço constam do relatório. Resíduos binários insignificantes próximos de um centésimo são normalizados antes do truncamento. O TransfereGov recalcula campos derivados com arredondamento próprio, portanto a igualdade dos totais no destino ainda exige homologação. O assistente não cria linhas artificiais de compensação nem grava nova versão do orçamento. Para eliminar a diferença na base de comparação, crie explicitamente um novo orçamento compatível pelo procedimento descrito abaixo. Esse procedimento é independente da exportação direta e usa o perfil decimal meio para cima para os campos derivados."
-        },
-        {
-          "title": "Descrição e grafia das unidades na cópia",
-          "body": "Descrições acima de 500 caracteres são abreviadas somente na cópia, com aviso e texto original completo no relatório. As grafias equivalentes tkm/TXKM e dm³/DM3 são normalizadas sem conversão dimensional, de quantidade ou de custo. Descrições ausentes e unidades realmente incompatíveis continuam exigindo revisão. Enquanto houver pendência estrutural, o total BM é identificado como parcial e a diferença financeira não é apresentada como comparação final."
-        },
-        {
-          "title": "PLE: organizar eventos e vincular os serviços",
+          "title": "Aproveitar o Eventograma já elaborado",
           "steps": [
-            "Abra TransfereGov (PLE), confira a submeta sugerida com o nome do orçamento, a referência e a duração. A opção de acompanhamento por eventos deve estar selecionada nos Dados Gerais da PO no TransfereGov.",
-            "Escolha o perfil: documentação usa PO-PLE e CFF-PLE; exemplo oficial usa PO-PLE e CFF - PLE. Os cabeçalhos de cada perfil reproduzem a respectiva fonte. O importador deve ser homologado antes do uso oficial.",
-            "Na etapa Macrosserviços e eventos, o assistente sugere um evento por etapa principal. Cada evento tem número único de 1 a 999 e título de até 100 caracteres. Acrescente os marcos físicos necessários; para remover um evento em uso, reatribua seus serviços primeiro.",
-            "Em Frentes e serviços, expanda cada serviço, confira sua inclusão e selecione um único evento de execução. Distribua as quantidades entre as frentes. Um evento pode conter serviços de vários macrosserviços; sua identificação não depende do código SINAPI ou SICRO.",
-            "A atribuição no PLE é uma configuração da cópia exportada. Use a prévia Refazer sugestões a partir do Eventograma para aproveitar nomes, vínculos inequívocos e prazos. Subeventos, custos diluídos, retenções e rateios exigem revisão explícita e não alteram a origem."
+            "Na etapa 2, selecione Eventos principais ou Subeventos finais e clique em Refazer sugestões a partir do Eventograma.",
+            "Confira a prévia de nomes, códigos, vínculos herdados e prazos. Códigos hierárquicos recebem numeração compatível somente na exportação; o relatório conserva a correspondência.",
+            "Vínculo inequívoco pode ser sugerido automaticamente. Múltiplos eventos, custos diluídos, falta de vínculo ou código inválido ficam destacados para revisão. Não há rateio silencioso.",
+            "Recebimentos, retenções e multas não se tornam serviços artificiais. A ausência de Eventograma elaborado desabilita esse aproveitamento; você ainda pode configurar os destinos manualmente.",
+            "Clique em Aplicar sugestões à cópia somente após conferir. No PLE, revise o evento e a conclusão em cada frente; o prazo do Eventograma pode fornecer a sugestão, e o cronograma é usado quando falta prazo. No BM, confira as parcelas mensais. O Eventograma de origem não é gravado."
           ]
         },
         {
-          "title": "PLE: definir a conclusão em cada frente",
+          "title": "Etapa 3 — Cadastrar frentes e conferir os serviços",
           "steps": [
-            "A etapa Conclusões por evento mostra cada par de evento e frente que possui serviço incluído. Informe um único mês inteiro de conclusão para cada par, entre 1 e a duração da obra. Mês 1 é o primeiro mês civil mostrado pelo assistente.",
-            "A sugestão usa o último mês com execução dos serviços vinculados no cronograma existente. Não é distribuição percentual de pagamentos. Como a origem não possui um cronograma independente por frente, a sugestão usa o mesmo planejamento nas frentes; ajuste os meses quando a sequência real for diferente.",
-            "Depois de alterar serviços, eventos ou frentes, avance novamente para conferir as conclusões. Meses já revisados são preservados nos mesmos pares; novos pares recebem sugestão. Refazer sugestão substitui explicitamente os meses da cópia pelo cronograma atual.",
-            "Na Conferência, revise eventos, frentes, quantidades, totais, diferenças e meses de conclusão. Vínculo ausente, numeração duplicada ou mês fora da duração impedem gerar. Diferenças financeiras decorrentes do truncamento são avisos.",
-            "Confirme a conferência e gere o XLSX PLE, com 19 colunas na PO e cinco no CFF, e o relatório JSON separado. O arquivo contém valores literais e mesclagens do modelo. A auditoria registra somente a preparação vinculada à versão/hash da origem; não cria uma versão nova do orçamento.",
-            "Baixe a configuração PLE para reutilização no mesmo projeto. Configurações BM e PLE são independentes e não podem ser carregadas na modalidade errada. Importar no TransfereGov substitui os dados correspondentes da PO no destino: confira a submeta e preserve o arquivo anterior."
+            "Cadastre as frentes com nomes e números únicos de 1 a 999. Exemplos: Bloco A, Bloco B, áreas externas ou trechos de uma rodovia.",
+            "Busque e expanda cada serviço para conferir sua inclusão na submeta, macrosserviço, fonte, código, unidade, descrição, custo referencial e quantidades por frente. No PLE, selecione também seu evento.",
+            "Informe quantidades sem separador de milhar. Ao renumerar uma frente já utilizada, revise os vínculos; o sistema não transfere quantidades silenciosamente para o novo número.",
+            "Use o assistente de distribuição para preencher vários serviços de uma vez. Itens excluídos da submeta permanecem intactos. Uma frente sem quantidade não precisa ganhar uma linha artificial; quantidade zero explícita é conservada quando aplicável à própria origem."
           ]
         },
         {
-          "title": "Criar um orçamento compatível sem diferença financeira",
+          "title": "Assistente de frentes — Critério geral e regras por etapa",
           "steps": [
-            "Na Identificação ou Conferência, clique em Preparar cópia compatível. A prévia mostra o total original, o total da nova cópia e cada quantidade ou custo adotado. O original permanece intacto, com seus códigos, quantidades, preços e histórico.",
-            "O layout exige quantidades, custos e BDI com duas casas. Truncar somente o preço unitário do orçamento original não elimina diferenças quando há quantidades ou BDI com maior precisão. Na nova cópia, os dados de entrada são truncados em duas casas e os preços e produtos derivados usam aritmética decimal com arredondamento convencional, meio para cima, igual ao perfil oficial.",
-            "Confira os ajustes e clique em Confirmar e criar orçamento compatível. Será criado outro orçamento na sua conta, identificado com o sufixo TransfereGov. A operação exige a mesma versão salva da prévia; conflitos impedem criar a cópia. Repetir a mesma solicitação não duplica o orçamento.",
-            "Abra a cópia compatível pelo link apresentado. O perfil de precisão aparece fixo no Orçamento. Os custos adotados ficam capturados por serviço, as quantidades periódicas ficam congeladas e a sincronização automática de eventos por equipes fica desligada. Prazos podem mudar com as quantidades normalizadas. Análises de risco vinculadas à versão antiga não são transferidas: refaça a análise na cópia se necessário.",
-            "Abra BM ou PLE na nova cópia. Com todos os serviços incluídos e as quantidades preservadas em uma frente, a Conferência deve mostrar diferença de R$ 0,00. Dividir quantidades entre várias frentes pode criar diferenças de centavos por produto: revise essa distribuição. Não há linha artificial de compensação.",
-            "O arquivo de configuração pode ser reaproveitado do original na cópia descendente, com os mesmos serviços. Mapeamentos e quantitativos ainda exigem conferência. A diferença entre o original e a cópia é apresentada na prévia; igualdade com a cópia não significa preservar o mesmo total do original. A importação efetiva no TransfereGov continua dependendo de homologação."
+            "Escolha o Critério geral: Manter distribuição atual; Frente única; ou Proporcional às dimensões físicas.",
+            "Na tabela de etapas e subetapas, defina exceções. Um serviço herda a regra explícita da etapa mais próxima; se não houver exceção, usa o critério geral.",
+            "Escolher Manter distribuição atual em uma etapa impede o assistente de substituir a distribuição dos seus serviços. Escolher Frente única envia a quantidade inteira para a frente selecionada.",
+            "Para distribuir por área, extensão ou número de unidades, informe as dimensões de todas as frentes na mesma unidade física, com até seis casas e sem separador de milhar. Valor vazio ou zero não recebe parcela proporcional; pelo menos uma dimensão precisa ser positiva.",
+            "A unidade da dimensão é o peso da proporção, sem conversão da unidade do serviço. Uma área em m² pode definir a proporção de um serviço medido em m³, desde que essa hipótese represente sua obra.",
+            "Serviços possivelmente compartilhados, como administração local, mobilização e canteiro, exigem regra específica na etapa ou ajuste manual quando apenas o critério geral pede rateio proporcional."
           ]
         },
         {
-          "title": "Refazer sugestões a partir do Eventograma",
+          "title": "Exemplos de distribuição: edificação, rodovia e centésimos",
+          "body": "Os exemplos abaixo são didáticos. Escolha dimensões e critérios que representem a execução real antes de aplicar.",
+          "table": {
+            "headers": [
+              "Situação",
+              "Regra e resultado esperado"
+            ],
+            "rows": [
+              [
+                "Edificação: Bloco A com 1.000 m² e Bloco B com 2.000 m²",
+                "Um serviço com 90,00 m³ recebe 30,00 m³ no A e 60,00 m³ no B. Uma exceção de etapa pode manter determinados serviços inteiros em apenas um bloco."
+              ],
+              [
+                "Rodovia: Trecho 1 com 3 km e Trecho 2 com 7 km",
+                "Um serviço com 200,00 t recebe 60,00 t e 140,00 t, se a proporção pela extensão for adequada."
+              ],
+              [
+                "Três frentes de igual dimensão e 1,00 m³ a distribuir",
+                "A divisão recebe 0,34 m³, 0,33 m³ e 0,33 m³. O centésimo restante vai para a frente de menor número no empate."
+              ],
+              [
+                "Etapa de administração local com regra Frente única: 1",
+                "Os serviços dessa etapa usam a frente 1, mesmo que o critério geral distribua os demais pela dimensão."
+              ]
+            ]
+          },
+          "expected": "A soma das quantidades propostas coincide exatamente com a quantidade adotada na exportação em duas casas. Isso não garante igualdade dos produtos financeiros arredondados por frente.",
+          "formula": "Parcela inicial = quantidade da exportação × dimensão da frente ÷ soma das dimensões\nOs centésimos restantes vão para os maiores restos da divisão; no empate, para a frente de menor número."
+        },
+        {
+          "title": "Proteger ajustes manuais e confirmar a distribuição",
           "steps": [
-            "Na etapa 2, selecione Eventos principais ou Subeventos finais e clique em Refazer sugestões a partir do Eventograma. O botão utiliza o Eventograma já elaborado do orçamento e apresenta uma prévia antes de alterar o mapeamento da exportação.",
-            "Confira nomes, códigos, vínculos efetivos herdados e prazos. Códigos hierárquicos recebem numeração compatível de 1 a 999 somente na exportação; a correspondência mantém o código original. Os prazos são convertidos em meses da obra.",
-            "Um serviço com um destino inequívoco é vinculado automaticamente. Múltiplos eventos, custos diluídos, serviço sem vínculo ou evento inválido ficam pendentes para revisão. Não é feito rateio silencioso. Recebimentos, retenções e multas não se tornam serviços artificiais.",
-            "Clique em Aplicar sugestões para atualizar somente a configuração BM/PLE. No PLE, confira o evento de execução e o mês de conclusão em cada frente; na falta de prazo do evento, a sugestão utiliza o cronograma. No BM, confira novamente os percentuais mensais. O Eventograma e o orçamento originais não são gravados por esse botão."
+            "Preservar ajustes manuais protegidos fica marcado por padrão. Editar a quantidade de uma frente em um serviço protege esse serviço ao refazer sugestões.",
+            "A caixa Proteger distribuição manual deste serviço permite controlar cada exceção. Desmarcar a preservação geral permite substituir os ajustes protegidos, mas somente após nova prévia e confirmação.",
+            "Clique em Preparar prévia da distribuição. Confira quantos serviços serão alterados, mantidos, protegidos ou deixados pendentes. Expanda a relação para comparar cada quantidade atual e proposta e a regra utilizada.",
+            "Leia os cartões Arquivo antes, Arquivo após distribuir, Variação causada pela distribuição e Diferença para os serviços da origem. A variação do rateio é diferente da divergência que o arquivo já apresentava antes dele.",
+            "Confirme em Confirmar e aplicar à exportação. Cancelar descarta a prévia. Se editar a configuração depois da prévia, prepare outra antes de confirmar; se mudar o orçamento, reabra sua fotografia.",
+            "A aplicação não altera EAP, quantidades, preços, Eventograma ou cronograma de origem. Para reutilizar a distribuição em outro acesso, baixe a configuração antes de fechar o assistente."
           ]
         },
         {
-          "title": "Distribuir serviços e etapas entre frentes de obra",
+          "title": "Fonte, códigos, descrições e unidades: o que é adaptado",
+          "table": {
+            "headers": [
+              "Situação",
+              "Tratamento na exportação"
+            ],
+            "rows": [
+              [
+                "Código ausente, alfanumérico incompatível ou com tamanho inválido",
+                "Recebe um código numérico de 13 dígitos a partir de 9990000000000, evitando colisões. O código original e a correspondência permanecem no relatório."
+              ],
+              [
+                "Fonte SINAPI",
+                "Exige coerência de código, descrição, unidade e custo referencial com a referência utilizada. Custo adotado é um campo separado. Uma adaptação não deve ser apresentada como referência oficial intacta."
+              ],
+              [
+                "Base SICRO no Infraestrutura",
+                "SICRO não é uma opção específica de fonte no layout. O assistente utiliza Outros ou Composição conforme o cadastro; isso não converte o catálogo SICRO em SINAPI nem modifica seu código de origem."
+              ],
+              [
+                "Referência ausente, mas custo adotado disponível",
+                "A exportação pode usar o custo adotado como referência de composição adaptada e registrar aviso. Custo adotado ausente continua sendo pendência."
+              ],
+              [
+                "Descrição longa ou unidade com grafia equivalente",
+                "Descrição acima de 500 caracteres é abreviada somente no arquivo, com original no relatório. Grafias como tkm/TXKM ou dm³/DM3 são normalizadas sem conversão de quantidade ou custo."
+              ],
+              [
+                "Créditos de IVA e riscos",
+                "O exportador não deduz créditos estimados nem acrescenta risco novamente. Confira o custo adotado e o BDI já configurados no orçamento."
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Entender os dois perfis de precisão",
+          "body": "Uma tela com dois dígitos não prova que todos os valores internos têm somente dois dígitos. Quantidades periódicas, custos e BDI podem ter precisão maior. O TransfereGov também recalcula campos derivados a partir das entradas; preencher um total calculado no XLSX não obriga o destino a adotá-lo.",
+          "table": {
+            "headers": [
+              "Caminho",
+              "Entradas e cálculo",
+              "O que comparar"
+            ],
+            "rows": [
+              [
+                "Exportação direta do orçamento original",
+                "Adapta quantidades, custos e BDI às duas casas do perfil direto, com truncamento dos produtos. A precisão interna da origem permanece intacta.",
+                "Total original dos serviços selecionados versus valor do arquivo; diferenças são informadas."
+              ],
+              [
+                "Exportação de orçamento compatível",
+                "A nova cópia adota entradas em duas casas e usa arredondamento decimal convencional, meio para cima, nos preços e produtos.",
+                "Total dessa cópia versus arquivo, com a mesma seleção e distribuição."
+              ],
+              [
+                "Redistribuição entre várias frentes",
+                "Cada produto por frente pode ter seu próprio arredondamento. A soma das quantidades continua exata.",
+                "Compare o arquivo antes e depois do rateio; não confunda essa variação com a diferença em relação à origem."
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Por que pode restar um centavo mesmo com quantidades corretas",
+          "body": "Exemplo no perfil compatível: preço unitário de R$ 0,01 e quantidade de 1,01 m³ produzem R$ 0,01 em uma única frente. Ao dividir em 0,51 m³ e 0,50 m³, os produtos R$ 0,0051 e R$ 0,0050 são arredondados para R$ 0,01 cada, somando R$ 0,02. A quantidade continua 1,01 m³; a diferença de R$ 0,01 está nos produtos por frente, não em quantidade perdida.",
+          "expected": "A prévia apresenta essa diferença sem criar serviço, quantidade ou linha de compensação artificial. Revise a distribuição e os critérios antes de gerar."
+        },
+        {
+          "title": "Etapa 4 no BM — Rever as parcelas mensais",
           "steps": [
-            "Na etapa 3, Frentes e serviços, cadastre e nomeie as frentes. Abra o Assistente de distribuição por frentes. O assistente altera somente a configuração BM/PLE desta exportação, sem mudar orçamento, EAP, preços, Eventograma ou planejamento de origem.",
-            "Escolha um critério geral: manter a distribuição atual, enviar para uma frente única ou distribuir proporcionalmente às dimensões físicas. Para dividir por área, extensão ou número de unidades, informe dimensões na mesma unidade em todas as frentes, com até seis casas e sem separador de milhar. Zero ou campo vazio não recebe quantidade proporcional; ao menos uma dimensão deve ser positiva.",
-            "Na tabela de etapas e subetapas do orçamento, defina exceções. Os serviços herdam a regra explícita da etapa mais próxima; na falta dela, usam o critério geral. Manter distribuição atual impede substituir a distribuição daquela etapa. A unidade de dimensão é apenas o peso da proporção: não converte a unidade do serviço.",
-            "Preservar ajustes manuais protegidos fica marcado por padrão. Editar a quantidade de uma frente em um serviço protege esse serviço. A caixa dentro do serviço permite retirar ou acrescentar proteção; desmarcar a preservação geral permite substituir ajustes manuais, somente após a prévia e confirmação.",
-            "Clique em Preparar prévia da distribuição. Confira serviços alterados, protegidos, mantidos e pendentes. Expanda a relação para ver regra herdada, quantidade em duas casas, distribuição atual e proposta. Possíveis serviços compartilhados, como administração local, mobilização e canteiro, ficam pendentes quando somente o critério geral propõe rateio: escolha uma regra específica de etapa ou ajuste manualmente.",
-            "Os centésimos da quantidade são distribuídos por maiores restos, com desempate pelo número da frente, conservando exatamente a quantidade da exportação em duas casas. Isso não garante conservar o preço total depois do cálculo independente de produtos por frente: a prévia mostra o valor anterior, o posterior, a variação causada pela distribuição e a diferença em relação à origem. Não há compensação financeira artificial.",
-            "Confirme em Confirmar e aplicar à exportação. Cancelar descarta somente a prévia. Alterar a configuração depois da prévia exige preparar outra; alterações no orçamento de origem impedem aplicar a fotografia desatualizada. Serviços fora da submeta permanecem intactos.",
-            "No BM, confira novamente os percentuais mensais. Frentes sem quantidade não ganham linhas artificiais nem conclusões de eventos. No PLE, novos pares evento/frente recebem sugestão de conclusão pelo cronograma e os pares já revisados são preservados. Confira cada conclusão antes de gerar.",
-            "Baixar configuração guarda as regras, dimensões e proteções para reaproveitar pelo botão Carregar configuração no mesmo projeto ou na cópia compatível descendente. O relatório JSON de conferência inclui a última distribuição automática aplicada; a planilha oficial mantém seus cabeçalhos e colunas. A importação efetiva no TransfereGov continua exigindo homologação."
+            "Confira os macrosserviços e as parcelas do CFF. A sugestão parte do cronograma existente; ela não redesenha o planejamento do orçamento.",
+            "Revise percentuais e períodos após alterar os serviços selecionados. O planejamento completo deve fechar em 100,00% por macrosserviço.",
+            "Soma positiva abaixo de 100,00% gera aviso; soma acima de 100,00% ou sem parcelas válidas impede gerar. Não interprete a ausência de bloqueio como confirmação de que seu planejamento está completo.",
+            "O mês 1 corresponde ao primeiro mês civil mostrado na identificação. Confira a duração e as parcelas com os Dados Gerais do destino."
           ]
+        },
+        {
+          "title": "Etapa 4 no PLE — Rever as conclusões evento/frente",
+          "steps": [
+            "Cada par de evento e frente com serviço deve receber um único mês inteiro de conclusão, entre 1 e a duração da obra. Não informe percentual de pagamento nesse campo.",
+            "A sugestão pelo cronograma considera a conclusão dos serviços vinculados. Quando houver aproveitamento do Eventograma, confira também os prazos sugeridos por ele.",
+            "Meses já revisados são preservados nos mesmos pares; novos pares recebem sugestões. Frentes que não receberam quantidade pela distribuição automática não ganham conclusões artificiais.",
+            "Como a origem não tem um cronograma independente para cada frente, a sugestão pode se repetir. Ajuste os meses para a sequência real de execução de cada trecho ou bloco.",
+            "Refazer sugestão a partir do cronograma substitui explicitamente os meses da configuração exportada. Não modifica o cronograma original."
+          ]
+        },
+        {
+          "title": "Etapa 5 — Conferir e gerar os arquivos",
+          "steps": [
+            "Revise os totais original e exportado, a diferença, as contagens de serviços, frentes e macrosserviços e, no PLE, eventos e conclusões.",
+            "Resolva as pendências impeditivas. Enquanto houver erro estrutural, o total pode ser parcial: não trate a diferença financeira como comparação final.",
+            "Expanda os avisos, a correspondência de códigos, os valores por serviço/frente e as conclusões PLE. Aviso não é aprovação automática; diferença financeira não bloqueia por si só.",
+            "Marque a conferência expressa e clique em Gerar e baixar XLSX BM ou Gerar e baixar XLSX PLE. Guarde também o relatório JSON separado.",
+            "O relatório registra ajustes, códigos de origem/exportados, distribuição automática aplicada e os identificadores de conferência. A auditoria registra preparação, versão e hashes. Esses registros não comprovam importação, aceitação ou aprovação pelo governo."
+          ],
+          "expected": "Você recebe XLSX e relatório. O PLE possui 19 colunas na PO e cinco no CFF; o BM tem seu layout próprio. Não altere cabeçalhos, ordem ou nomes das abas sem conferir o perfil oficial."
+        },
+        {
+          "title": "Guardar e reutilizar a configuração",
+          "steps": [
+            "Baixe a configuração antes de fechar ou reabrir o assistente. As escolhas não são gravadas automaticamente no JSON do orçamento ou no banco como uma nova versão.",
+            "O carregamento aceita configuração da mesma modalidade e do mesmo projeto, ou do original na sua cópia compatível descendente, com serviços compatíveis. O limite do arquivo é 2 MB.",
+            "Depois de carregar, revise todas as etapas. Mudanças na referência, nos serviços, nas frentes ou na duração podem exigir novas conferências. O relatório registra a última distribuição automática aplicada; os valores por serviço mostram a configuração atual."
+          ],
+          "table": {
+            "headers": [
+              "Arquivo",
+              "Uso correto"
+            ],
+            "rows": [
+              [
+                "XLSX BM ou PLE",
+                "Arquivo destinado à importação manual no TransfereGov. Não serve para restaurar o orçamento original no OrçaPro."
+              ],
+              [
+                "JSON de conferência",
+                "Memória dos ajustes e resultados. Não é o arquivo esperado em Carregar configuração."
+              ],
+              [
+                "JSON de configuração",
+                "Guarda perfis, mapeamentos, frentes, dimensões, regras, proteções e escolhas de cronograma. Use Baixar configuração e depois Carregar configuração."
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Importar manualmente no destino",
+          "body": "O guia oficial descreve requisitos de acesso e de preenchimento dos Dados Gerais. O OrçaPro não executa essa etapa nem solicita credenciais governamentais.",
+          "steps": [
+            "Confira a submeta e o acompanhamento por eventos ou sem eventos no TransfereGov. Salve os Dados Gerais conforme o procedimento do destino.",
+            "Preserve a exportação anterior da PO/CFF antes de importar: o arquivo recebido pode substituir as informações correspondentes já cadastradas.",
+            "Escolha o XLSX da modalidade e do perfil revisados. Verifique o retorno das validações e confronte frentes, eventos, quantidades, custos, BDI, parcelas/conclusões e total com seu relatório.",
+            "Se houver rejeição, guarde o retorno e revise o campo indicado na configuração. Gerar novamente no OrçaPro não altera o que já foi importado no destino.",
+            "A aceitação no importador oficial ainda precisa de homologação. Resultado local validado ou registro PREPARED na auditoria não substitui essa conferência."
+          ]
+        },
+        {
+          "title": "Resolver os problemas mais comuns",
+          "table": {
+            "headers": [
+              "Mensagem ou situação",
+              "Como agir"
+            ],
+            "rows": [
+              [
+                "Salve as alterações / conflito / fotografia mudou",
+                "Conclua ou resolva a edição e reabra o assistente. Não tente gerar a partir de uma versão desatualizada."
+              ],
+              [
+                "A configuração mudou após a prévia",
+                "Clique novamente em Preparar prévia da distribuição, revise e confirme."
+              ],
+              [
+                "Nenhuma dimensão positiva / dimensão inválida",
+                "Use valores não negativos, até seis casas e sem separador de milhar; informe ao menos uma dimensão positiva."
+              ],
+              [
+                "Serviço protegido não foi redistribuído",
+                "Revise a proteção daquele serviço. Retire-a apenas se quiser substituí-lo na próxima prévia."
+              ],
+              [
+                "Serviço compartilhado, diluído ou com múltiplos eventos",
+                "Defina regra específica de etapa/frente ou um vínculo manual inequívoco. Não há divisão silenciosa."
+              ],
+              [
+                "Fonte, código, unidade, referência ou descrição incompatíveis",
+                "Abra o serviço no assistente, confira os campos e a correspondência. Não rotule uma adaptação como SINAPI oficial para contornar a validação."
+              ],
+              [
+                "Mês ausente, duplicado ou fora da duração no PLE",
+                "Revise cada par evento/frente e informe uma única conclusão válida."
+              ],
+              [
+                "Diferença de valor mesmo com aparência de duas casas",
+                "Confira a precisão interna, o perfil de cálculo e os produtos por frente. Considere a cópia compatível; compare também Arquivo antes e Variação causada pela distribuição."
+              ],
+              [
+                "Total parcial",
+                "Resolva primeiro as pendências estruturais; só depois compare valores finais."
+              ],
+              [
+                "Carregar configuração recusa um JSON",
+                "Confirme que é o JSON de configuração, da modalidade e projeto compatíveis, e não o relatório de conferência."
+              ]
+            ]
+          }
+        },
+        {
+          "title": "Checklist antes de concluir",
+          "steps": [
+            "Projeto, versão, UF, data-base, regime e submeta conferidos.",
+            "BM ou PLE e perfil de abas compatíveis com o destino.",
+            "Serviços incluídos e códigos/fontes/unidades revisados; adaptações identificadas no relatório.",
+            "Frentes, dimensões, regras herdadas e exceções manuais conferidas.",
+            "Pendências de serviços compartilhados, diluídos e vínculos resolvidas ou explicitamente mantidas para revisão.",
+            "Quantidades por frente somam a quantidade adotada na exportação.",
+            "Percentuais BM ou conclusões PLE revisados em todos os períodos aplicáveis.",
+            "Diferença original/arquivo e variação do rateio compreendidas, sem compensação artificial.",
+            "XLSX, relatório e configuração guardados separadamente.",
+            "Retorno da importação manual confrontado com o relatório; preservação do arquivo anterior no destino."
+          ],
+          "expected": "O arquivo foi preparado e conferido. A origem continua preservada; a aceitação final depende das validações e da revisão no TransfereGov."
         }
       ]
     }
@@ -2197,6 +2542,22 @@
     [
       "Slug",
       "Identificador de organização usado no login do Gestão de Prédios ou na seleção geral; o OrçaPro utiliza e-mail e senha. Contém letras minúsculas, números e hífen."
+    ],
+    [
+      "BM",
+      "Boletim de Medição; modalidade de exportação sem acompanhamento por eventos."
+    ],
+    [
+      "PLE",
+      "Planilha de Levantamento de Eventos; modalidade com vínculo e conclusão por evento e frente."
+    ],
+    [
+      "Frente de obra",
+      "Local ou trecho que recebe uma parcela da quantidade de um serviço na exportação."
+    ],
+    [
+      "Cópia compatível",
+      "Novo orçamento privado com entradas em duas casas e perfil decimal próprio; não substitui a origem."
     ]
   ],
   "quiz": [

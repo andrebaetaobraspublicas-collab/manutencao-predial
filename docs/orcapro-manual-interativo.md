@@ -1,6 +1,6 @@
 # Manual interativo do OrçaPro
 
-O menu **Manual** no editor fornece capítulos, trilhas, busca por conteúdo, mapa entre módulos, exercícios e exemplos numéricos. Esta extensão substitui somente a visualização do manual do OrçaPro; preserva o manual do Gestão de Prédios, o orçamento, os motores e o HTML original.
+O menu **Manual e Vídeos** no editor fornece capítulos, trilhas, busca por conteúdo, mapa entre módulos, exercícios e exemplos numéricos. Esta extensão substitui somente a visualização do manual do OrçaPro; preserva o manual do Gestão de Prédios, o orçamento, os motores e o HTML original.
 
 ## Conteúdo e navegação
 
@@ -28,3 +28,11 @@ Validação: consistência de capítulos/trilhas/referências, cálculos usando 
 Revisão visual em fixture local sintética: leitura, busca, trilhas, mapa, laboratório, glossário, exercícios, fontes, download, tema escuro e layout estreito. Publicação segue PR, CI, merge, promoção Hostinger e conferência do release e manifesto em produção.
 
 Mudanças de cálculo fiscal ou fluxos devem vir acompanhadas de revisão do capítulo correspondente e dos exemplos. A edição atual descreve o comportamento implementado; referências normativas são identificadas separadamente de hipóteses econômicas e padrões de cenário.
+
+## TransfereGov — revisão 1.1.5, apenas desenvolvimento
+
+O capítulo 31 foi reorganizado em 23 seções, a partir da funcionalidade já implementada e do guia oficial PO/CFF. Abrange decisão BM/PLE, conceitos, preservação, cinco etapas, cópia compatível, Eventograma, frentes por etapa/dimensão física, proteção manual, maiores restos, diferença de precisão e variação de rateio, parcelas BM, conclusões PLE, códigos/fontes/unidades, arquivos, importação manual, diagnóstico e checklist. Exemplos de edificação, rodovia e centésimos são didáticos e não usam dados privados do projeto.
+
+Fonte editorial comum: `scripts/shared/transferegov-bm-manual.json`, espelhada no capítulo de `manual-content.json`. O renderizador Infraestrutura passa a exibir o índice de seções, tabelas, fórmulas textuais, resultados esperados e links HTTPS desse capítulo. O manual OrçaPro conserva sua busca, navegação e exportação offline. Glossário e referências oficiais atualizados.
+
+Sem alterar preços, orçamento, fluxo de exportação, API, permissões ou banco. O capítulo mantém `developmentOnly=true`. Publicação desta revisão limitada aos dois editores de www.gestaodepredios.com.br; produções excluídas. A aceitação do XLSX no importador oficial continua pendente de homologação.

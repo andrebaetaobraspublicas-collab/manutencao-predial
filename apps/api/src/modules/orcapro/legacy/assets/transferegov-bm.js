@@ -20,6 +20,28 @@
   }
   const round = (n,d) => (2n*n+d)/(2n*d);
   const scaled = (v,scale=100n) => { const [n,d]=rational(v); return round(n*scale,d); };
+  // Source Numbers can carry binary residues. Snap only within 0.000001 of
+  // the output quantum; decimal strings and all actual products truncate exactly.
+  const truncated = (v,scale=100n) => { const [n,d]=rational(v),q=n*scale/d,r=n*scale%d;
+    if(typeof v==='number'&&r&&((d-r)*1000000n<=d))return q+1n;return q; };
+  const differs = (v,q,scale=100n) => {const [n,d]=rational(v),delta=n*scale-BigInt(q)*d;return (delta<0n?-delta:delta)*1000000n>d;};
+  const codeValid = (code,profile) => (profile?.numericCodes?/^\d{1,13}$/:/^[A-Za-z0-9._-]{1,13}$/).test(String(code??''));
+  function normalize(snapshot,input){
+    const config=JSON.parse(JSON.stringify(input)),profile=PROFILES[config.profile],reserved=new Set(),assigned=new Map();let next=9990000000000n;
+    for(const code of [...snapshot.items.map(r=>r.code),...config.items.map(c=>c.code)])if(/^\d{1,13}$/.test(String(code??'')))reserved.add(BigInt(code).toString());
+    for(const row of snapshot.items){const c=config.items.find(x=>x.id===row.id);if(!c)continue;
+      if(!codeValid(c.code,profile)){
+        const identity=row.code?canonical([row.source,String(row.code),String(c.code??'')]):'row:'+row.id;
+        if(!assigned.has(identity)){while(reserved.has(String(next)))next++;if(next>9999999999999n)throw Error('Faixa de códigos automáticos esgotada.');assigned.set(identity,String(next));reserved.add(String(next++));}
+        c.code=assigned.get(identity);c.autoCode=c.code;
+      }
+      if(c.source==='SINAPI'&&String(c.code)!==String(row.code))c.source='Composição';
+      if((c.reference===''||c.reference==null)&&row.costCents!=null){
+        try{c.reference=decimal(truncated(row.costCents,1n));c.referenceFallback=true;if(c.source==='SINAPI')c.source='Composição';}catch(_){/* Missing/invalid adopted costs remain explicit errors. */}
+      }
+    }
+    return config;
+  }
   const exact = (v,scale=100n) => { const [n,d]=rational(v); if (n*scale%d) throw Error('Use no máximo duas casas decimais.');return n*scale/d; };
   const decimal = cents => { const n=BigInt(cents);return `${n/100n}.${String(n%100n).padStart(2,'0')}`; };
   const signed = n => n<0n ? '-'+decimal(-n) : decimal(n);
@@ -42,8 +64,8 @@
     for(let i=0;i<rest;i++)values[order[i].i]++;return values;
   }
   function defaults(snapshot) {
-    return { version:VERSION,profile:'documentation',submeta:'',duration:snapshot.periods.length,groups:snapshot.groups.map((g,i)=>({...g,number:i+1,name:g.name})),fronts:[{number:1,name:'Frente de obra 1'}],
-      items:snapshot.items.map(r=>({id:r.id,include:true,group:r.group,source:['SINAPI'].includes(r.source)?r.source:/^\d+$/.test(r.code)?'Outros':'Composição',code:r.code,description:r.description,unit:UNITS.includes(unit(r.unit))?unit(r.unit):'',reference:r.referenceCents==null?'':decimal(scaled(r.referenceCents,1n)),note:`${r.source} · ${snapshot.uf} · ${snapshot.ref} · ${snapshot.regime}`,allocations:{'1':decimal(scaled(r.quantity))}})),schedule:[] };
+    const config={ version:VERSION,arithmetic:'truncate-2',profile:'documentation',submeta:String(snapshot.name||'').trim().slice(0,100),duration:snapshot.periods.length,groups:snapshot.groups.map((g,i)=>({...g,number:i+1,name:g.name})),fronts:[{number:1,name:'Frente de obra 1'}],
+      items:snapshot.items.map(r=>({id:r.id,include:true,group:r.group,source:['SINAPI'].includes(r.source)?r.source:/^\d+$/.test(r.code)?'Outros':'Composição',code:r.code,description:r.description,unit:UNITS.includes(unit(r.unit))?unit(r.unit):'',reference:r.referenceCents==null?'':decimal(truncated(r.referenceCents,1n)),note:`${r.source} · ${snapshot.uf} · ${snapshot.ref} · ${snapshot.regime}`,allocations:{'1':decimal(truncated(r.quantity))}})),schedule:[] };return normalize(snapshot,config);
   }
   function suggested(snapshot,config) {
     const result=[];
@@ -56,7 +78,8 @@
       distribute(weights).forEach((p,i)=>result.push({group:group.id,period:i+1,percent:decimal(p)}));
     }return result;
   }
-  function prepare(snapshot,config) {
+  function prepare(snapshot,input) {
+    const config=normalize(snapshot,input),adjustments=[],codeMappings=[];
     const errors=[],warnings=[],items=[],groups=[],profile=PROFILES[config.profile];
     const error=(id,message)=>errors.push({id,message}),warn=(id,message)=>warnings.push({id,message});
     if(!profile)error('profile','Selecione um perfil BM válido.');
@@ -78,27 +101,29 @@
         if(row.periodDays.some((days,index)=>index>=duration&&days>0))throw Error('A duração informada corta meses com execução deste serviço. Amplie a duração para preservar o planejamento.');
         const g=config.groups.find(g=>g.id===c.group);if(!g)throw Error('Escolha o macrosserviço de destino.');
         if(!['SINAPI','Composição','Cotação','Outros'].includes(c.source))throw Error('Fonte inválida para o layout BM.');
-        const code=String(c.code ?? '');if(!(profile?.numericCodes?/^\d{1,13}$/:/^[A-Za-z0-9._-]{1,13}$/).test(code))throw Error('Código de exportação inválido: use até 13 dígitos no perfil da documentação; códigos próprios exigem um mapeamento explícito.');
+        const code=String(c.code ?? '');if(!codeValid(code,profile))throw Error('Não foi possível atribuir um código de exportação válido.');
         if(typeof c.description!=='string'||!c.description.trim()||c.description.length>500)throw Error('Descrição deve ter de 1 a 500 caracteres.');
         if(!UNITS.includes(c.unit))throw Error('Selecione uma unidade aceita; conversões dimensionais não são automáticas.');
         if(typeof c.note!=='string'||c.note.length>500)throw Error('Observação limitada a 500 caracteres.');
-        const reference=exact(c.reference),cost=scaled(row.costCents,1n),bdi=scaled(row.bdi,10000n);
+        if(row.costCents==null)throw Error('Custo unitário adotado ausente no orçamento.');
+        if(c.reference===''||c.reference==null)throw Error('Custo unitário referencial ausente na cópia.');
+        const reference=truncated(c.reference),cost=truncated(row.costCents,1n),bdi=truncated(row.bdi,10000n);
         if(reference>MAX||cost>MAX||bdi>10000n)throw Error('Custo ou BDI fora dos limites do layout (BDI de 0 a 100%).');
-        if(c.source==='SINAPI'&&(row.source!=='SINAPI'||code!==row.code||c.description!==row.description||c.unit!==unit(row.unit)||row.referenceCents==null||reference!==scaled(row.referenceCents,1n)))throw Error('SINAPI exige código, descrição, unidade e custo referencial originais; revise a fonte do serviço adaptado.');
-        const [cn,cd]=rational(row.costCents);if(cn!==cost*cd)warn(row.id,'Custo adotado aproximado a centavos no arquivo BM.');
-        const price=round(cost*(10000n+bdi),10000n);if(price>MAX)throw Error('Preço unitário excede o limite.');
+        if(c.source==='SINAPI'&&(row.source!=='SINAPI'||code!==row.code||c.description!==row.description||c.unit!==unit(row.unit)||row.referenceCents==null||reference!==truncated(row.referenceCents,1n)))throw Error('SINAPI exige código, descrição, unidade e custo referencial originais; revise a fonte do serviço adaptado.');
+        const changes=[];if(differs(row.costCents,cost,1n))changes.push('Custo adotado truncado a centavos.');if(differs(row.bdi,bdi,10000n))changes.push('BDI truncado a duas casas percentuais.');if(c.referenceFallback)changes.push('Referência ausente: custo adotado usado na cópia, como composição adaptada.');
+        const price=cost*(10000n+bdi)/10000n;if(price>MAX)throw Error('Preço unitário excede o limite.');
         const allocations=[];let qty=0n,total=0n;
-        for(const [key,value]of Object.entries(c.allocations||{})){if(value===''||value==null)continue;const q=exact(value);
+        for(const [key,value]of Object.entries(c.allocations||{})){if(value===''||value==null)continue;const q=truncated(value);if(differs(value,q))changes.push(`Quantidade da frente ${key} truncada a duas casas.`);
           const front=config.fronts.find(f=>String(f.number)===key);if(!front)throw Error('Há quantidade vinculada a frente inexistente.');
           if(q>9999999999n)throw Error('Quantidade por frente acima de 99.999.999,99.');
-          const v=round(q*price,100n);qty+=q;total+=v;allocations.push({front:Number(front.number),name:front.name,quantity:decimal(q),totalCents:String(v)});
+          const v=q*price/100n;qty+=q;total+=v;allocations.push({front:Number(front.number),name:front.name,quantity:decimal(q),totalCents:String(v)});
         }
         if(!allocations.length)throw Error('Informe uma quantidade, inclusive zero quando aplicável, em ao menos uma frente.');
         if(qty>MAX||total>MAX)throw Error('Quantidade ou valor total excede o limite.');
-        if(scaled(row.quantity)!==qty||rational(row.quantity)[0]*100n!==qty*rational(row.quantity)[1])warn(row.id,`Item ${row.number}: quantidade original ${row.quantity}; exportação ${decimal(qty)}. Confira a adaptação de precisão e a distribuição por frentes.`);
-        if(scaled(row.totalCents ?? 0,1n)!==total)warn(row.id,`Item ${row.number}: diferença financeira de R$ ${signed(total-scaled(row.totalCents ?? 0,1n))} em relação ao orçamento.`);
-        const [bn,bd]=rational(row.bdi);if(bn*10000n!==bdi*bd)warn(row.id,'BDI aproximado a duas casas percentuais.');
-        if(c.source!=='SINAPI')warn(row.id,`Item ${row.number}: conferir fonte ${c.source} e código ${code} no destino; origem ${row.source} preservada no relatório.`);
+        if(differs(row.quantity,qty))changes.push(`Quantidade original ${row.quantity}; cópia ${decimal(qty)}.`);
+        const original=scaled(row.totalCents??0,1n),difference=total-original;
+        if(changes.length||difference)adjustments.push({id:row.id,number:row.number,changes,originalTotalCents:String(original),exportTotalCents:String(total),differenceCents:String(difference),referenceFallback:!!c.referenceFallback});
+        if(code!==String(row.code??''))codeMappings.push({id:row.id,number:row.number,originalCode:String(row.code??''),exportCode:code,automatic:c.autoCode===code,originalSource:row.source,exportSource:c.source});
         const item={id:row.id,number:row.number,group:g.id,groupNumber:Number(g.number),code,originalCode:row.code,source:c.source,description:c.description,unit:c.unit,referenceCents:String(reference),costCents:String(cost),bdiPoints:Number(bdi),priceCents:String(price),quantity:decimal(qty),totalCents:String(total),originalTotalCents:String(scaled(row.totalCents??0,1n)),note:c.note,allocations};
         if(errors.length===startErrors)items.push(item);
       }catch(e){error(row.id,`Item ${row.number} (${row.code}): ${e.message}`);}
@@ -107,13 +132,16 @@
       if(members.length>999)error(g.id,'Cada macrosserviço permite até 999 serviços.');
       const total=members.reduce((a,i)=>a+BigInt(i.totalCents),0n);if(total>MAX)error(g.id,'Total do macrosserviço acima do limite.');
       const schedule=[],seen=new Set();let sum=0n;
-      for(const s of config.schedule.filter(s=>s.group===g.id)){try{const period=Number(s.period),p=exact(s.percent);if(!Number.isInteger(period)||period<1||period>duration||seen.has(period)||p>10000n)throw Error('Período ou percentual inválido/repetido.');seen.add(period);sum+=p;if(p)schedule.push({period,points:Number(p)});}catch(e){error(g.id,`Cronograma de ${g.name}: ${e.message}`);}}
-      if(sum!==10000n)error(g.id,`Cronograma de ${g.name}: o planejamento completo deve fechar em 100,00% (atual ${decimal(sum)}%).`);
+      for(const s of config.schedule.filter(s=>s.group===g.id)){try{const period=Number(s.period),p=truncated(s.percent);if(!Number.isInteger(period)||period<1||period>duration||seen.has(period)||p>10000n)throw Error('Período ou percentual inválido/repetido.');seen.add(period);sum+=p;if(p)schedule.push({period,points:Number(p)});}catch(e){error(g.id,`Cronograma de ${g.name}: ${e.message}`);}}
+      if(sum>10000n||sum===0n)error(g.id,`Cronograma de ${g.name}: distribua um percentual maior que zero e até 100,00% (atual ${decimal(sum)}%).`);else if(sum<10000n)warn(g.id,`Cronograma de ${g.name}: soma ${decimal(sum)}%; confira as parcelas. Essa diferença não impede a geração.`);
       groups.push({id:g.id,number:Number(g.number),name:g.name,totalCents:String(total),schedule:schedule.sort((a,b)=>a.period-b.period)});
     }
     const original=selected.reduce((a,c)=>a+scaled(snapshot.items.find(r=>r.id===c.id)?.totalCents??0,1n),0n),total=items.reduce((a,i)=>a+BigInt(i.totalCents),0n);
     if(total>MAX)error('total','Total da submeta acima do limite do layout.');
-    return {version:VERSION,profile:config.profile,sheetNames:[profile?.po,profile?.cff],documentation:DOCUMENTATION,submeta:config.submeta,project:{id:snapshot.projectId,name:snapshot.name,version:snapshot.version,uf:snapshot.uf,reference:snapshot.ref,regime:snapshot.regime},errors,warnings,items,groups,fronts:config.fronts,duration,originalCents:String(original),exportCents:String(total),differenceCents:String(total-original),homologated:false};
+    if(codeMappings.length)warn('codes',`${codeMappings.length} serviço(s) com código adaptado somente na cópia. Correspondências disponíveis no relatório.`);
+    if(adjustments.length)warn('precision',`${adjustments.length} serviço(s) com truncamentos, referências adaptadas ou diferenças financeiras. A conferência não bloqueia a geração por essas diferenças; detalhes no relatório.`);
+    const otherSources=items.filter(i=>i.source!=='SINAPI').length;if(otherSources)warn('sources',`${otherSources} serviço(s) exportado(s) como Composição, Cotação ou Outros; fontes originais preservadas no relatório.`);
+    return {version:VERSION,profile:config.profile,sheetNames:[profile?.po,profile?.cff],documentation:DOCUMENTATION,submeta:config.submeta,project:{id:snapshot.projectId,name:snapshot.name,version:snapshot.version,uf:snapshot.uf,reference:snapshot.ref,regime:snapshot.regime},arithmetic:'truncate-2',codeStart:'9990000000000',errors,warnings,adjustments,codeMappings,items,groups,fronts:config.fronts,duration,originalCents:String(original),exportCents:String(total),differenceCents:String(total-original),homologated:false};
   }
   const xml = value => String(value??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   function workbook(plan) {
@@ -141,7 +169,7 @@
       {name:'xl/styles.xml',data:'<?xml version="1.0"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="10" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'}];
     sheets.forEach((s,i)=>files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${col(s.rows[0].length-1)}${s.rows.length}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>${s.rows.map((r,ri)=>`<row r="${ri+1}">${r.map((c,ci)=>{if(c===''||c==null)return '';const cell=typeof c==='object'?c:{v:c},ref=col(ci)+(ri+1);return typeof cell.v==='number'?`<c r="${ref}" s="${cell.style||1}"><v>${cell.v}</v></c>`:`<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xml(cell.v)}</t></is></c>`;}).join('')}</row>`).join('')}</sheetData>${s.merges.length?`<mergeCells count="${s.merges.length}">${s.merges.map(r=>`<mergeCell ref="${r}"/>`).join('')}</mergeCells>`:''}</worksheet>`}));return files;
   }
-  const api={VERSION,PO,CFF,UNITS,PROFILES,canonical,rational,round,scaled,exact,decimal,unit,enabled,distribute,defaults,suggested,validateConfiguration,prepare,workbook};
+  const api={normalize,truncated,VERSION,PO,CFF,UNITS,PROFILES,canonical,rational,round,scaled,exact,decimal,unit,enabled,distribute,defaults,suggested,validateConfiguration,prepare,workbook};
   G.TransferegovBM=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

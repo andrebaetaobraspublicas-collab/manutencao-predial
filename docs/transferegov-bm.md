@@ -43,3 +43,11 @@ A exportação direta preserva o motor e a precisão da origem, e pode divergir 
 Etapa 2: Refazer sugestões a partir do Eventograma, com seleção de raízes ou folhas, captura a configuração clonada e os vínculos efetivos herdados. Prévia mostra códigos, nomes, prazos e pendências. Aplicar modifica somente a configuração da exportação. Múltiplos destinos, diluição e vínculos inválidos exigem atribuição explícita, sem rateio silencioso. Recebimentos, retenções e multas são informados como não transferidos.
 
 Ao abrir BM/PLE em uma cópia compatível, o assistente aguarda o salvamento das memórias derivadas de prazo e tributos dessa cópia antes de capturar versão/hash. Nenhum salvamento é disparado na origem não marcada; conflitos e alterações pendentes no editor de cadastros continuam bloqueando a captura.
+
+### Assistente de distribuição por etapa e dimensão física (desenvolvimento)
+
+Etapa 3: critério geral e exceções por etapa/subetapa da EAP original; o serviço herda a regra explícita mais próxima. Regras `keep`, `dimensions` ou `front:N`. Dimensões não negativas com até seis casas, mesma unidade física; zero/vazio não recebe parcela. Quantidades da exportação truncadas em duas casas são distribuídas em inteiros por maiores restos, desempate por número da frente. A soma conserva a quantidade exata adotada na exportação. Custos e produtos não recebem ajustes financeiros artificiais; a prévia mostra diferenças reais por arredondamento de produtos.
+
+Prévia com situação por serviço, proteção padrão de ajustes manuais e confirmação explícita. Critério proporcional geral deixa possíveis serviços compartilhados pendentes de regra específica ou revisão manual. Itens excluídos permanecem intactos. Mudar a configuração invalida a prévia; mudar a origem bloqueia a fotografia. Novas conclusões evento/frente PLE são sugeridas preservando meses já revisados.
+
+`frontDistribution` existe somente na configuração exportada: versão `tg-fronts-2026.1`, defaultRule, unit, weights, rules, protected, preserveManual e lastApplied. Reutilização via baixar/carregar configuração, com validação de IDs e limites. O relatório JSON contém a última aplicação automática; o layout oficial não ganha colunas. Nenhuma rota, migration ou gravação de orçamento foi acrescentada. A habilitação continua exclusiva do desenvolvimento e dos dois sistemas.

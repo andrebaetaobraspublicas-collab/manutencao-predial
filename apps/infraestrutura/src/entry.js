@@ -5,6 +5,10 @@ import riskEngineSource from './modules/risk-engine.js?raw';
 import '../../../scripts/shared/project-input-prices-ui.js';
 import '../../../scripts/shared/project-input-prices.css';
 import inputPriceManual from '../../../scripts/shared/project-input-prices-manual.json';
+import '../../api/src/modules/orcapro/legacy/assets/transferegov-bm.js';
+import '../../../scripts/shared/transferegov-bm-ui.js';
+import '../../../scripts/shared/transferegov-bm.css';
+import transferegovManual from '../../../scripts/shared/transferegov-bm-manual.json';
 
 const dataBase = new URL('data/', document.baseURI);
 const asset = (name) => new URL(name, dataBase).href;
@@ -31,6 +35,7 @@ async function boot() {
   await import('./modules/bootstrap.js');
   if (config.afterModules) await config.afterModules(window.OP);
   window.installProjectInputPricesUI(inputPriceManual);
+  window.installTransferegovBM(transferegovManual);
   await window.OP.main.boot();
 }
 

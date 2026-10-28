@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { validateInputPriceOverrides } from '../../common/project-input-prices';
+import { assertBmDevelopment, bmReceipt, BmExportReceiptDto } from '../../common/transferegov-bm';
 import { hash } from 'bcryptjs';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -101,6 +102,13 @@ export class InfraService {
     return { items: rows.map(row => this.shape(row,false)) };
   }
   async project(user: AuthenticatedUser, id: string) { return this.shape(await this.owned(this.db as unknown as InfraSql,user,id)); }
+  async recordBmExport(user:AuthenticatedUser,id:string,dto:BmExportReceiptDto) {
+    assertBmDevelopment(this.config.get<string>('WEB_BASE_URL'));
+    const project=await this.owned(this.db as unknown as InfraSql,user,id);
+    const receipt=bmReceipt({version:project.version,data:parsed(project.data)},dto);
+    await this.audit(this.db as unknown as InfraSql,user,'export.transferegov.bm','project',id,receipt);
+    return {...receipt,recorded:true};
+  }
   async adminReadProject(user: AuthenticatedUser, id: string) {
     const rows = await this.db.query<ProjectRow[]>('SELECT * FROM InfraProject WHERE id=?',[uuid(id)]);
     if (!rows[0]) throw new NotFoundException('Projeto não encontrado.');

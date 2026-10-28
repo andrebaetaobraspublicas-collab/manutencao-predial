@@ -1,5 +1,9 @@
 # Contrato inicial da API
 
+## Exportação TransfereGov BM — DEV
+
+`POST /orcapro/projects/:id/transferegov/bm/receipt` e `POST /infraestrutura/projects/:id/transferegov/bm/receipt`: guard/CSRF do produto, proprietário e tenant autenticados. Recebem expectedVersion, sourceHash/fileHash/configHash SHA-256, profile documentation|example, services/groups/fronts, submeta e totais em centavos textuais. Exigem versão/hash da origem salva; retornam409 para divergência e404 fora do desenvolvimento. Acrescentam somente auditoria PREPARED, sem alteração de projeto ou nova versão. Não enviam ao TransfereGov. [Contrato e metodologia](transferegov-bm.md).
+
 ## Auditoria Infraestrutura detalhada — 27/10/2026
 
 `GET /infraestrutura/admin/audit` aceita `user`, `from`, `to`, `category=all|access|activity|failure`, `page` e `pageSize` (máximo 100); requer administrador global do produto. Retorna itens enriquecidos, `total`, `page`, `pages`, `pageSize` e `timezone=America/Sao_Paulo`. Datas incluem o dia final completo. `POST /infraestrutura/activity/navigation` aceita `{screen,projectId?}` com guard, CSRF e validação de proprietário/tenant do projeto. Não altera o orçamento. [Contrato operacional e proteção dos detalhes](infraestrutura-audit.md).

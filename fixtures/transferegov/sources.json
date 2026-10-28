@@ -1,0 +1,15 @@
+{
+  "documentation": "https://mandatarias.transferegov.sistema.gov.br/projeto-basico/public/helpImport.html",
+  "retrieved": "2026-10-27",
+  "files": {
+    "official-bm-20250214.xlsx": {
+      "sha256": "821c50f20c105e5b0e4f3ffea72093847010bf9227c792f18c4948b599bab7a3",
+      "url": "https://mandatarias.transferegov.sistema.gov.br/projeto-basico/public/Proposta_8-2025_PO_BM_CFF_2-1_Layout_-_BM_2025-02-14_01-40-13.xlsx"
+    },
+    "official-ple-20250214.xlsx": {
+      "sha256": "1843292db6934a401cab0b66f9621a8e7324945ab9a3e02b44d5c20a64c59b47",
+      "url": "https://mandatarias.transferegov.sistema.gov.br/projeto-basico/public/Proposta_8-2025_PO_PLE_CFF_2-2_Layout_-_PLE_2025-02-14_01-42-52.xlsx"
+    }
+  },
+  "notes": "Unchanged public official examples. Documentation and workbook names differ; BM profiles remain pending importer homologation."
+}

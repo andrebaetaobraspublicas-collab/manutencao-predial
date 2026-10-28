@@ -1,4 +1,6 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { assertBmDevelopment, bmReceipt, BmExportReceiptDto } from '../../common/transferegov-bm';
 import { createHash, randomUUID } from 'node:crypto';
 import { Prisma, OrcaproReferenceStatus, type OrcaproProject } from '../../generated/prisma/client';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
@@ -26,7 +28,14 @@ export type ImportOptions = { baselineReferenceId?: string; onProgress?: (phase:
 @Injectable()
 export class OrcaproService {
   private importing = false;
-  constructor(private readonly prisma: PrismaService, private readonly access: OrcaproAccess) {}
+  constructor(private readonly prisma: PrismaService, private readonly access: OrcaproAccess, @Optional() private readonly config?: ConfigService) {}
+
+  async recordBmExport(user:AuthenticatedUser,id:string,dto:BmExportReceiptDto) {
+    assertBmDevelopment(this.config?.get<string>('WEB_BASE_URL'));
+    const project=await this.project(user,id),receipt=bmReceipt(project,dto);
+    const event=await this.prisma.orcaproAudit.create({data:{actorUserId:user.userId,tenantId:user.tenantId,action:'export.transferegov.bm',entityId:id,metadata:receipt}});
+    return {...receipt,eventId:event.id};
+  }
   private owner(user: AuthenticatedUser) { return { tenantId: user.tenantId, ownerUserId: user.userId }; }
   private audit(db: Db, user: AuthenticatedUser, action: string, entityId: string, metadata?: unknown) {
     return db.orcaproAudit.create({ data: { actorUserId: user.userId, tenantId: user.tenantId, action, entityId, ...(metadata === undefined ? {} : { metadata: json(metadata) }) } });

@@ -10,6 +10,7 @@ import { InfraService } from './infra.service';
 import type { InfraObject } from './infra-domain';
 import { InfraAuditService } from './infra-audit.service';
 import { AuditListQuery, AuditNavigationDto } from '../orcapro/orcapro.dto';
+import { BmExportReceiptDto } from '../../common/transferegov-bm';
 
 @ApiTags('OrçaPro Infraestrutura')
 @ApiCookieAuth('gp_access')
@@ -48,6 +49,9 @@ export class InfraController {
   @Get('projects') projects(@CurrentUser() user: AuthenticatedUser,@Query('trash') trash?: string) { return this.service.projects(user,trash === 'true'); }
   @Post('projects') create(@CurrentUser() user: AuthenticatedUser,@Body() body: InfraObject) { return this.service.createProject(user,body); }
   @Get('projects/:id') project(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string) { return this.service.project(user,id); }
+  @Post('projects/:id/transferegov/bm/receipt')
+  @ApiOperation({summary:'DEV somente: registra preparação BM com versão/hash do projeto privado, sem alterar o documento ou o histórico de versões.'})
+  bmExport(@CurrentUser() user:AuthenticatedUser,@Param('id') id:string,@Body() dto:BmExportReceiptDto,@Res({passthrough:true}) response:Response) { response.setHeader('Cache-Control','no-store');return this.service.recordBmExport(user,id,dto); }
   @Put('projects/:id') save(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string,@Body() body: InfraObject) { return this.service.saveProject(user,id,body); }
   @Delete('projects/:id') archive(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string,@Body() body: InfraObject) { return this.service.archiveProject(user,id,body); }
   @Post('projects/:id/unarchive') unarchive(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string,@Body() body: InfraObject) { return this.service.archiveProject(user,id,body,true); }

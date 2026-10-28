@@ -10,6 +10,7 @@ import { OrcaproAccess, OrcaproAdmin, OrcaproGuard } from './orcapro.guard';
 import { AdaptCompositionDto, AdminListQuery, BundleQuery, CatalogQuery, CloneTemplateDto, ContextQuery, CreateProjectDto, CustomRecordDto, ImportSinapiDto, ImportSinapiFileDto, ImportReportQuery, ProjectListQuery, ReferenceDto, RestoreDto, RevisionDto, SaveProjectDto, UserAccessDto } from './orcapro.dto';
 import { codeList } from './orcapro-domain';
 import { AuditListQuery, AuditNavigationDto } from './orcapro.dto';
+import { BmExportReceiptDto } from '../../common/transferegov-bm';
 
 @ApiTags('OrçaPro')
 @ApiCookieAuth('gp_access')
@@ -44,6 +45,9 @@ export class OrcaproController {
   previewReference(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: ReferenceDto) { return this.service.previewReference(user, id, dto.referenceId); }
   @Get('projects/:id/calculation') calculate(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return this.service.calculation(user, id); }
   @Get('projects/:id/export') exportProject(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) { return this.service.exportProject(user, id); }
+  @Post('projects/:id/transferegov/bm/receipt')
+  @ApiOperation({summary:'DEV somente: registra preparação de cópia BM, vinculada à versão e hash do projeto privado; não altera o orçamento.'})
+  bmExport(@CurrentUser() user:AuthenticatedUser,@Param('id') id:string,@Body() dto:BmExportReceiptDto,@Res({passthrough:true}) response:Response) { response.setHeader('Cache-Control','no-store');return this.service.recordBmExport(user,id,dto); }
   @Put('projects/:id') save(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: SaveProjectDto) { return this.service.saveProject(user, id, dto); }
   @Delete('projects/:id') archive(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: RevisionDto) { return this.service.archiveProject(user, id, dto.expectedVersion); }
   @Post('projects/:id/unarchive') unarchive(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: RevisionDto) { return this.service.unarchiveProject(user, id, dto.expectedVersion); }

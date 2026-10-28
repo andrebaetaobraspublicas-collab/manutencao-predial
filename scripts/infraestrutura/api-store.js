@@ -198,7 +198,12 @@ async function afterModules(O) {
     if(!state.ready||state.saving||state.conflict||state.error||edits.size||O.register.editor?.dirty||O.risks?.dirty||JSON.stringify(projectData(O))!==state.lastSaved)throw new Error('Salve as alterações e resolva os conflitos antes de exportar a versão do orçamento.');
     return {projectId:state.project.id,version:state.project.version,sourceData:clone(state.project.data)};
   };
-  state.transferegovReceipt = dto => request(`/infraestrutura/projects/${state.project.id}/transferegov/bm/receipt`,{method:'POST',body:JSON.stringify(dto)});
+  state.transferegovReceipt = async dto => {
+    const previous=state.access,fresh=await request('/infraestrutura/access');
+    if(!fresh.enabled||fresh.userId!==previous.userId||fresh.tenantId!==previous.tenantId)throw new Error('O acesso ou a conta mudou. Reabra o programa antes de exportar.');
+    state.access=fresh;
+    return request(`/infraestrutura/projects/${state.project.id}/transferegov/bm/receipt`,{method:'POST',body:JSON.stringify(dto)});
+  };
   const checkEditors = () => {
     if (O.risks?.busy) throw new Error('Aguarde a conclusão da simulação de riscos antes de sair desta tela.');
     if (O.risks?.dirty) throw new Error('Salve ou descarte as alterações da análise de riscos antes de sair desta tela.');

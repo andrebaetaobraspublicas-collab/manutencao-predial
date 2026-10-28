@@ -2,6 +2,8 @@ const test = require('node:test'), assert = require('node:assert/strict'), fs = 
 const { fixture, projectId, cycleId } = require('./bridge-harness.cjs');
 const H = require('./harness.cjs');
 const clean = value => JSON.parse(JSON.stringify(value));
+test('BM renews the session-bound CSRF token before receipt without saving a project',async()=>{const f=await fixture(),before=JSON.stringify(f.project());f.O.infra.access.csrfToken='expired-after-central-refresh';f.requests.length=0;const result=await f.O.infra.transferegovReceipt({expectedVersion:1});assert.equal(result.recorded,true);assert.deepEqual(f.requests.map(r=>[r.method,r.route]),[['GET','/access'],['POST',`/projects/${projectId}/transferegov/bm/receipt`]]);assert.equal(f.requests[1].headers['X-Infra-CSRF'],'csrf-fixture');assert.equal(JSON.stringify(f.project()),before);});
+test('BM refuses a changed account or revoked access before posting a receipt',async()=>{for(const patch of [{userId:'other-user'},{enabled:false}]){const f=await fixture(),fetch=f.ctx.fetch;f.ctx.fetch=(url,init)=>String(url).endsWith('/access')?Promise.resolve(new Response(JSON.stringify({...f.O.infra.access,...patch}),{status:200,headers:{'Content-Type':'application/json'}})):fetch(url,init);const start=f.requests.length;await assert.rejects(f.O.infra.transferegovReceipt({expectedVersion:1}),/acesso ou a conta mudou/);assert.equal(f.requests.slice(start).filter(r=>r.method==='POST').length,0);}});
 
 test('Navegação registra uma tela por mudança sem gravar ou versionar o orçamento', async () => {
   const f = await fixture(), before = clean(f.project());

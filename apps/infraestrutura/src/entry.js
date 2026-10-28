@@ -9,6 +9,7 @@ import '../../api/src/modules/orcapro/legacy/assets/transferegov-bm.js';
 import '../../api/src/modules/orcapro/legacy/assets/transferegov-ple.js';
 import '../../api/src/modules/orcapro/legacy/assets/transferegov-events.js';
 import '../../api/src/modules/orcapro/legacy/assets/transferegov-compatibility.js';
+import '../../../scripts/shared/transferegov-fronts.js';
 import '../../../scripts/shared/transferegov-bm-ui.js';
 import '../../../scripts/shared/transferegov-bm.css';
 import transferegovManual from '../../../scripts/shared/transferegov-bm-manual.json';

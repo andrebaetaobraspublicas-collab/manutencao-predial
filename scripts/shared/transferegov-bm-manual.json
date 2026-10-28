@@ -84,6 +84,20 @@
         "Um serviço com um destino inequívoco é vinculado automaticamente. Múltiplos eventos, custos diluídos, serviço sem vínculo ou evento inválido ficam pendentes para revisão. Não é feito rateio silencioso. Recebimentos, retenções e multas não se tornam serviços artificiais.",
         "Clique em Aplicar sugestões para atualizar somente a configuração BM/PLE. No PLE, confira o evento de execução e o mês de conclusão em cada frente; na falta de prazo do evento, a sugestão utiliza o cronograma. No BM, confira novamente os percentuais mensais. O Eventograma e o orçamento originais não são gravados por esse botão."
       ]
+    },
+    {
+      "title": "Distribuir serviços e etapas entre frentes de obra",
+      "steps": [
+        "Na etapa 3, Frentes e serviços, cadastre e nomeie as frentes. Abra o Assistente de distribuição por frentes. O assistente altera somente a configuração BM/PLE desta exportação, sem mudar orçamento, EAP, preços, Eventograma ou planejamento de origem.",
+        "Escolha um critério geral: manter a distribuição atual, enviar para uma frente única ou distribuir proporcionalmente às dimensões físicas. Para dividir por área, extensão ou número de unidades, informe dimensões na mesma unidade em todas as frentes, com até seis casas e sem separador de milhar. Zero ou campo vazio não recebe quantidade proporcional; ao menos uma dimensão deve ser positiva.",
+        "Na tabela de etapas e subetapas do orçamento, defina exceções. Os serviços herdam a regra explícita da etapa mais próxima; na falta dela, usam o critério geral. Manter distribuição atual impede substituir a distribuição daquela etapa. A unidade de dimensão é apenas o peso da proporção: não converte a unidade do serviço.",
+        "Preservar ajustes manuais protegidos fica marcado por padrão. Editar a quantidade de uma frente em um serviço protege esse serviço. A caixa dentro do serviço permite retirar ou acrescentar proteção; desmarcar a preservação geral permite substituir ajustes manuais, somente após a prévia e confirmação.",
+        "Clique em Preparar prévia da distribuição. Confira serviços alterados, protegidos, mantidos e pendentes. Expanda a relação para ver regra herdada, quantidade em duas casas, distribuição atual e proposta. Possíveis serviços compartilhados, como administração local, mobilização e canteiro, ficam pendentes quando somente o critério geral propõe rateio: escolha uma regra específica de etapa ou ajuste manualmente.",
+        "Os centésimos da quantidade são distribuídos por maiores restos, com desempate pelo número da frente, conservando exatamente a quantidade da exportação em duas casas. Isso não garante conservar o preço total depois do cálculo independente de produtos por frente: a prévia mostra o valor anterior, o posterior e a diferença em relação à origem. Não há compensação financeira artificial.",
+        "Confirme em Confirmar e aplicar à exportação. Cancelar descarta somente a prévia. Alterar a configuração depois da prévia exige preparar outra; alterações no orçamento de origem impedem aplicar a fotografia desatualizada. Serviços fora da submeta permanecem intactos.",
+        "No BM, confira novamente os percentuais mensais. No PLE, novos pares evento/frente recebem sugestão de conclusão pelo cronograma e os pares já revisados são preservados. Confira cada conclusão antes de gerar.",
+        "Baixar configuração guarda as regras, dimensões e proteções para reaproveitar pelo botão Carregar configuração no mesmo projeto ou na cópia compatível descendente. O relatório JSON de conferência inclui a última distribuição automática aplicada; a planilha oficial mantém seus cabeçalhos e colunas. A importação efetiva no TransfereGov continua exigindo homologação."
+      ]
     }
   ]
 }

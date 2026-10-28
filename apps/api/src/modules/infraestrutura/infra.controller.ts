@@ -8,6 +8,8 @@ import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { InfraAccess, InfraAdmin, InfraGuard, InfraProfileOptional } from './infra.guard';
 import { InfraService } from './infra.service';
 import type { InfraObject } from './infra-domain';
+import { InfraAuditService } from './infra-audit.service';
+import { AuditListQuery, AuditNavigationDto } from '../orcapro/orcapro.dto';
 
 @ApiTags('OrçaPro Infraestrutura')
 @ApiCookieAuth('gp_access')
@@ -15,7 +17,10 @@ import type { InfraObject } from './infra-domain';
 @UseGuards(InfraGuard)
 @Controller('infraestrutura')
 export class InfraController {
-  constructor(private readonly service: InfraService, private readonly access: InfraAccess) {}
+  constructor(private readonly service: InfraService, private readonly access: InfraAccess, private readonly auditService: InfraAuditService) {}
+  @Post('activity/navigation')
+  @ApiOperation({ summary: 'Registra a tela aberta sem salvar o orçamento; valida proprietário e tenant quando há projeto.' })
+  navigation(@CurrentUser() user: AuthenticatedUser,@Body() dto: AuditNavigationDto) { return this.auditService.navigation(user,dto); }
   @InfraProfileOptional() @Get('access')
   @ApiOperation({ summary: 'Acesso individual Infraestrutura e bootstrap CSRF vinculado à sessão compartilhada.' })
   async session(@CurrentUser() user: AuthenticatedUser, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
@@ -78,7 +83,9 @@ export class InfraController {
   @InfraAdmin() @Post('admin/cycles/:id/publish') publish(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string) { return this.service.cycleState(user,id,'publish'); }
   @InfraAdmin() @Post('admin/cycles/:id/archive') cycleArchive(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string) { return this.service.cycleState(user,id,'archive'); }
   @InfraAdmin() @Delete('admin/cycles/:id') cycleDelete(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string) { return this.service.cycleState(user,id,'delete'); }
-  @InfraAdmin() @Get('admin/audit') audit(@Query() query: InfraObject) { return this.service.logs(query); }
+  @InfraAdmin() @Get('admin/audit')
+  @ApiOperation({ summary: 'Histórico global Infraestrutura com filtros por responsável, datas de Brasília e tipo de registro, total e paginação estável.' })
+  audit(@CurrentUser() user: AuthenticatedUser,@Query() query: AuditListQuery) { return this.auditService.logs(user,query); }
   @InfraAdmin() @Get('admin/stats') stats() { return this.service.stats(); }
   @InfraAdmin() @Get('admin/projects/:id') adminRead(@CurrentUser() user: AuthenticatedUser,@Param('id') id: string) { return this.service.adminReadProject(user,id); }
   @InfraAdmin() @Get('admin/users') users() { return this.service.users(); }

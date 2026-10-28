@@ -3,6 +3,17 @@ const { fixture, projectId, cycleId } = require('./bridge-harness.cjs');
 const H = require('./harness.cjs');
 const clean = value => JSON.parse(JSON.stringify(value));
 
+test('Navegação registra uma tela por mudança sem gravar ou versionar o orçamento', async () => {
+  const f = await fixture(), before = clean(f.project());
+  f.O.app.view = 'budget'; f.O.ui.render(); f.O.ui.render();
+  f.O.app.view = 'inputs'; f.O.ui.render(); f.O.ui.render();
+  await new Promise(resolve=>setImmediate(resolve));
+  const events = f.requests.filter(r=>r.route==='/activity/navigation');
+  assert.deepEqual(events.map(e=>e.body.screen),['budget','inputs']);
+  assert.ok(events.every(e=>e.body.projectId===projectId));
+  assert.deepEqual(f.project(),before);assert.equal(f.requests.filter(r=>r.method==='PUT').length,0);
+});
+
 test('Bridge serializa alterações com a versão confirmada e conserva campos desconhecidos', async () => {
   const f = await fixture(), first = clean(f.O.app.pj), second = clean(first);
   first.root.children.push({ kind: 'item', code: '5502118', qty: 2 });

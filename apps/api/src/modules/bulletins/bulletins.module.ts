@@ -7,11 +7,11 @@ import { MailService } from '../../common/mail/mail.service';
 import { InfraModule } from '../infraestrutura/infra.module';
 import { BulletinGuard, BulletinsService } from './bulletins.service';
 import { BulletinConfirmDto, BulletinDraftDto } from './bulletins.dto';
-@ApiTags('Informativos do sistema — desenvolvimento') @ApiCookieAuth('gp_access')
+@ApiTags('Informativos do sistema') @ApiCookieAuth('gp_access')
 @UseGuards(BulletinGuard) @Controller('system-bulletins')
 export class BulletinsController {
  constructor(private readonly service:BulletinsService,private readonly mail:MailService){}
- @Get('capabilities') capabilities(@CurrentUser() actor:AuthenticatedUser){return{allowed:true,mailConfigured:this.mail.isConfigured(),administrator:actor.name,products:['ORCAPRO','INFRA']};}
+ @Get('capabilities') capabilities(@CurrentUser() actor:AuthenticatedUser){return{allowed:true,mailConfigured:this.mail.isConfigured(),administrator:actor.name,products:this.service.availableProducts()};}
  @Post('preview') @ApiOperation({summary:'Salva prévia imutável e conta o diretório global de contas deduplicadas, respeitando preferências.'})
  preview(@CurrentUser() actor:AuthenticatedUser,@Body() dto:BulletinDraftDto){return this.service.preview(actor,dto);}
  @Get() @ApiOperation({summary:'Histórico paginado privado do tenant do administrador, sem e-mails de destinatários.'})
@@ -21,5 +21,12 @@ export class BulletinsController {
  @Post(':id/confirm') @ApiOperation({summary:'Exige frase explícita e hash do público conferido; enfileiramento idempotente, sem envio na requisição.'})
  confirm(@CurrentUser() actor:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string,@Body() dto:BulletinConfirmDto){return this.service.confirm(actor,id,dto);}
 }
-@Module({imports:[InfraModule],controllers:[BulletinsController],providers:[BulletinGuard,BulletinsService]})
+@Module({imports:[InfraModule],controllers:[BulletinsController],providers:[BulletinGuard,BulletinsService,{provide:MailService,inject:[ConfigService],useFactory:(config:ConfigService)=>{
+ if(config.get('BULLETINS_EMAIL_PROVIDER')!=='smtp')return new MailService(config);
+ const values:Record<string,unknown>={};
+ for(const key of ['WEB_BASE_URL','NODE_ENV'])values[key]=config.get(key);
+ for(const key of ['SMTP_HOST','SMTP_PORT','SMTP_USER','SMTP_PASSWORD_FILE','EMAIL_FROM','EMAIL_TIMEOUT_MS'])values[key]=config.get('BULLETINS_'+key);
+ values.EMAIL_PROVIDER='smtp';values.SYSTEM_BULLETINS_SMTP_ENABLED=true;
+ return new MailService(new ConfigService(values));
+ }}]})
 export class BulletinsModule {}

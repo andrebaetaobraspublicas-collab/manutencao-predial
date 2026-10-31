@@ -1,4 +1,11 @@
-# Informativos do sistema — somente desenvolvimento
+# Informativos do sistema
+
+## Produção
+Disponível também em sistema.orcaproobras.com.br e orcaproinfra.com.br, mediante SYSTEM_BULLETINS_ENABLED=true e autorização do administrador global no servidor. Como as bases comerciais são independentes, cada produção seleciona somente o seu produto: ORCAPRO no primeiro site, INFRA no segundo. O servidor recusa produtos de outra base antes de consultar os destinatários. No desenvolvimento compartilhado continua sendo possível selecionar os dois produtos e deduplicar os e-mails.
+
+O SMTP dos informativos é exclusivo do módulo: BULLETINS_EMAIL_PROVIDER=smtp, BULLETINS_SMTP_HOST=smtp.hostinger.com, BULLETINS_SMTP_PORT=465, BULLETINS_SMTP_USER, BULLETINS_SMTP_PASSWORD_FILE (arquivo privado 0600), BULLETINS_EMAIL_FROM e, opcionalmente, BULLETINS_EMAIL_TIMEOUT_MS. Não configura nem altera o MailService global de autenticação/cobrança. Nunca versionar credenciais. Verificar a conexão com transport.verify(), sem enviar mensagem. A migração 20261031140000_system_bulletins acrescenta somente SystemBulletin e SystemBulletinDelivery no banco central de cada aplicação; não importar a base de desenvolvimento nem executar seeds. Fazer backup e comparar os registros existentes após a publicação. A reversão restaura runtime/configuração e mantém as tabelas para preservar o histórico.
+
+As seções abaixo descrevem o ambiente compartilhado de desenvolvimento. A restrição anterior de desenvolvimento foi ampliada explicitamente para as duas origens de produção acima; as demais origens continuam bloqueadas. O MailService global continua recusando SMTP comercial; a exceção usa somente a instância privada do módulo de informativos.
 
 ## Arquitetura e limites
 OrçaPro e Infraestrutura autenticam pelo mesmo `User` e `TenantMembership` no banco central. OrçaPro usa `OrcaproUserAccess`/assinatura individual; SICRO mantém `InfraUser.external_user_id` + tenant no banco separado. O diretório é consultado apenas pelo administrador global configurado em `ORCAPRO_ADMIN_USER_IDS`; OWNER/ADMIN de uma organização ou ADMIN local do Infraestrutura não concedem envio ao diretório inteiro. O histórico é filtrado pelo tenant autenticado. Não há relação com OS: este é um recurso administrativo dos produtos de engenharia, conforme ADRs 0007/0009.

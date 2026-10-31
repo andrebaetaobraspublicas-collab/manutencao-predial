@@ -1,5 +1,5 @@
 import {ConfigService} from '@nestjs/config';
-import {BulletinGuard,BulletinsService,emailHash} from './bulletins.service';
+import {BulletinGuard,BulletinsService,emailHash,bulletinProducts} from './bulletins.service';
 import {MailDeliveryError,MailService} from '../../common/mail/mail.service';
 const actor:any={userId:'admin',tenantId:'tenant',name:'Administrador',email:'admin@example.test'};
 const settings=(extra={})=>new ConfigService({SYSTEM_BULLETINS_ENABLED:'true',WEB_BASE_URL:'https://gestaodepredios.com.br',ORCAPRO_ADMIN_USER_IDS:'admin',CORS_ORIGINS:'https://www.gestaodepredios.com.br',...extra});
@@ -7,7 +7,7 @@ const context=(user:any=actor,method='GET',origin='https://www.gestaodepredios.c
 const account=(id:string,email:string,access:any={enabled:true,managed:false,deletedAt:null})=>({id,email,status:'ACTIVE',orcaproAccess:access,orcaproSubscription:null,memberships:[{tenantId:'tenant',status:'ACTIVE',tenant:{deletedAt:null}}],_count:{orcaproProjects:0}});
 const setup=()=>{const db:any={user:{findMany:jest.fn(),findFirst:jest.fn()},notificationPreference:{findMany:jest.fn().mockResolvedValue([])},systemBulletin:{create:jest.fn(),findFirst:jest.fn(),findMany:jest.fn(),count:jest.fn(),updateMany:jest.fn(),update:jest.fn()},systemBulletinDelivery:{createMany:jest.fn(),findMany:jest.fn(),updateMany:jest.fn(),update:jest.fn(),count:jest.fn(),groupBy:jest.fn()},orcaproAudit:{create:jest.fn()}};db.$transaction=jest.fn((f:any)=>f(db));const infra:any={query:jest.fn().mockResolvedValue([])},mail:any={provider:jest.fn().mockReturnValue('resend'),isConfigured:jest.fn().mockReturnValue(true),sendEmail:jest.fn().mockResolvedValue({development:false,providerMessageId:'provider-id'}),preview:jest.fn(x=>x)};return{db,infra,mail,service:new BulletinsService(db,infra,settings(),mail)};};
 describe('System bulletins development-only authorization',()=>{
- it('fails closed on both productions even with feature flag, malformed hosts and disabled feature',()=>{for(const host of ['https://sistema.orcaproobras.com.br','https://orcaproinfra.com.br','https://gestaodepredios.com.br.evil.test'])expect(()=>new BulletinGuard(settings({WEB_BASE_URL:host})).canActivate(context())).toThrow();expect(()=>new BulletinGuard(settings({SYSTEM_BULLETINS_ENABLED:'false'})).canActivate(context())).toThrow();});
+ it('fails closed on both productions even with feature flag, malformed hosts and disabled feature',()=>{for(const host of ['https://gestaodepredios.com.br.evil.test','http://orcaproinfra.com.br'])expect(()=>new BulletinGuard(settings({WEB_BASE_URL:host})).canActivate(context())).toThrow();expect(()=>new BulletinGuard(settings({SYSTEM_BULLETINS_ENABLED:'false'})).canActivate(context())).toThrow();});
  it('requires configured platform administrator, authenticated tenant and trusted mutation origin',()=>{const guard=new BulletinGuard(settings());expect(guard.canActivate(context())).toBe(true);expect(()=>guard.canActivate(context({...actor,userId:'local-admin',role:'OWNER'}))).toThrow();expect(()=>guard.canActivate(context({...actor,tenantId:null}))).toThrow();expect(()=>guard.canActivate(context(actor,'POST','https://evil.test'))).toThrow();expect(guard.canActivate(context(actor,'POST'))).toBe(true);});
 });
 describe('Shared identity and separate product access directory',()=>{
@@ -25,4 +25,19 @@ describe('Persistent bounded delivery worker',()=>{
 });
 describe('Email content is escaped and rendered consistently',()=>{
  it('preview and send share the branded safe HTML template and a single recipient',async()=>{const config=new ConfigService({RESEND_API_KEY:'test-placeholder',EMAIL_FROM:'App <no-reply@example.test>'}),mail=new MailService(config),email={to:'a@example.test',subject:'Aviso',heading:'Título',brand:'OrçaPro Infraestrutura',message:'Olá\n<script>alert(1)</script>'};const preview=mail.preview(email);expect(preview.html).toContain('&lt;script&gt;');expect(preview.html).not.toContain('<script>');expect(preview.html).toContain('OrçaPro Infraestrutura');expect(preview.html).toContain('white-space:pre-line');const spy=jest.spyOn(global,'fetch').mockResolvedValue({ok:true,json:async()=>({id:'sent'})} as any);try{await mail.sendEmail(email);const body=JSON.parse(String(spy.mock.calls[0][1]?.body));expect(body.to).toEqual(['a@example.test']);expect(body.cc).toBeUndefined();expect(body.bcc).toBeUndefined();expect(body.html).toBe(preview.html);}finally{spy.mockRestore();}});
+});
+
+describe('Production product isolation',()=>{
+ it('enables only explicitly allowed production origins and configured global admins',()=>{
+  for(const host of ['https://sistema.orcaproobras.com.br','https://orcaproinfra.com.br']){
+   expect(new BulletinGuard(settings({WEB_BASE_URL:host})).canActivate(context())).toBe(true);
+   expect(()=>new BulletinGuard(settings({WEB_BASE_URL:host})).canActivate(context({...actor,userId:'other'}))).toThrow();
+  }
+  expect(bulletinProducts(settings({WEB_BASE_URL:'https://sistema.orcaproobras.com.br'}))).toEqual(['ORCAPRO']);
+  expect(bulletinProducts(settings({WEB_BASE_URL:'https://orcaproinfra.com.br'}))).toEqual(['INFRA']);
+ });
+ it('rejects cross-product recipients before reading either directory',async()=>{
+  const {db,infra,mail}=setup();const s=new BulletinsService(db,infra,settings({WEB_BASE_URL:'https://sistema.orcaproobras.com.br'}),mail);
+  await expect(s.audience(['INFRA'],'ALL')).rejects.toThrow();expect(db.user.findMany).not.toHaveBeenCalled();expect(infra.query).not.toHaveBeenCalled();
+ });
 });

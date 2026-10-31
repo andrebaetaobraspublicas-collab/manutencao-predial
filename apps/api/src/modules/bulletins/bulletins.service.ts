@@ -11,7 +11,11 @@ import { BulletinConfirmDto, BulletinDraftDto } from './bulletins.dto';
 const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
 export const emailHash=(email:string)=>digest(email.trim().toLowerCase());
 export const productLabel=(products:string[])=>products.map(p=>p==='INFRA'?'OrçaPro Infraestrutura':'OrçaPro').join(' e ');
-export function bulletinEnvironment(config:ConfigService){return config.get('SYSTEM_BULLETINS_ENABLED')==='true'&&['https://gestaodepredios.com.br','https://www.gestaodepredios.com.br'].includes(config.get('WEB_BASE_URL')??'');}
+export function bulletinProducts(config:ConfigService):string[]{
+ const host=config.get('WEB_BASE_URL');
+ return host==='https://sistema.orcaproobras.com.br'?['ORCAPRO']:host==='https://orcaproinfra.com.br'?['INFRA']:['ORCAPRO','INFRA'];
+}
+export function bulletinEnvironment(config:ConfigService){return config.get('SYSTEM_BULLETINS_ENABLED')==='true'&&['https://gestaodepredios.com.br','https://www.gestaodepredios.com.br','https://sistema.orcaproobras.com.br','https://orcaproinfra.com.br'].includes(config.get('WEB_BASE_URL')??'');}
 @Injectable()
 export class BulletinGuard implements CanActivate {
  constructor(private readonly config:ConfigService){}
@@ -32,7 +36,9 @@ export class BulletinsService implements OnApplicationBootstrap,OnModuleDestroy 
  onApplicationBootstrap(){if(bulletinEnvironment(this.config)){this.timer=setInterval(()=>void this.process().catch(()=>this.logger.error('Fila de informativos temporariamente indisponível.')),5000);this.timer.unref();}}
  onModuleDestroy(){if(this.timer)clearInterval(this.timer);}
  private requireMail(){if(!this.mail.isConfigured())throw new BadRequestException('Configure o provedor de e-mail e o remetente antes de enviar. Nenhum envio foi realizado.');}
+ availableProducts(){return bulletinProducts(this.config);}
  async audience(products:string[],filter:string){
+  if(!products.length||products.some(p=>!this.availableProducts().includes(p)))throw new BadRequestException('Produto indisponível nesta base de usuários.');
   // This is the platform administrator's shared account directory, not tenant operational data.
   const users=await this.db.user.findMany({where:{deletedAt:null},take:10001,orderBy:{id:'asc'},select:{id:true,email:true,status:true,orcaproAccess:true,orcaproSubscription:true,memberships:{select:{tenantId:true,status:true,tenant:{select:{deletedAt:true}}}},_count:{select:{orcaproProjects:true}}}});
   if(users.length>10000)throw new BadRequestException('Diretório excede o lote máximo de 10.000 contas.');

@@ -43,7 +43,7 @@ export class MailService {
 
   private smtpPassword(): string { try { const file=this.config.get<string>('SMTP_PASSWORD_FILE');return file?readFileSync(file,'utf8').replace(/[\r\n]+$/,''):(this.config.get<string>('SMTP_PASSWORD')??''); } catch { return ''; } }
   provider(): 'smtp'|'resend' { return this.config.get('EMAIL_PROVIDER') === 'smtp' ? 'smtp' : 'resend'; }
-  private smtpAllowed(): boolean { return ['https://gestaodepredios.com.br','https://www.gestaodepredios.com.br'].includes(this.config.get('WEB_BASE_URL')??''); }
+  private smtpAllowed(): boolean { return ['https://gestaodepredios.com.br','https://www.gestaodepredios.com.br'].includes(this.config.get('WEB_BASE_URL')??'')||(this.config.get('SYSTEM_BULLETINS_SMTP_ENABLED')===true&&['https://sistema.orcaproobras.com.br','https://orcaproinfra.com.br'].includes(this.config.get('WEB_BASE_URL')??'')); }
   isConfigured(): boolean {
     if(this.provider()==='smtp')return this.smtpAllowed()&&Boolean(this.config.get('SMTP_HOST')&&this.config.get('SMTP_USER')&&this.smtpPassword()&&this.config.get('EMAIL_FROM')&&[465,587].includes(Number(this.config.get('SMTP_PORT')??465)));
     return Boolean(

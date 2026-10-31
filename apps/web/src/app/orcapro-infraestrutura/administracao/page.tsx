@@ -36,7 +36,7 @@ export default function InfraAdmin() {
     if (ORCAPRO_ONLY) return;
     void infraAccess().then(async access => {
       if (!access.enabled || access.role !== 'ADMIN') throw new Error('Esta área é exclusiva dos administradores do Infraestrutura.');
-      if (active) { setAllowed(true); setSelf(access.userId); const requested = new URLSearchParams(window.location.search).get('tab'); if (requested === 'cycles' || requested === 'catalog') setTab('catalog'); else if (requested && ['users', 'policies', 'audit'].includes(requested)) setTab(requested); }
+      if (active) { setAllowed(true); setSelf(access.userId); const requested = new URLSearchParams(window.location.search).get('tab'); if (requested === 'cycles' || requested === 'catalog') setTab('catalog'); else if (requested && ['users', 'policies', 'audit', 'bulletins'].includes(requested)) setTab(requested); }
       await reload();
     }).catch(cause => { if (!active) return; if (cause instanceof ApiError && cause.status === 401) window.location.assign('/login/?next=/orcapro-infraestrutura'); else setError(cause instanceof Error ? cause.message : 'Falha ao validar a administração.'); });
     return () => { active = false; };
@@ -77,7 +77,7 @@ export default function InfraAdmin() {
     setImporting(false);
   }
   if (!allowed) return <InfraShell title="Administração do Infraestrutura"><p className={styles.error} role="alert">{ORCAPRO_ONLY ? 'Este programa está disponível no ambiente de desenvolvimento.' : error || 'Validando acesso administrativo…'}</p></InfraShell>;
-  return <InfraShell title="Administração do Infraestrutura" admin>
+  return <InfraShell title="Administração do Infraestrutura" admin bulletins={bulletinsAvailable}>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}{notice ? <p className={styles.notice} role="status">{notice}</p> : null}
     <div className={styles.examples}>
       <div><span>Usuários ativos</span><strong>{Number(stats?.users.find(u => u.status === 'ACTIVE')?.count || 0)}</strong></div>

@@ -20,7 +20,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const authenticated = await super.canActivate(context);
     const request = context.switchToHttp().getRequest<{ user?: AuthenticatedUser; originalUrl: string }>();
     const path = request.originalUrl.split('?')[0];
-    if (request.user?.maintenanceAccess === false && !path.startsWith('/api/v1/auth/') && !path.startsWith('/api/v1/orcapro/') && !path.startsWith('/api/v1/infraestrutura/')) {
+    // Bulletins belong to the SaaS administration, not the maintenance product.
+    // BulletinGuard still independently enforces the global administrator IDs.
+    const bulletinRoute = /^\/api\/v1\/system-bulletins(?:\/|$)/.test(path);
+    if (request.user?.maintenanceAccess === false && !path.startsWith('/api/v1/auth/') && !path.startsWith('/api/v1/orcapro/') && !path.startsWith('/api/v1/infraestrutura/') && !bulletinRoute) {
       throw new ForbiddenException('Esta conta não possui acesso à manutenção predial.');
     }
     return authenticated === true;

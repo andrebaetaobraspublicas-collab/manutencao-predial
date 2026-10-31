@@ -9,6 +9,7 @@ import { ORCAPRO_ONLY } from '@/lib/product-config';
 import styles from '../workspace.module.css';
 import css from './saas.module.css';
 import AuditPanel from './audit-panel';
+import SystemBulletinsPanel, {useBulletinAvailability} from './system-bulletins-panel';
 
 type Plan = { id: string; code: string; name: string; billingInterval: 'MONTH' | 'YEAR'; priceBrl: string; stripePriceId: string | null; active: boolean; version: number };
 type Subscription = { id: string; planId: string | null; status: string; billingSource: string; currentPeriodEnd: string | null; stripeSubscriptionId: string | null; stripeStatus: string | null; stripePeriodEnd: string | null; cancelAtPeriodEnd: boolean; version: number; plan: Plan | null };
@@ -22,7 +23,8 @@ const amount = (value: string) => new Intl.NumberFormat('pt-BR', { style: 'curre
 const emptyPlan = { code: '', name: '', billingInterval: 'MONTH' as 'MONTH' | 'YEAR', priceBrl: '0.00', stripePriceId: '', active: true };
 
 export default function SaasAdministrationPage() {
-  const [tab, setTab] = useState<'users' | 'plans' | 'audit'>('users');
+  const bulletinsAvailable=useBulletinAvailability();
+  const [tab, setTab] = useState<'users' | 'plans' | 'audit' | 'bulletins'>('users');
   const [users, setUsers] = useState<User[]>([]); const [total, setTotal] = useState(0);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [integration, setIntegration] = useState<Integration | null>(null);
@@ -68,7 +70,7 @@ export default function SaasAdministrationPage() {
   if (!access) return <main className={styles.loading}><h1>Gestão do SaaS</h1><p role="alert">{error}</p><Link href="/orcapro">Voltar ao OrçaPro</Link></main>;
   return <div className={styles.workspace}>
     <aside className={styles.sidebar}><Link href="/orcapro" className={styles.brand}><span><Calculator size={24} /></span><strong>OrçaPro<small>Administração do SaaS</small></strong></Link>
-      <nav aria-label="Gestão do SaaS"><button className={tab === 'users' ? styles.active : ''} onClick={() => setTab('users')}><Users size={18} /> Usuários e assinaturas</button><button className={tab === 'plans' ? styles.active : ''} onClick={() => setTab('plans')}><CreditCard size={18} /> Planos e Stripe</button><button className={tab === 'audit' ? styles.active : ''} onClick={() => setTab('audit')}><ClipboardList size={18} /> Auditoria</button></nav>
+      <nav aria-label="Gestão do SaaS"><button className={tab === 'users' ? styles.active : ''} onClick={() => setTab('users')}><Users size={18} /> Usuários e assinaturas</button><button className={tab === 'plans' ? styles.active : ''} onClick={() => setTab('plans')}><CreditCard size={18} /> Planos e Stripe</button><button className={tab === 'audit' ? styles.active : ''} onClick={() => setTab('audit')}><ClipboardList size={18} /> Auditoria</button>{bulletinsAvailable ? <button className={tab === 'bulletins' ? styles.active : ''} onClick={() => setTab('bulletins')}>Informativos do sistema</button> : null}</nav>
       <footer><span className={styles.badge}>Administrador global</span><Link href="/orcapro">Voltar ao editor</Link><Link href="/orcapro/gerenciar">Meus orçamentos e SINAPI</Link>{!ORCAPRO_ONLY ? <Link href="/programas">Trocar programa</Link> : null}<button disabled={busy} onClick={() => void logout()}>Sair</button></footer>
     </aside>
     <main className={styles.main}><header className={styles.topbar}><h1>Gestão do SaaS</h1><ShieldCheck size={22} /></header><div className={`${styles.content} ${css.content}`}>
@@ -91,6 +93,7 @@ export default function SaasAdministrationPage() {
         <section className={styles.panel}><h2>Integração Stripe</h2><p>Chave da API: {integration?.keyConfigured ? 'configurada' : 'pendente'}. Webhook: {integration?.webhookConfigured ? 'configurado' : 'pendente'}.</p><p>As credenciais são configuradas no ambiente seguro da hospedagem. Cadastre os preços dos planos no Stripe e vincule seus identificadores acima.</p><p>Endereço do webhook: <code>{new URL(apiFileUrl('/')).origin}{integration?.webhookPath}</code></p><p className={styles.muted}>O controle manual altera o acesso ao OrçaPro. Para interromper uma cobrança Stripe, use “Cancelar renovação” na assinatura.</p></section>
       </> : null}
       {tab === 'audit' ? <AuditPanel /> : null}
+      {tab === 'bulletins' && bulletinsAvailable ? <SystemBulletinsPanel /> : null}
     </div></main>
     {passwordUser ? <div className={styles.overlay}><form className={styles.drawer} role="dialog" aria-modal="true" aria-label="Alterar senha" onSubmit={savePassword}><header><h2>Senha de {passwordUser.name}</h2><button type="button" disabled={busy} onClick={() => { setPasswordUser(null); setPassword(''); }} aria-label="Fechar alteração de senha"><X size={18} /></button></header><p>O login é compartilhado: esta senha vale para OrçaPro e Gestão de Prédios. Todas as sessões anteriores serão encerradas.</p><label className={css.field}>Nova senha<input autoFocus required type="password" autoComplete="new-password" minLength={10} maxLength={72} value={password} onChange={e => setPassword(e.target.value)} /></label><button disabled={busy}>Alterar senha e encerrar sessões</button>{error ? <p role="alert" className={styles.error}>{error}</p> : null}</form></div> : null}
     {subscriptionUser ? <div className={styles.overlay}><form className={styles.drawer} role="dialog" aria-modal="true" aria-label="Controle de assinatura" onSubmit={saveSubscription}><header><h2>Assinatura de {subscriptionUser.name}</h2><button type="button" disabled={busy} onClick={() => setSubscriptionUser(null)}>Fechar</button></header><p>Controle manual do acesso individual ao OrçaPro. Cobranças existentes no Stripe continuam até serem canceladas no Stripe.</p><div className={css.grid}><label>Plano<select value={subscription.planId} onChange={e => setSubscription({ ...subscription, planId: e.target.value })}><option value="">Sem plano definido</option>{plans.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Situação<select value={subscription.status} onChange={e => setSubscription({ ...subscription, status: e.target.value })}>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Válida até<input type="date" required={subscription.status === 'TRIALING'} value={subscription.currentPeriodEnd} onChange={e => setSubscription({ ...subscription, currentPeriodEnd: e.target.value })} /><small>Em branco: acesso sem vencimento, exceto teste.</small></label><label>Motivo da alteração<textarea required minLength={5} maxLength={500} value={subscription.reason} onChange={e => setSubscription({ ...subscription, reason: e.target.value })} /></label></div><button disabled={busy}>Salvar controle manual</button>{error ? <p role="alert" className={styles.error}>{error}</p> : null}</form></div> : null}

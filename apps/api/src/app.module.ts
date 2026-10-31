@@ -27,6 +27,7 @@ import { PilotModule } from './modules/pilot/pilot.module';
 import { InspectorsModule } from './modules/inspectors/inspectors.module';
 import { OrcaproModule } from './modules/orcapro/orcapro.module';
 import { InfraModule } from './modules/infraestrutura/infra.module';
+import { BulletinsModule } from './modules/bulletins/bulletins.module';
 
 configureBigIntJsonSerialization();
 
@@ -61,6 +62,7 @@ configureBigIntJsonSerialization();
     InspectorsModule,
     OrcaproModule,
     InfraModule,
+    BulletinsModule,
   ],
 })
 export class AppModule {}

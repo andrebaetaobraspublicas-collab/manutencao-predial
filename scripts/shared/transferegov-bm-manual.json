@@ -2,8 +2,8 @@
   "id": "transferegov-bm",
   "title": "31. TransfereGov: exportar BM e PLE passo a passo",
   "category": "SaaS e registros",
-  "developmentOnly": true,
-  "summary": "Do orçamento à planilha: escolha BM ou PLE, prepare ajustes temporários de precisão, aproveite o Eventograma, distribua as frentes e confira o arquivo antes da importação manual. Roteiro comum ao OrçaPro SINAPI e ao OrçaPro Infraestrutura SICRO, disponível no desenvolvimento.",
+  "developmentOnly": false,
+  "summary": "Do orçamento à planilha: escolha BM ou PLE, prepare ajustes temporários de precisão, aproveite o Eventograma, distribua as frentes e confira o arquivo antes da importação manual. Roteiro comum ao OrçaPro SINAPI e ao OrçaPro Infraestrutura SICRO, disponível no desenvolvimento e nas produções dos dois sistemas.",
   "target": "budget",
   "related": [
     "orcamento",
@@ -22,7 +22,7 @@
   "sections": [
     {
       "title": "Começar: onde acessar e qual será o resultado",
-      "body": "Nos dois programas, abra o orçamento e entre em Orçamento → TransfereGov (BM) ou TransfereGov (PLE). O assistente tem cinco etapas: Identificação; Macrosserviços (e eventos no PLE); Frentes e serviços; Cronograma BM ou Conclusões por evento PLE; Conferência. O recurso está habilitado somente no ambiente de desenvolvimento www.gestaodepredios.com.br.",
+      "body": "Nos dois programas, abra o orçamento e entre em Orçamento → TransfereGov (BM) ou TransfereGov (PLE). O assistente tem cinco etapas: Identificação; Macrosserviços (e eventos no PLE); Frentes e serviços; Cronograma BM ou Conclusões por evento PLE; Conferência. O recurso está habilitado no desenvolvimento www.gestaodepredios.com.br e nas produções sistema.orcaproobras.com.br e orcaproinfra.com.br.",
       "expected": "Ao concluir, você terá um arquivo XLSX para importação manual, um relatório JSON para conferência e, se desejar, uma configuração JSON reutilizável. Gerar o arquivo não o envia ao governo nem comprova sua aceitação."
     },
     {

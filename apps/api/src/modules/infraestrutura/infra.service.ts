@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { validateInputPriceOverrides } from '../../common/project-input-prices';
-import { assertBmDevelopment, bmReceipt, BmExportReceiptDto, pleReceipt, PleExportReceiptDto, CompatibleCopyDto, compatibleCopyData } from '../../common/transferegov-bm';
+import { assertBmDevelopment, assertTransferegovEnvironment, bmReceipt, BmExportReceiptDto, pleReceipt, PleExportReceiptDto, CompatibleCopyDto, compatibleCopyData } from '../../common/transferegov-bm';
 import { hash } from 'bcryptjs';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -103,14 +103,14 @@ export class InfraService {
   }
   async project(user: AuthenticatedUser, id: string) { return this.shape(await this.owned(this.db as unknown as InfraSql,user,id)); }
   async recordBmExport(user:AuthenticatedUser,id:string,dto:BmExportReceiptDto) {
-    assertBmDevelopment(this.config.get<string>('WEB_BASE_URL'));
+    assertTransferegovEnvironment(this.config.get<string>('WEB_BASE_URL'));
     const project=await this.owned(this.db as unknown as InfraSql,user,id);
     const receipt=bmReceipt({version:project.version,data:parsed(project.data)},dto);
     await this.audit(this.db as unknown as InfraSql,user,'export.transferegov.bm','project',id,receipt);
     return {...receipt,recorded:true};
   }
   async recordPleExport(user:AuthenticatedUser,id:string,dto:PleExportReceiptDto) {
-    assertBmDevelopment(this.config.get<string>('WEB_BASE_URL'));
+    assertTransferegovEnvironment(this.config.get<string>('WEB_BASE_URL'));
     const project=await this.owned(this.db as unknown as InfraSql,user,id);
     const receipt=pleReceipt({version:project.version,data:parsed(project.data)},dto);
     await this.audit(this.db as unknown as InfraSql,user,'export.transferegov.ple','project',id,receipt);

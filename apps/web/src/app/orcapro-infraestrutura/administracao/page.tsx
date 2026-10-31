@@ -7,6 +7,7 @@ import { uploadInfraCatalog, type CatalogBundle } from '@/lib/infra-import';
 import InfraShell from '../infra-shell';
 import styles from '../../orcapro/workspace.module.css';
 import AuditPanel from '../../orcapro/administracao/audit-panel';
+import SystemBulletinsPanel, {useBulletinAvailability} from '../../orcapro/administracao/system-bulletins-panel';
 
 type Member = { userId: string; tenantId: string; name: string; email: string; role: string; status: string; deletedAt?: string };
 type Account = { userId: string; tenantId: string; name: string; email: string; organizationName: string };
@@ -16,6 +17,7 @@ const situations: Record<string, string> = { ACTIVE: 'Ativo', PENDING: 'Aguardan
 const download = (value: unknown, name: string) => { const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
 
 export default function InfraAdmin() {
+  const bulletinsAvailable=useBulletinAvailability();
   const [allowed, setAllowed] = useState(false), [self, setSelf] = useState(''), [tab, setTab] = useState('users');
   const [error, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false);
   const [users, setUsers] = useState<Member[]>([]), [cycles, setCycles] = useState<InfraCycle[]>([]), [policies, setPolicies] = useState<Policy[]>([]), [stats, setStats] = useState<Stats | null>(null);
@@ -34,7 +36,7 @@ export default function InfraAdmin() {
     if (ORCAPRO_ONLY) return;
     void infraAccess().then(async access => {
       if (!access.enabled || access.role !== 'ADMIN') throw new Error('Esta área é exclusiva dos administradores do Infraestrutura.');
-      if (active) { setAllowed(true); setSelf(access.userId); const requested = new URLSearchParams(window.location.search).get('tab'); if (requested === 'cycles' || requested === 'catalog') setTab('catalog'); else if (requested && ['users', 'policies', 'audit'].includes(requested)) setTab(requested); }
+      if (active) { setAllowed(true); setSelf(access.userId); const requested = new URLSearchParams(window.location.search).get('tab'); if (requested === 'cycles' || requested === 'catalog') setTab('catalog'); else if (requested && ['users', 'policies', 'audit', 'bulletins'].includes(requested)) setTab(requested); }
       await reload();
     }).catch(cause => { if (!active) return; if (cause instanceof ApiError && cause.status === 401) window.location.assign('/login/?next=/orcapro-infraestrutura'); else setError(cause instanceof Error ? cause.message : 'Falha ao validar a administração.'); });
     return () => { active = false; };
@@ -75,14 +77,15 @@ export default function InfraAdmin() {
     setImporting(false);
   }
   if (!allowed) return <InfraShell title="Administração do Infraestrutura"><p className={styles.error} role="alert">{ORCAPRO_ONLY ? 'Este programa está disponível no ambiente de desenvolvimento.' : error || 'Validando acesso administrativo…'}</p></InfraShell>;
-  return <InfraShell title="Administração do Infraestrutura" admin>
+  return <InfraShell title="Administração do Infraestrutura" admin bulletins={bulletinsAvailable}>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}{notice ? <p className={styles.notice} role="status">{notice}</p> : null}
     <div className={styles.examples}>
       <div><span>Usuários ativos</span><strong>{Number(stats?.users.find(u => u.status === 'ACTIVE')?.count || 0)}</strong></div>
       <div><span>Projetos registrados</span><strong>{Number(stats?.projects.total || 0)}</strong></div>
       <div><span>Referências publicadas</span><strong>{Number(stats?.cycles.find(c => c.status === 'PUBLISHED')?.count || 0)}</strong></div>
     </div>
-    <nav className={styles.actions} aria-label="Seções da administração">{[['users', 'Usuários e acessos'], ['catalog', 'Referências SICRO'], ['policies', 'Privacidade e termos'], ['audit', 'Auditoria']].map(([id, text]) => <button key={id} className={tab === id ? styles.primary : ''} onClick={() => setTab(id)}>{text}</button>)}<button disabled={busy} onClick={() => void action(reload)}>Atualizar</button></nav>
+    <nav className={styles.actions} aria-label="Seções da administração">{[['users', 'Usuários e acessos'], ['catalog', 'Referências SICRO'], ['policies', 'Privacidade e termos'], ['audit', 'Auditoria'], ...(bulletinsAvailable ? [['bulletins', 'Informativos do sistema']] : [])].map(([id, text]) => <button key={id} className={tab === id ? styles.primary : ''} onClick={() => setTab(id)}>{text}</button>)}<button disabled={busy} onClick={() => void action(reload)}>Atualizar</button></nav>
+    {tab === 'bulletins' && bulletinsAvailable ? <SystemBulletinsPanel /> : null}
     {tab === 'users' ? <>
       <section className={styles.panel}><div className={styles.sectionHeader}><h2>Usuários e acessos</h2><button className={styles.primary} disabled={busy} onClick={() => setCreate(true)}>Cadastrar usuário</button></div>
         <p className={styles.muted}>Os papéis e a aprovação abaixo controlam o Infraestrutura. A senha pertence à conta compartilhada dos três programas.</p>

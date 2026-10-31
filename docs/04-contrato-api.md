@@ -567,3 +567,8 @@ GET `/infraestrutura/health` é público; os demais recursos exigem perfil próp
 `POST /orcapro/projects/:id/transferegov/compatible-copy` e `POST /infraestrutura/projects/:id/transferegov/compatible-copy` exigem autenticação, permissão do produto, CSRF e propriedade pelo usuário/tenant do token. Corpo: `expectedVersion`, `sourceHash` SHA-256 canônico, `requestId` UUID idempotente e `rows` de 1 a 10.000 `{id,quantity,cost}` com strings decimais de duas casas. A API valida cobertura exata dos IDs do orçamento salvo, limites financeiros e conflito de versão/hash (409).
 
 Cria apenas um novo orçamento privado, versão inicial e auditoria `export.transferegov.compatible-copy`; nunca atualiza a origem, biblioteca ou referência. Repetir o mesmo requestId/origem/hash retorna a cópia já criada. O ambiente é validado antes da transação; produção responde 404. As rotas de recibo BM/PLE existentes continuam somente acrescentando auditoria.
+
+
+## Informativos do sistema (desenvolvimento)
+
+Rotas /api/v1/system-bulletins: GET capabilities; POST preview (subject, body texto simples, products ORCAPRO/INFRA, accountStatus ACTIVE/INACTIVE/ALL); GET ?page (20/página); POST :id/test (somente administrador atual); POST :id/confirm (confirmation=ENVIAR INFORMATIVO, audienceHash). JWT, administrador global, ambiente de desenvolvimento e origem confiável são obrigatórios. Falha 404 em produção/desativado, 403 sem privilégios, 409 se o público mudou. Confirmar enfileira de forma idempotente; não envia na requisição. Consulte docs/system-bulletins.md.

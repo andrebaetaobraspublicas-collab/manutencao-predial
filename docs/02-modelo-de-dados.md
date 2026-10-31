@@ -481,3 +481,8 @@ Exclusão ordinária usa lixeira. Pedido expresso de eliminação LGPD encerra a
 Sem alteração de schema ou migration: somente novos documentos privados de orçamento podem receber `data.transferegovCompatibility.version=tg-compatible-2026.1`, com sourceProjectId, sourceVersion, sourceHash, requestId, initialTotalCents e ajustes por serviço. O perfil normaliza quantidades, custos adotados e percentuais BDI em duas casas e usa BigInt decimal meio para cima nos produtos. Custos ficam explícitos por item, sem referenceLink, quantidades periódicas ficam congeladas, crewPlan.syncEvents é desligado e riscos da versão anterior não são transferidos. Nenhum documento existente é convertido automaticamente. O motor original é chamado sem mudanças para documentos sem esse marcador. A criação registra somente nova versão e nova auditoria, com isolamento de tenant e proprietário.
 
 O assistente de frentes TransfereGov usa somente o JSON de configuração de exportação (`frontDistribution`); não acrescenta campos aos orçamentos nem tabelas ou migrations. Configurações baixadas guardam regras por etapa, dimensões, proteções manuais e a última aplicação automática para conferência.
+
+
+## Informativos do sistema (desenvolvimento)
+
+SystemBulletin guarda a prévia imutável, tenant/autor, produtos, filtros, hash/contagem do público e confirmação. SystemBulletinDelivery guarda apenas userId/hash do e-mail, claim/lease, tentativas e resultado seguro. Migration aditiva 20261031140000_system_bulletins; não altera identidades, orçamentos ou licenças. Histórico sem exclusão física. Diretório é global apenas para administradores SaaS configurados; leitura do histórico tem tenant autenticado.

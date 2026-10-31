@@ -27,7 +27,12 @@ function motor(s){
  .replace('const r={oc,ano,anoEfetivo:ae,', 'const r={oc,ano,recuperacaoDepreciacao,anoEfetivo:ae,');
  return ui(s);
 }
-function ui(s){return s.replaceAll("['corrente','Alíquota do exercício corrente']","['corrente','Alíquota do exercício corrente'],['progressivo','Recuperação progressiva da depreciação (2027–2037)']")
+function ui(s){
+ // Normalize before inserting: Infraestrutura contains the motor and UI in one
+ // module, so this transform can be reached more than once in the same build.
+ s=s.replace(/,\['progressivo','Recuperação progressiva da depreciação \(2027–2037\)'\]/g,'')
+ .replace(/<p class="small">Recuperação progressiva da depreciação:[^<]*<\/p>/g,'');
+ return s.replaceAll("['corrente','Alíquota do exercício corrente']","['corrente','Alíquota do exercício corrente'],['progressivo','Recuperação progressiva da depreciação (2027–2037)']")
  .replaceAll('Cenário hipotético de IVA de 28% em 2033.', 'Premissa editável de IVA de 30% em 2033 (CBS 11,3% + IBS 18,7%).')
  .replaceAll('Restaurar cenário de IVA de 28%', 'Restaurar cenário de IVA de 30%')
  .replaceAll('<h3>Base ponderada com combustíveis</h3>', '<p class="small">Recuperação progressiva da depreciação: 2027: 0%; 2028: 10%; 2029: 20%; 2030: 30%; 2031: 40%; 2032: 50%; 2033: 60%; 2034: 70%; 2035: 80%; 2036: 90%; 2037 em diante: 100%. Usa o ano do crédito consultado, não o ano manual de aquisição; aplica o fator uma única vez e somente à depreciação. Premissa de simulação fornecida pelo usuário.</p><h3>Base ponderada com combustíveis</h3>');}
@@ -75,4 +80,4 @@ function patch(source){
  }
  return extendYears(ui(bdi(motor(source))));
 }
-module.exports={patch,motor,bdi,extendYears};
+module.exports={patch,motor,bdi,extendYears,ui};

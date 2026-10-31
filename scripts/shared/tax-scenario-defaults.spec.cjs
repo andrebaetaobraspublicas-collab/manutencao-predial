@@ -22,7 +22,5 @@ test('historical built-in fiscal regression retains its explicitly pinned scenar
  const ctx=load(false),raw=JSON.parse(fs.readFileSync(path.join(root,'legacy/orcaplan-1.8.3/sinapi-2026-08.raw.json'),'utf8'));
  ctx.OP.app.base=ctx.OP.register.makeBase(raw,'test',[],[],[]);ctx.OP.app.pj=ctx.OP.engine.newProject();ctx.OP.iva.setup();
  const results=Array.from(ctx.TESTES.executar());assert.ok(results.length>80);
- // These two catalog-coverage checks refer to the original 4,876-input matrix;
- // this regression fixture has 6,120 inputs. They are independent of fiscal arithmetic.
- assert.deepEqual(results.filter(r=>!r.ok&&!r.nome.startsWith('Matriz cobre todos')&&!r.nome.startsWith('Anexos: 4.876')),[]);
+ assert.deepEqual(results.filter(r=>!r.ok),[]);
 });

@@ -541,16 +541,16 @@ root.MOTOR={attachDB(d){DB=d;assinaturaPrecos="";limparCache();},contextoDe,comb
 (function(root){'use strict';
 function executar(){const M=root.MOTOR,db=M.db(),out=[],keep=root.INTERFACE?._debug().CFG;
  const add=(nome,f)=>{try{f();out.push({nome,ok:true});}catch(e){out.push({nome,ok:false,erro:e.message});}};
- const eq=(a,b,tol=1e-8)=>{if(!Number.isFinite(a)||Math.abs(a-b)>tol)throw Error(`${a} ≠ ${b}`);};
+ const eq=(a,b,tol=1e-8)=>{if(!Number.isFinite(a)||!Number.isFinite(b)||Math.abs(a-b)>tol)throw Error(`${a} ≠ ${b}`);};
  const yes=(v,s='Condição não atendida')=>{if(!v)throw Error(s);};
  const c=M.cfgInicial(db.uf);c.cbs=[.9,8.7,8.7,8.8,8.8,8.8,8.8,8.8,8.8,8.8,8.8,8.8];c.ibs=[.1,.1,.1,1.92,3.84,5.76,7.68,19.2,19.2,19.2,19.2,19.2];for(const [k,mode,value]of [['diesel','percentual',4.24],['gasolina','unitario',.60],['glp','unitario',0],['etanol','unitario',0],['biodiesel','percentual',4.24]]){c.combustiveis[k].federalModo=mode;c.combustiveis[k].federal=value;}const sp=db.uf.indexOf('SP'),oc=(perfil,valor=100,extra={})=>({cod:'teste',desc:'Teste',un:'UN',perfil,valor,qtd:1,cbAdRem:null,...extra});
  const av=(o,y=2033,cfg=c)=>M.avaliarOcorrencia(o,cfg,'SP',y);
  const clone=x=>JSON.parse(JSON.stringify(x));
- add('Cadastro de 27 UFs e oito exercícios',()=>{eq(db.uf.length,27);eq(M.ANOS.length,12);});
+ add('Cadastro histórico de 27 UFs e doze exercícios',()=>{eq(db.uf.length,27);eq(M.ANOS.length,12);});
  add('Referências de ISS integralmente preenchidas',()=>{for(const u of db.uf)for(const k of ['geral','construcao','saude','transporte'])yes(Number.isFinite(c.iss[u][k])&&c.iss[u][k]>=0&&c.iss[u][k]<=5);});
  add('IVA nominal de 28% em 2033',()=>eq(c.ibs[7]+c.cbs[7],28));
  add('Composição CBS/IBS de 2027 e 2028',()=>{for(const i of [1,2]){eq(c.ibs[i],.1);eq(c.cbs[i],8.7);}});
- add('Transição completa do ICMS/ISS',()=>M.ANOS.forEach((y,i)=>eq(M.remanescente(c,y),[1,1,1,.9,.8,.7,.6,0][i])));
+ add('Transição completa do ICMS/ISS',()=>M.ANOS.forEach((y,i)=>eq(M.remanescente(c,y),[1,1,1,.9,.8,.7,.6,0,0,0,0,0][i])));
  add('Material: base de R$83,80 em 2029 (ICMS 18%)',()=>{const r=av(oc('material'),2029);eq(r.residual,16.2);eq(r.baseLegal,83.8);eq(r.credito,83.8*.1072);});
  add('Serviço: ISS reduzido também na base em 2029',()=>{const r=av(oc('servico'),2029);eq(r.residual,4.5);eq(r.baseLegal,95.5);});
  add('Locação: usa o ISS geral da capital na transição',()=>{const r=av(oc('locacao'),2027);eq(r.tributoNominal,c.iss.SP.geral);eq(r.residual,c.iss.SP.geral);eq(r.baseLegal,100-c.iss.SP.geral);});
@@ -605,11 +605,11 @@ function executar(){const M=root.MOTOR,db=M.db(),out=[],keep=root.INTERFACE?._de
  add('Série de doze anos completa e sem pendências padrão',()=>{const e=M.explodir('89470','C','SD',db.uf.indexOf('MA'),c);const s=M.serie(e,c,'MA');eq(s.length,12);s.forEach(y=>{yes(y.completo);eq(y.pendencias,0);yes(y.credito>=0);});});
  add('Regimes previdenciários produzem resultados finitos',()=>{for(const reg of ['SD','CD','SE']){const e=M.explodir('88309','C',reg,sp,c);yes(e);yes(M.avaliar(e,c,'SP',2033).total.completo);}});
   /* v2.4: tests of integrated rule selection, reproducibility and the constitutional invariant. */
- add('Matriz cobre todos os códigos SINAPI carregados',()=>{eq(Object.keys(M.matrizTributaria.insumos).length,db.ins.size);for(const cod of db.ins.keys())yes(!!M.matrizTributaria.insumos[cod]);});
+ add('Base histórica contém todos os códigos da matriz tributária original',()=>{for(const cod of Object.keys(M.matrizTributaria.insumos))yes(db.ins.has(cod),'Insumo da matriz ausente na base de teste: '+cod);});
  add('Matriz cobre 27 UFs e não contém IDs duplicados de regras',()=>{eq(Object.keys(M.matrizTributaria.estados).length,27);const rs=M.matrizTributaria.regras;eq(new Set(rs.map(r=>r.id)).size,rs.length);});
  add('Referências de regras e famílias são íntegras',()=>{const t=M.matrizTributaria;for(const r of t.regras){r.fontes.forEach(k=>yes(!!t.fontes[k]));r.familias.forEach(k=>yes(!!t.familias[k]));}for(const o of Object.values(t.insumos))yes(!!t.familias[o.familia]);});
  add('Transição: vetor e propriedade não podem ser reescritos',()=>{yes(Object.isFrozen(c.resid));yes(Object.getOwnPropertyDescriptor(c,'resid').writable===false);try{c.resid[3]=100;}catch(e){}try{c.resid=[0,0,0,0,0,0,0,100];}catch(e){}eq(c.resid[3],90);eq(c.resid[7],0);});
- add('Transição: adulteração de configuração clonada é ignorada pelo motor',()=>{const f=clone(c);f.transicaoLivre=true;f.resid=[99,99,99,99,99,99,99,99];M.ANOS.forEach((y,i)=>eq(M.remanescente(f,y),[1,1,1,.9,.8,.7,.6,0][i]));});
+ add('Transição: adulteração de configuração clonada é ignorada pelo motor',()=>{const f=clone(c);f.transicaoLivre=true;f.resid=[99,99,99,99,99,99,99,99];M.ANOS.forEach((y,i)=>eq(M.remanescente(f,y),[1,1,1,.9,.8,.7,.6,0,0,0,0,0][i]));});
  add('Transição: importação de v2.3 divergente restaura a regra constitucional',()=>{const f=clone(c);f.schemaVersion=5;f.transicaoLivre=true;f.resid.fill(100);const z=M.validarCfg(f,db.uf,true);eq(z.resid[7],0);eq(z.resid[3],90);yes(z.notasMigracao.some(x=>x.includes('constitucional')));});
  add('Transição: importação de v2.4 também não pode alterar o vetor',()=>{const f=clone(c);f.resid.fill(0);const z=M.validarCfg(f,db.uf,true);eq(z.resid[0],100);eq(z.resid[6],60);});
  add('Transição fixa alcança todos os combustíveis automáticos',()=>{const f=clone(c);f.resid.fill(100);f.transicaoLivre=true;for(const y of M.ANOS){const a=M.taxasCombustivel(c,'diesel',y,100),b=M.taxasCombustivel(f,'diesel',y,100);eq(a.ibs,b.ibs);eq(a.cbs,b.cbs);}});
@@ -641,7 +641,7 @@ function executar(){const M=root.MOTOR,db=M.db(),out=[],keep=root.INTERFACE?._de
  add('Metadados fiscais permanecem na consolidação',()=>{const e=M.explodir('89870','C','SD',sp,c),z=M.consolidar(M.avaliar(e,c,'SP',2029));yes(z.length>0);z.forEach(x=>yes(!!x.alq.regra.id));});
 
  // v2.5 — os fatores dos anexos integram a base, sem reduzir o mesmo crédito duas vezes.
- add('Anexos: 4.876 descrições examinadas, 16 IX e 11 XIII',()=>{eq(M.ANEXOS_IVA.totalInsumosAnalisados,db.ins.size);const a=Object.values(M.REGIME_PADRAO);eq(a.filter(x=>x==='IX').length,16);eq(a.filter(x=>x==='XIII').length,11);});
+ add('Anexos: 4.876 descrições examinadas, 16 IX e 11 XIII',()=>{eq(M.ANEXOS_IVA.totalInsumosAnalisados,Object.keys(M.matrizTributaria.insumos).length);const a=Object.values(M.REGIME_PADRAO);eq(a.filter(x=>x==='IX').length,16);eq(a.filter(x=>x==='XIII').length,11);});
  add('Anexo IX: base R$100 torna-se R$40, crédito R$11,20 em 2033',()=>{const r=av(oc('material',100,{cod:'3123'}));eq(r.baseLegal,100);eq(r.baseAntesAnexos,100);eq(r.reducaoBaseAnexos,60);eq(r.baseCreditavel,40);eq(r.credito,11.2);eq(r.pot,.4);});
  add('Anexo XIII: base monetária preservada, base creditável e crédito zerados',()=>{const r=av(oc('material',100,{cod:'36080'}));eq(r.baseLegal,100);eq(r.baseCreditavel,0);eq(r.reducaoBaseAnexos,100);eq(r.credito,0);eq(r.pot,0);});
  add('Anexo IX: crédito não recebe dupla redução para R$4,48',()=>{const r=av(oc('material',100,{cod:'3123'}));eq(r.credito,11.2);eq(r.debitoIbs+r.debitoCbs,r.credito);});
@@ -650,7 +650,7 @@ function executar(){const M=root.MOTOR,db=M.db(),out=[],keep=root.INTERFACE?._de
  add('Aproveitamento de 50% mais Anexo IX: base 20% e crédito R$5,60',()=>{const f=clone(c);f.par.material=50;const r=av(oc('material',100,{cod:'3123'}),2033,f);eq(r.potAntesAnexo,.5);eq(r.pot,.2);eq(r.baseCreditavel,20);eq(r.credito,5.6);});
  add('Fator adicional de alíquota permanece separado do redutor do Anexo IX',()=>{const f=clone(c);f.base.porInsumo['3123']={fatorAliquota:50};const r=av(oc('material',100,{cod:'3123'}),2033,f);eq(r.baseCreditavel,40);eq(r.fatorAliquota,.5);eq(r.credito,5.6);});
  add('Redutor dos anexos não reduz o ICMS/ISS remanescente',()=>{for(const cod of ['3123','36080']){const original=av(oc('material',100,{cod}),2029);const f=clone(c);f.regimeInsumo[cod]='';const geral=av(oc('material',100,{cod}),2029,f);eq(original.residual,geral.residual);eq(original.tributoNominal,geral.tributoNominal);eq(original.baseLegal,geral.baseLegal);}});
- add('Anexo IX acompanha os oito exercícios e a transição protegida',()=>{M.ANOS.forEach((y,i)=>{const r=av(oc('material',100,{cod:'3123'}),y);eq(r.residual,r.tributoNominal*M.remanescente(c,y));eq(r.baseCreditavel,(100-r.residual)*.4);eq(r.credito,r.baseCreditavel*(c.ibs[i]+c.cbs[i])/100);});});
+ add('Anexo IX acompanha os doze exercícios e a transição protegida',()=>{M.ANOS.forEach((y,i)=>{const r=av(oc('material',100,{cod:'3123'}),y);eq(r.residual,r.tributoNominal*M.remanescente(c,y));eq(r.baseCreditavel,(100-r.residual)*.4);eq(r.credito,r.baseCreditavel*(c.ibs[i]+c.cbs[i])/100);});});
  add('Anexo XIII é zero em todos os exercícios e UFs',()=>{for(const uf of db.uf)for(const y of M.ANOS){const r=M.avaliarOcorrencia(oc('material',100,{cod:'36080'}),c,uf,y);eq(r.baseCreditavel,0);eq(r.credito,0);}});
  add('Gramas naturais em placas recebem Anexo IX automaticamente',()=>{for(const cod of ['3322','3324']){eq(M.anexoInsumo(cod,c).fator,.4);yes(M.anexoInsumo(cod,c).item==='11');}});
  add('Terra vegetal para plantas recebe enquadramento descritivo automático',()=>{for(const cod of ['7253','38128']){eq(M.anexoInsumo(cod,c).fator,.4);yes(M.anexoInsumo(cod,c).item==='3');}});

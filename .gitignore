@@ -23,3 +23,4 @@ apps/web/public/infraestrutura-editor/
 
 apps/web/public/orcapro-brand/development.css
 apps/web/public/orcapro-brand/icon.svg
+apps/web/public/orcapro-legacy/data/fiscal-regression-*.json.gz

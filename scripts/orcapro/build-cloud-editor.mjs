@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import nextEnv from '@next/env';
 import { sanitizeDerivedHtml } from './sanitize-derived-html.mjs';
 import taxScenarioDefaults from '../shared/tax-scenario-defaults.cjs';
+import fiscalTestPatch from '../shared/sinapi-fiscal-tests.cjs';
+import fiscalTestFixture from './build-fiscal-test-fixture.cjs';
 import { bluePalette } from './apply-production-branding.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -42,6 +44,10 @@ html = html.replace('o armazenamento é local ao navegador. Recomenda-se salvar 
 html = html.replace(/<meta name="description"[^>]*>/, '<meta name="description" content="OrçaPro — orçamento, SINAPI versionado e planejamento de obras.">');
 html = sanitizeDerivedHtml(html);
 html = taxScenarioDefaults.patch(html);
+html = fiscalTestPatch.patch(html);
+const fiscalTestUi=fs.readFileSync(path.join(root,'apps/api/src/modules/orcapro/legacy/assets/fiscal-self-tests.js'),'utf8');
+const fiscalFixture=fiscalTestFixture.writeFixture(path.join(root,'apps/web/public/orcapro-legacy'));
+const fiscalScript=`<script>window.ORCAPRO_FISCAL_TEST_FIXTURE=${JSON.stringify(fiscalFixture)};</script><script>${fiscalTestUi}</script>`;
 const bridge = fs.readFileSync(path.join(root, 'scripts/orcapro/cloud-bridge.js'), 'utf8').replaceAll('\r\n','\n');
 const referenceReview = fs.readFileSync(path.join(root, 'apps/api/src/modules/orcapro/legacy/assets/reference-review.js'), 'utf8').replaceAll('\r\n','\n');
 const riskUi = fs.readFileSync(path.join(root,'scripts/orcapro/risk-ui.js'),'utf8').replaceAll('\r\n','\n');
@@ -71,7 +77,7 @@ html = html.replace('<title>', `<meta http-equiv="Content-Security-Policy" conte
 // the document's final closing body, otherwise the browser terminates JS early.
 const bodyEnd = html.lastIndexOf('</body>');
 if (bodyEnd < html.lastIndexOf('</script>')) throw new Error('Original final body boundary missing');
-html = html.slice(0, bodyEnd) + `<script>${referenceReview}</script><script>${inputPrices}</script><style>${inputPricesCss}</style><script>${inputPricesUi}</script><script>${bmCore}</script><script>${pleCore}</script><script>${eventCore}</script><script>${compatibilityCore}
+html = html.slice(0, bodyEnd) + `${fiscalScript}<script>${referenceReview}</script><script>${inputPrices}</script><style>${inputPricesCss}</style><script>${inputPricesUi}</script><script>${bmCore}</script><script>${pleCore}</script><script>${eventCore}</script><script>${compatibilityCore}
 ${frontCore}</script><style>${bmCss}</style><script>${bmUi}</script><style>${riskCss}</style><script>${riskUi}</script><style>${manualCss}</style><script>window.ORCAPRO_MANUAL=${manualData};</script><script>${manualUi}</script><script>(${bridge})(${literal});</script>\n` + html.slice(bodyEnd);
 html=html.split(/(<script\b[^>]*>[\s\S]*?<\/script>)/gi).map(part=>/^<script\b/i.test(part)?part:part.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi,(_,attrs,css)=>`<style${attrs}>${bluePalette(css)}</style>`)).join('');
 html=html.replace('</head>','<link rel="stylesheet" href="/orcapro-brand/production.css?v=20261006-dev1"><link rel="icon" href="/orcapro-brand/icon.svg"></head>');
@@ -82,6 +88,7 @@ fs.writeFileSync(path.join(output, 'editor.html'), html);
 fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify({ sourceSha256: originalHash,
   bridgeSha256: sha(bridge), editorSha256: sha(html), sourceVersion: '1.8.3', apiBase,
   referenceReviewSha256: sha(referenceReview),
+  fiscalTestsSha256:sha(fiscalTestUi),fiscalTestFixture:fiscalFixture,
   inputPricesSha256: sha(inputPrices), inputPricesUiSha256: sha(inputPricesUi),
   transferegovFrontsSha256:sha(frontCore),transferegovCompatibilitySha256:sha(compatibilityCore),transferegovEventogramSha256:sha(eventCore),transferegovPleVersion:'transferegov-ple-2026.1',transferegovPleSha256:sha(pleCore),
   transferegovBmVersion:'transferegov-bm-2026.1',transferegovBmSha256:sha(bmCore),transferegovBmUiSha256:sha(bmUi),

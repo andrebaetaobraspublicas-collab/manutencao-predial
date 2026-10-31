@@ -58,7 +58,7 @@ export class BulletinsService implements OnApplicationBootstrap,OnModuleDestroy 
  private audit(actor:AuthenticatedUser,action:string,id:string,metadata:object){return this.db.orcaproAudit.create({data:{tenantId:actor.tenantId,actorUserId:actor.userId,action,entityId:id,metadata:metadata as Prisma.InputJsonValue}});}
  private async owned(actor:AuthenticatedUser,id:string){const b=await this.db.systemBulletin.findFirst({where:{id,tenantId:actor.tenantId}});if(!b)throw new NotFoundException();return b;}
  async preview(actor:AuthenticatedUser,dto:BulletinDraftDto){
-  if(dto.subject.trim().length<3||dto.body.trim().length<10)throw new BadRequestException('Preencha o assunto e o conteúdo.');
+  if(!dto.subject.trim()||!dto.body.trim())throw new BadRequestException('Preencha o assunto e o conteúdo.');
   const a=await this.audience(dto.products,dto.accountStatus);const b=await this.db.systemBulletin.create({data:{tenantId:actor.tenantId,actorUserId:actor.userId,actorName:actor.name,subject:dto.subject.trim(),body:dto.body.trim(),products:[...dto.products].sort(),accountStatus:dto.accountStatus,audienceHash:a.hash,recipientCount:a.recipients.length}});
   await this.audit(actor,'bulletin.preview',b.id,{products:dto.products,count:a.recipients.length});
   return{...b,excludedPreferences:a.excludedPreferences,email:this.mail.preview(this.content(b,actor.email)),mailConfigured:this.mail.isConfigured()};

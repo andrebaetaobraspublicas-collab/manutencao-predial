@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { KeyRound, ShieldCheck, Users, CreditCard, ClipboardList, Calculator, Plus, Search, UserPlus, X } from 'lucide-react';
+import { KeyRound, ShieldCheck, Users, CreditCard, ClipboardList, Mail, Calculator, Plus, Search, UserPlus, X } from 'lucide-react';
 import { apiFetch, apiFileUrl, ApiError } from '@/lib/api';
 import { endSession } from '@/lib/end-session';
 import { ORCAPRO_ONLY } from '@/lib/product-config';
@@ -70,7 +70,7 @@ export default function SaasAdministrationPage() {
   if (!access) return <main className={styles.loading}><h1>Gestão do SaaS</h1><p role="alert">{error}</p><Link href="/orcapro">Voltar ao OrçaPro</Link></main>;
   return <div className={styles.workspace}>
     <aside className={styles.sidebar}><Link href="/orcapro" className={styles.brand}><span><Calculator size={24} /></span><strong>OrçaPro<small>Administração do SaaS</small></strong></Link>
-      <nav aria-label="Gestão do SaaS"><button className={tab === 'users' ? styles.active : ''} onClick={() => setTab('users')}><Users size={18} /> Usuários e assinaturas</button><button className={tab === 'plans' ? styles.active : ''} onClick={() => setTab('plans')}><CreditCard size={18} /> Planos e Stripe</button><button className={tab === 'audit' ? styles.active : ''} onClick={() => setTab('audit')}><ClipboardList size={18} /> Auditoria</button>{bulletinsAvailable ? <button className={tab === 'bulletins' ? styles.active : ''} onClick={() => setTab('bulletins')}>Informativos do sistema</button> : null}</nav>
+      <nav aria-label="Gestão do SaaS"><button className={tab === 'users' ? styles.active : ''} onClick={() => setTab('users')}><Users size={18} /> Usuários e assinaturas</button><button className={tab === 'plans' ? styles.active : ''} onClick={() => setTab('plans')}><CreditCard size={18} /> Planos e Stripe</button><button className={tab === 'audit' ? styles.active : ''} onClick={() => setTab('audit')}><ClipboardList size={18} /> Auditoria</button>{bulletinsAvailable ? <button className={tab === 'bulletins' ? styles.active : ''} onClick={() => setTab('bulletins')}><Mail size={18} /> Informativos do sistema</button> : null}</nav>
       <footer><span className={styles.badge}>Administrador global</span><Link href="/orcapro">Voltar ao editor</Link><Link href="/orcapro/gerenciar">Meus orçamentos e SINAPI</Link>{!ORCAPRO_ONLY ? <Link href="/programas">Trocar programa</Link> : null}<button disabled={busy} onClick={() => void logout()}>Sair</button></footer>
     </aside>
     <main className={styles.main}><header className={styles.topbar}><h1>Gestão do SaaS</h1><ShieldCheck size={22} /></header><div className={`${styles.content} ${css.content}`}>

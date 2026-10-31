@@ -2,6 +2,10 @@
 
 Escopo: OrçaPro e OrçaPro Infraestrutura em gestaodepredios.com.br. A publicação não modifica produção, e-mails, catálogos oficiais, preços, quantidades ou BDI aplicado ao orçamento.
 
+Promoção posterior em 31/10/2026: o mesmo conjunto de alterações foi autorizado
+e publicado em sistema.orcaproobras.com.br e orcaproinfra.com.br, preservando os
+três bancos de produção. [Registro da publicação](production-tax-release-20261031.md).
+
 ## Premissas anuais editáveis
 
 | Ano | CBS | IBS |
@@ -34,4 +38,4 @@ Para equipamentos a diesel, o padrão é a hipótese B15: 0,85 × 0,3515 + 0,15 
 
 Cenário versão 8: atualiza os vetores completos que coincidam com os antigos padrões e os conhecidos padrões federais de combustível. Parâmetros personalizados e substituições anuais explícitas são preservados. A validação não modifica o objeto de entrada. Não há migração SQL ou exclusão de projetos.
 
-Testes: motores SINAPI/SICRO, B15 e demais combustíveis, recuperação proporcional 2027–2037, alíquotas anuais de BDI, redutores das três abas, preservação de ajustes manuais e regressão dos projetos históricos com suas premissas fiscais explicitamente fixadas. Dois autotestes de cobertura documental da matriz original de 4.876 insumos são independentes da aritmética fiscal e não se aplicam à fixture com 6.120 insumos.
+Testes: motores SINAPI/SICRO, B15 e demais combustíveis, recuperação proporcional 2027–2037, alíquotas anuais de BDI, redutores das três abas, preservação de ajustes manuais e regressão dos projetos históricos com suas premissas fiscais explicitamente fixadas. A cobertura histórica exige os códigos da matriz original, admitindo insumos adicionais; não exige igualdade de tamanho com o catálogo sob demanda. Os testes SINAPI usam uma base histórica isolada; o SICRO usa verificações próprias. Ausências de recursos na referência atual geram aviso e deixam verificações dependentes como não executadas, sem interromper as demais.

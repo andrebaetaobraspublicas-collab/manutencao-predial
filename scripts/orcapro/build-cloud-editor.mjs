@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import nextEnv from '@next/env';
 import { sanitizeDerivedHtml } from './sanitize-derived-html.mjs';
+import taxScenarioDefaults from '../shared/tax-scenario-defaults.cjs';
 import { bluePalette } from './apply-production-branding.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -40,6 +41,7 @@ html = html.replace('o armazenamento é local ao navegador. Recomenda-se salvar 
   'o orçamento é salvo no servidor quando a gravação é confirmada. Em caso de falha ou conflito, preserve suas alterações em arquivo JSON antes de reabrir o projeto. Recomenda-se exportar os relatórios relevantes.');
 html = html.replace(/<meta name="description"[^>]*>/, '<meta name="description" content="OrçaPro — orçamento, SINAPI versionado e planejamento de obras.">');
 html = sanitizeDerivedHtml(html);
+html = taxScenarioDefaults.patch(html);
 const bridge = fs.readFileSync(path.join(root, 'scripts/orcapro/cloud-bridge.js'), 'utf8').replaceAll('\r\n','\n');
 const referenceReview = fs.readFileSync(path.join(root, 'apps/api/src/modules/orcapro/legacy/assets/reference-review.js'), 'utf8').replaceAll('\r\n','\n');
 const riskUi = fs.readFileSync(path.join(root,'scripts/orcapro/risk-ui.js'),'utf8').replaceAll('\r\n','\n');

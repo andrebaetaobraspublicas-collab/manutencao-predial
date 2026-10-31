@@ -187,8 +187,8 @@ globalThis.TRIBUTOS_SICRO={"versao":"2026.09.13-v2.4-integrada","dataReferencia"
    Valores em reais, alíquotas de configuração em %, quantidades físicas sem rateio. */
 (function (root) {
 'use strict';
-const ANOS = Object.freeze([2026,2027,2028,2029,2030,2031,2032,2033]);
-const REMANESCENTE = Object.freeze([100,100,100,90,80,70,60,0]);
+const ANOS = Object.freeze([2026,2027,2028,2029,2030,2031,2032,2033,2034,2035,2036,2037]);
+const REMANESCENTE = Object.freeze([100,100,100,90,80,70,60,0,0,0,0,0]);
 const ICMS_MODAL = {AC:19,AL:21.5,AM:20,AP:18,BA:20.5,CE:20,DF:20,ES:17,GO:19,MA:23,MT:17,MS:17,MG:18,PA:19,PB:20,PR:19.5,PE:20.5,PI:22.5,RJ:22,RN:20,RS:17,RO:19.5,RR:20,SC:17,SP:18,SE:20,TO:20};
 const PERFIS = {
  material:{rot:'Material',trib:'ICMS',par:'material'}, equipamento:{rot:'Equipamento (aquisição)',trib:'ICMS',par:'material'},
@@ -233,29 +233,32 @@ function perfilBase(ins) {
  if(cls==='SERVIÇOS')return 'servico';if(cls==='EQUIPAMENTO (LOCAÇÃO)')return 'locacao';if(cls==='EQUIPAMENTO (AQUISIÇÃO)')return 'equipamento';
  const cb=combustivelTipo(d);return cb==='diesel'||cb==='biodiesel'?'dieselRegra':cb?'gasolina':'material';
 }
-function combustivelTipo(d){d=normal(d);if(/^(OLEO\s+DIESEL)/.test(d))return 'diesel';if(/^BIODIESEL/.test(d))return 'biodiesel';if(/^GASOLINA/.test(d))return 'gasolina';if(/^(ETANOL\s+HIDRATADO|ALCOOL\s+COMBUSTIVEL)/.test(d))return 'etanol';if(/^(GAS\s+DE\s+COZINHA|GAS\s+LIQUEFEITO|GLP\b)/.test(d))return 'glp';return null;}
+function combustivelTipo(d){d=normal(d);if(/^ETANOL\s+ANIDRO/.test(d))return 'etanolAnidro';if(/^QUEROSENE/.test(d))return 'querosene';if(/^OLEO\s+COMBUSTIVEL/.test(d))return 'oleocombustivel';if(/^(OLEO\s+DIESEL)/.test(d))return 'diesel';if(/^BIODIESEL/.test(d))return 'biodiesel';if(/^GASOLINA/.test(d))return 'gasolina';if(/^(ETANOL\s+HIDRATADO|ALCOOL\s+COMBUSTIVEL)/.test(d))return 'etanol';if(/^(GAS\s+DE\s+COZINHA|GAS\s+LIQUEFEITO|GLP\b)/.test(d))return 'glp';return null;}
 function fiscalPadrao(){return {fonte:''};}
 /* Cenário pré-preenchido. As cargas dos combustíveis são hipóteses econômicas,
    nunca alíquotas oficiais futuras. A referência do diesel reproduz a tabela do usuário. */
 const PREMISSAS_COMB = {
- diesel:{federalModo:'percentual',federal:4.24,estadualModo:'percentual',estadual:18,preco:6.47,
- fonte:'Tabela de cenário fornecida pelo usuário: carga federal 4,24% e estadual 18%. Referência econômica, não retrato da tributação legal temporária de 2026.'},
- gasolina:{federalModo:'unitario',federal:0.60,estadualModo:'unitario',estadual:1.57,preco:6.51,
- fonte:'Hipótese econômica de migração: parcela federal R$0,60/L e estadual R$1,57/L. A estrutura Petrobras consultada em 13/09/2026 (coleta de 30/08 a 05/09/2026) informa carga federal agregada de R$0,67/L. Neste cenário, desconta-se uma parcela não migrável estimada de R$0,07/L. Não é alíquota oficial futura nem extensão automática de benefícios temporários. Fonte: https://precos.petrobras.com.br/precos-gasolina'},
- glp:{federalModo:'unitario',federal:0,estadualModo:'unitario',estadual:1.47,preco:8.91,
- fonte:'Referência Petrobras/Comsefaz 2026: carga federal nula e ICMS de R$1,47/kg. Migração simulada da carga estadual; zero federal é hipótese preenchida, não dado ausente.'},
- etanol:{federalModo:'unitario',federal:0,estadualModo:'percentual',estadual:12,preco:4.20,
- fonte:'Hipótese econômica preenchida: carga federal nula, carga estadual de 12% e preço ilustrativo de R$4,20/L. Não é alíquota uniforme nacional nem certificação da tributação de uma operação; zero federal é uma hipótese explícita, não ausência de dado.'},
- biodiesel:{federalModo:'percentual',federal:4.24,estadualModo:'percentual',estadual:18,preco:6.47,
- fonte:'Hipótese por analogia ao cenário do diesel fornecido pelo usuário: 4,24% federal e 18% estadual. Não corresponde ao enquadramento específico de um produtor.'}
+ diesel:{federalModo:'unitario',federal:0.320975,estadualModo:'percentual',estadual:18,preco:6.47,
+ fonte:'Portaria MF 3.074/2026, efeitos a partir de 08/01/2027. Diesel B15: 85% × 0,3515 + 15% × 0,1480 = R$ 0,320975/L; cálculo ponderado, não alíquota expressa da mistura. Biodiesel do item IV, exceto agricultura familiar. Carga estadual mantida como premissa editável.'},
+ gasolina:{federalModo:'unitario',federal:0.7925,estadualModo:'unitario',estadual:1.57,preco:6.51,
+ fonte:'Portaria MF 3.074/2026, Anexo I: CBS de R$ 0,7925/L a partir de 08/01/2027. Carga estadual editável.'},
+ glp:{federalModo:'unitario',federal:0.1677,estadualModo:'unitario',estadual:1.47,preco:8.91,
+ fonte:'Portaria MF 3.074/2026, Anexo V: CBS de R$ 0,1677/kg, exceto GLP doméstico em recipientes até 13 kg. Carga estadual editável.'},
+ etanol:{federalModo:'unitario',federal:0.1922,estadualModo:'percentual',estadual:12,preco:4.20,
+ fonte:'Portaria MF 3.074/2026, Anexo VI: CBS de R$ 0,1922/L de etanol hidratado. Carga estadual editável.'},
+ biodiesel:{federalModo:'unitario',federal:0.148,estadualModo:'percentual',estadual:18,preco:6.47,
+ fonte:'Portaria MF 3.074/2026, Anexo IV: CBS de R$ 0,1480/L de B100, exceto matéria-prima da agricultura familiar. Não se aplica a ponderação B15 ao B100.'}
 };
 function protegerTransicao(c){
  Object.defineProperty(c,'resid',{value:REMANESCENTE,writable:false,configurable:false,enumerable:true});
  Object.defineProperty(c,'transicaoLivre',{value:false,writable:false,configurable:false,enumerable:true});
  return c;
 }
+// PORTARIA_3074_EXTRA: additional specific fuels, with no assumed state credit.
+Object.assign(COMBUSTIVEIS,{etanolAnidro:{nome:'Etanol anidro (EAC)',un:'L',icms:0},querosene:{nome:'Querosene de aviação',un:'L',icms:0},oleocombustivel:{nome:'Óleo combustível',un:'KG',icms:0}});
+for(const [k,value]of [['etanolAnidro',.1922],['querosene',.0712],['oleocombustivel',.3403]])PREMISSAS_COMB[k]={federalModo:'unitario',federal:value,estadualModo:'unitario',estadual:0,preco:0,fonte:'Portaria MF 3.074/2026, Anexo: CBS específica; efeitos a partir de 08/01/2027. Preço e carga estadual não informados: preencher conforme a operação.'};
 function cfgPadrao(){
- const c={schemaVersion:7,appVersion:'2.5',anos:ANOS.slice(),cbs:[0.9,8.7,8.7,8.8,8.8,8.8,8.8,8.8],ibs:[0.1,0.1,0.1,1.92,3.84,5.76,7.68,19.2],resid:REMANESCENTE.slice(),transicaoLivre:false,
+ const c={schemaVersion:8,appVersion:'2.5',anos:ANOS.slice(),cbs:[0.9,11.2,11.2,11.3,11.3,11.3,11.3,11.3,11.3,11.3,11.3,11.3],ibs:[0.1,0.1,0.1,1.87,3.74,5.61,7.48,18.7,18.7,18.7,18.7,18.7],resid:REMANESCENTE.slice(),transicaoLivre:false,
  icms:{},icmsEnergia:{},iss:{},par:{material:100,epi:100,ferramentas:100,servico:100,locacao:100,agua:100,maoObra:0,alimentacao:15,transporte:0,exames:40,seguro:10,depreciacao:100,juros:0,manutencao:70,impostosSeguros:50,operador:10,combustivel:100,energia:100,concretoUsinado:100},
  fatorAliquota:{exames:100},regimes:{...FATORES_ANEXOS},regimeInsumo:{},ativo:{modo:'economico',ano:2033,anoAutomatico:true},operadorParametrico:false,
  precos:{modo:'restrito',autorizados:[]},base:{modo:'semIVA',ano2026:'potencial',porPerfil:{},porInsumo:{}},combustiveis:{},notasMigracao:[]};
@@ -267,14 +270,14 @@ function cfgInicial(ufs){const c=cfgPadrao();for(const u of ufs){c.icms[u]=ICMS_
 /* Lista de chaves conhecidas, sem mesclar propriedades arbitrárias. */
 function validarCfg(raw,ufs,migrar=false){
  const c=cfgInicial(ufs),r=raw||{},vers=r.schemaVersion??1,antigoV3=vers<3,antigoV4=vers<4,antigoV5=vers<5;
- if(![1,2,3,4,5,6,7].includes(vers))throw new Error('Versão de cenário não suportada.');
+ if(![1,2,3,4,5,6,7,8].includes(vers))throw new Error('Versão de cenário não suportada.');
  for(const u of ufs){for(const k of ['icms','icmsEnergia'])c[k][u]=num(r[k]?.[u],0,100,c[k][u]);
   const velho=r.iss?.[u];const generico=antigoV3&&velho?.geral===5&&velho?.saude===3&&velho?.transporte===5;
   if(!generico)for(const k of ['geral','construcao','saude','transporte'])c.iss[u][k]=num(velho?.[k],0,5,c.iss[u][k]);}
  for(const k of Object.keys(c.par))c.par[k]=num(r.par?.[k],0,100,c.par[k]);c.par.maoObra=0;c.par.juros=0;
  if(r.ativo){
-  c.ativo.modo=['corrente','economico'].includes(r.ativo.modo)?r.ativo.modo:c.ativo.modo;
-  c.ativo.ano=Math.trunc(num(r.ativo.ano,1950,2033,c.ativo.ano));
+  c.ativo.modo=['corrente','economico','progressivo'].includes(r.ativo.modo)?r.ativo.modo:c.ativo.modo;
+  c.ativo.ano=Math.trunc(num(r.ativo.ano,1950,2037,c.ativo.ano));
   if(!antigoV5&&typeof r.ativo.anoAutomatico==='boolean')c.ativo.anoAutomatico=r.ativo.anoAutomatico;
   else if(antigoV5)c.ativo.anoAutomatico=!(finito(r.ativo.ano)&&Math.trunc(r.ativo.ano)!==2027);
  }
@@ -288,8 +291,9 @@ function validarCfg(raw,ufs,migrar=false){
    c.regimeInsumo[cod]=v;
   }
  }
+ const defaultsAnteriores=vers<8&&JSON.stringify(r.cbs)===JSON.stringify([.9,8.7,8.7,8.8,8.8,8.8,8.8,8.8])&&JSON.stringify(r.ibs)===JSON.stringify([.1,.1,.1,1.92,3.84,5.76,7.68,19.2]);
  const antigaRef=JSON.stringify(r.ibs)===JSON.stringify([.1,.1,.1,1.77,3.54,5.31,7.08,17.7]);
- for(const k of ['ibs','cbs'])if(vers>=2&&!(antigoV3&&antigaRef&&k==='ibs')&&Array.isArray(r[k])&&r[k].length===8)c[k]=r[k].map((v,i)=>num(v,0,100,c[k][i]));
+ for(const k of ['ibs','cbs'])if(!defaultsAnteriores&&vers>=2&&!(antigoV3&&antigaRef&&k==='ibs')&&Array.isArray(r[k])&&[8,12].includes(r[k].length))c[k]=c[k].map((d,i)=>num(r[k][i],0,100,d));
  // A transição não é importável nem configurável; remanescente() usa somente a constante constitucional.
  if(antigoV4){
    const apAnt=vers===1?100:num(r.par?.exames,0,100,100);
@@ -301,10 +305,10 @@ function validarCfg(raw,ufs,migrar=false){
  if(r.base){c.base.modo=['semIVA','comIVA'].includes(r.base.modo)?r.base.modo:'semIVA';c.base.ano2026=['potencial','desconsiderar'].includes(r.base.ano2026)?r.base.ano2026:'potencial';
   for(const p of Object.keys(c.base.porPerfil))c.base.porPerfil[p]=validarFiscal(r.base.porPerfil?.[p],false);
   if(r.base.porInsumo)for(const [cod,x] of Object.entries(r.base.porInsumo))if(/^(?:\d+|IP-[A-Z0-9_-]+)$/.test(cod))c.base.porInsumo[cod]=validarFiscal(x,true);}
- for(const [k,v] of Object.entries(c.combustiveis)){const f=r.combustiveis?.[k];if(!f)continue;
+ for(const [k,v] of Object.entries(c.combustiveis)){const supplied=r.combustiveis?.[k];if(!supplied)continue;const f={...supplied};const oldFuel={diesel:['percentual',4.24],gasolina:['unitario',.60],glp:['unitario',0],etanol:['unitario',0],biodiesel:['percentual',4.24]}[k];if(vers<8&&oldFuel&&f.federalModo===oldFuel[0]&&f.federal===oldFuel[1]){f.federalModo=v.federalModo;f.federal=v.federal;f.fonte=v.fonte;}
   v.icms=num(f.icms,0,100,v.icms);v.fatorUnidade=num(f.fatorUnidade,0.000001,1000000,1);v.finalidade=['uso','revenda'].includes(f.finalidade)?f.finalidade:'uso';
   if(!antigoV3){for(const j of ['federalModo','estadualModo'])v[j]=['unitario','percentual'].includes(f[j])?f[j]:v[j];for(const j of ['federal','estadual','preco'])v[j]=num(f[j],0,100000,v[j]);v.fonte=String(f.fonte||v.fonte).slice(0,2000);}
-  if(Array.isArray(f.anos)&&f.anos.length===8&&!(antigoV3&&f.anos.every(x=>(x?.ibs??0)===0&&(x?.cbs??0)===0)))v.anos=f.anos.map(x=>Object.fromEntries(['ibs','cbs'].map(j=>[j,finito(x?.[j])?num(x[j],0,10000,null):null])));
+  if(Array.isArray(f.anos)&&[8,12].includes(f.anos.length)&&!(antigoV3&&f.anos.every(x=>(x?.ibs??0)===0&&(x?.cbs??0)===0)))v.anos=ANOS.map((_,i)=>f.anos[i]||{ibs:null,cbs:null}).map(x=>Object.fromEntries(['ibs','cbs'].map(j=>[j,finito(x?.[j])?num(x[j],0,10000,null):null])));
  }
  c.notasMigracao=antigoV5?[
   'Cenário anterior convertido para v2.4. Campos sem dados receberam as premissas atuais; valores unitários de combustíveis explicitamente informados foram preservados.',
@@ -353,7 +357,7 @@ function explodir(cod,t,reg,ufi,cfg,limite=32){configurarPrecos(cfg);const custo
  const soma=oc.reduce((s,x)=>s+x.valor,0);if(Math.abs(soma-custo)>1e-6)avisos.push('Reconciliação incompleta: diferença '+(soma-custo));return {custo,oc,avisos,codigo:cod,tipo:t,regime:reg,uf:DB.uf[ufi]};
 }
 function faltantes(cod,t,reg,ufi,cfg){configurarPrecos(cfg);const out=new Map();function f(c,tp,pilha){if(tp==='I'){if(precoInsumo(c,reg,ufi)===null)out.set(c,{cod:c,desc:DB.ins.get(c)?.d||'Insumo não cadastrado',uf:DB.uf[ufi]});return;}if(pilha.has(c)){out.set(c,{cod:c,desc:'Ciclo na árvore',uf:DB.uf[ufi]});return;}const o=DB.comp.get(c);if(!o){out.set(c,{cod:c,desc:'Composição não cadastrada',uf:DB.uf[ufi]});return;}pilha.add(c);o.it.forEach(x=>f(x.c,x.t,pilha));pilha.delete(c);}f(cod,t,new Set());return [...out.values()];}
-function idxAno(ano){const i=ANOS.indexOf(ano);if(i<0)throw new RangeError('Exercício fora de 2026–2033: '+ano);return i;}
+function idxAno(ano){const i=ANOS.indexOf(ano);if(i<0)throw new RangeError('Exercício fora de 2026–2037: '+ano);return i;}
 function remanescente(cfg,ano){return REMANESCENTE[idxAno(ano)]/100;}
 function fiscalOc(oc,cfg){return {...(cfg.base.porPerfil[oc.perfil]||{}),...(cfg.base.porInsumo[oc.cod]||{})};}
 /* Tax rules are data, distinct from the calculation. Selection is by SICRO code,
@@ -454,7 +458,7 @@ function taxasCombustivel(cfg,tipo,ano,preco){
 }
 function avaliarOcorrencia(oc,cfg,uf,ano){
  const i=idxAno(ano),p=PERFIS[oc.perfil]||PERFIS.material,f=fiscalOc(oc,cfg),fat=remanescente(cfg,ano),avisos=[];
- const economico=oc.perfil==='depreciacao'&&cfg.ativo.modo==='economico',ae=economico?(cfg.ativo.anoAutomatico?ano:cfg.ativo.ano):ano,historico=economico&&ae!==ano;
+ const progressivo=oc.perfil==='depreciacao'&&cfg.ativo.modo==='progressivo',economico=oc.perfil==='depreciacao'&&['economico','progressivo'].includes(cfg.ativo.modo),ae=economico&&!progressivo?(cfg.ativo.anoAutomatico?ano:cfg.ativo.ano):ano,historico=economico&&ae!==ano;
  const a=aliquotaAntiga(oc,cfg,uf,ae);
  const cb=oc.cbAdRem&&['dieselRegra','gasolina'].includes(oc.perfil)?cfg.combustiveis[oc.cbAdRem]:null;
  const qtdTrib=oc.qtd*(cb?.fatorUnidade||1),tn=a.tipo==='ADREM'?qtdTrib*a.adRem:oc.valor*a.pct;
@@ -462,9 +466,10 @@ function avaliarOcorrencia(oc,cfg,uf,ano){
  let pot=naoIncide?0:(f.fatorCredito??cfg.par[p.par]??100)/100;
  const enquadramentoAnexo=anexoInsumo(oc.cod,cfg);
  const fatorAnexo=enquadramentoAnexo.fator;
+ const recuperacaoDepreciacao=progressivo?Math.max(0,Math.min(1,(Number(ano)-2027)/10)):1;pot*=recuperacaoDepreciacao;if(progressivo)avisos.push('Depreciação: recuperação de '+(recuperacaoDepreciacao*100).toFixed(0)+'% em '+ano+', aplicada uma única vez à base e aos créditos desta rubrica.');
  const potAntesAnexo=pot;pot*=fatorAnexo;
  const fatorAliquota=(f.fatorAliquota??cfg.fatorAliquota[oc.perfil]??100)/100;
- const r={oc,ano,anoEfetivo:ae,alq:a,pot,potAntesAnexo,fatorAnexo,enquadramentoAnexo,redutorAnexoPct:enquadramentoAnexo.redutorPct,baseAntesAnexos:0,reducaoBaseAnexos:0,fatorAliquota,remanescente:fat,aliquotaEfetiva:a.pct*fat,adRemEfetivo:a.adRem*fat,
+ const r={oc,ano,recuperacaoDepreciacao,anoEfetivo:ae,alq:a,pot,potAntesAnexo,fatorAnexo,enquadramentoAnexo,redutorAnexoPct:enquadramentoAnexo.redutorPct,baseAntesAnexos:0,reducaoBaseAnexos:0,fatorAliquota,remanescente:fat,aliquotaEfetiva:a.pct*fat,adRemEfetivo:a.adRem*fat,
  tributoNominal:tn,tributoAtual:tn,residual:historico?0:tn*fat,exclusaoHistorica:0,baseLegal:0,baseEconomica:0,baseCombustivel:0,baseEquivalenteCombustivel:0,baseCreditavel:0,base:0,
  ibsEfetivo:0,cbsEfetivo:0,debitoIbs:0,debitoCbs:0,creditoIbs:0,creditoCbs:0,credito:0,creditoFiscal:0,creditoEconomico:0,custoCenario:oc.valor,custoLiquido:oc.valor,
  completo:true,estimado:true,status:'estimativa',avisos,baseQuantidade:cb?qtdTrib:null,unidadeTributaria:cb?cb.un:null,natureza:economico?'rateio_economico':naoIncide?'nao_incidente':cb?'combustivel':'monetaria'};
@@ -538,10 +543,10 @@ function executar(){const M=root.MOTOR,db=M.db(),out=[],keep=root.INTERFACE?._de
  const add=(nome,f)=>{try{f();out.push({nome,ok:true});}catch(e){out.push({nome,ok:false,erro:e.message});}};
  const eq=(a,b,tol=1e-8)=>{if(!Number.isFinite(a)||Math.abs(a-b)>tol)throw Error(`${a} ≠ ${b}`);};
  const yes=(v,s='Condição não atendida')=>{if(!v)throw Error(s);};
- const c=M.cfgInicial(db.uf),sp=db.uf.indexOf('SP'),oc=(perfil,valor=100,extra={})=>({cod:'teste',desc:'Teste',un:'UN',perfil,valor,qtd:1,cbAdRem:null,...extra});
+ const c=M.cfgInicial(db.uf);c.cbs=[.9,8.7,8.7,8.8,8.8,8.8,8.8,8.8,8.8,8.8,8.8,8.8];c.ibs=[.1,.1,.1,1.92,3.84,5.76,7.68,19.2,19.2,19.2,19.2,19.2];for(const [k,mode,value]of [['diesel','percentual',4.24],['gasolina','unitario',.60],['glp','unitario',0],['etanol','unitario',0],['biodiesel','percentual',4.24]]){c.combustiveis[k].federalModo=mode;c.combustiveis[k].federal=value;}const sp=db.uf.indexOf('SP'),oc=(perfil,valor=100,extra={})=>({cod:'teste',desc:'Teste',un:'UN',perfil,valor,qtd:1,cbAdRem:null,...extra});
  const av=(o,y=2033,cfg=c)=>M.avaliarOcorrencia(o,cfg,'SP',y);
  const clone=x=>JSON.parse(JSON.stringify(x));
- add('Cadastro de 27 UFs e oito exercícios',()=>{eq(db.uf.length,27);eq(M.ANOS.length,8);});
+ add('Cadastro de 27 UFs e oito exercícios',()=>{eq(db.uf.length,27);eq(M.ANOS.length,12);});
  add('Referências de ISS integralmente preenchidas',()=>{for(const u of db.uf)for(const k of ['geral','construcao','saude','transporte'])yes(Number.isFinite(c.iss[u][k])&&c.iss[u][k]>=0&&c.iss[u][k]<=5);});
  add('IVA nominal de 28% em 2033',()=>eq(c.ibs[7]+c.cbs[7],28));
  add('Composição CBS/IBS de 2027 e 2028',()=>{for(const i of [1,2]){eq(c.ibs[i],.1);eq(c.cbs[i],8.7);}});
@@ -581,11 +586,11 @@ function executar(){const M=root.MOTOR,db=M.db(),out=[],keep=root.INTERFACE?._de
  add('Ativo: ano manual diferente do exercício é preservado',()=>{const f=clone(c);f.ativo.anoAutomatico=false;f.ativo.ano=2027;const r=av(oc('depreciacao'),2033,f);eq(r.anoEfetivo,2027);eq(r.credito,82*.088);eq(r.exclusaoHistorica,18);});
  add('Ativo adquirido manualmente antes de 2026: sem crédito novo',()=>{const f=clone(c);f.ativo.anoAutomatico=false;f.ativo.ano=2020;eq(av(oc('depreciacao'),2033,f).credito,0);});
  add('Ativo ainda não adquirido manualmente: sem crédito antecipado',()=>{const f=clone(c);f.ativo.anoAutomatico=false;f.ativo.ano=2027;eq(av(oc('depreciacao'),2026,f).credito,0);});
- add('Ano inválido gera erro, em vez de usar 2026',()=>{let ok=false;try{M.remanescente(c,2034);}catch(e){ok=e instanceof RangeError;}yes(ok);});
+ add('Ano inválido gera erro, em vez de usar 2026',()=>{let ok=false;try{M.remanescente(c,2038);}catch(e){ok=e instanceof RangeError;}yes(ok);});
  add('Migração de versão antiga não mantém vetor de transição errado',()=>{const f=M.validarCfg({schemaVersion:1,resid:[100,100,100,100,100,100,100,0]},db.uf,true);eq(M.remanescente(f,2029),.9);});
  add('Migração v2.2: ano padrão 2027 passa a acompanhar o exercício',()=>{const f=M.validarCfg({schemaVersion:4,ativo:{modo:'economico',ano:2027}},db.uf,true);yes(f.ativo.anoAutomatico);});
  add('Migração de combustíveis antigos zerados ativa as hipóteses',()=>{const f=M.validarCfg({schemaVersion:2,combustiveis:{gasolina:{anos:M.ANOS.map(()=>({ibs:0,cbs:0}))}}},db.uf,true);yes(M.taxasCombustivel(f,'gasolina',2033,6.7).ibs>0);});
- add('Validação rejeita percentuais negativos e não finitos',()=>{const f=clone(c);f.ibs[7]=-3;f.par.material=Infinity;const v=M.validarCfg(f,db.uf);eq(v.ibs[7],19.2);eq(v.par.material,100);});
+ add('Validação rejeita percentuais negativos e não finitos',()=>{const f=clone(c);f.ibs[7]=-3;f.par.material=Infinity;const v=M.validarCfg(f,db.uf);eq(v.ibs[7],18.7);eq(v.par.material,100);});
  add('Cenário desconhecido é rejeitado',()=>{let ok=false;try{M.validarCfg({schemaVersion:99},db.uf);}catch(e){ok=true;}yes(ok);});
  add('Carga/restauração do cenário preserva a referência de ISS',()=>{const v=M.validarCfg(clone(c),db.uf);eq(v.iss.SP.saude,2);eq(v.iss.MG.saude,3);eq(v.iss.DF.construcao,2);});
  add('Catálogo: descrição de equipamento a gasolina não vira combustível',()=>{const o=db.ins.get('13891');yes(o);yes(M.perfilBase(o)==='equipamento');});
@@ -597,7 +602,7 @@ function executar(){const M=root.MOTOR,db=M.db(),out=[],keep=root.INTERFACE?._de
  add('Consolidação não perde valores nem mistura perfis distintos',()=>{const e=M.explodir('89470','C','SD',db.uf.indexOf('MA'),c),a=M.avaliar(e,c,'MA',2033),s=M.consolidar(a);eq(s.reduce((v,x)=>v+x.credito,0),a.total.credito);eq(s.reduce((v,x)=>v+x.valor,0),e.custo,1e-6);});
  add('Árvore: soma apenas do primeiro nível igual ao custo principal',()=>{M.configurarPrecos(c);const a=M.arvore('89470','SD',db.uf.indexOf('MA'));eq(a.filhos.reduce((s,x)=>s+x.total,0),a.custo,1e-6);});
  add('Quantidades físicas de combustível não sofrem ajuste monetário',()=>{const cc=[...db.comp.values()].find(x=>x.it.some(i=>i.t==='I'&&i.c==='E9515.OPE')&&M.custoUnitario(x.c,'SD',sp,c)!==null);yes(cc);const it=cc.it.find(i=>i.c==='E9515.OPE'),e=M.explodir(cc.c,'C','SD',sp,c);eq(e.oc.filter(x=>x.cod==='E9515.OPE').reduce((s,x)=>s+x.qtd,0),it.k);});
- add('Série de oito anos completa e sem pendências padrão',()=>{const e=M.explodir('89470','C','SD',db.uf.indexOf('MA'),c);const s=M.serie(e,c,'MA');eq(s.length,8);s.forEach(y=>{yes(y.completo);eq(y.pendencias,0);yes(y.credito>=0);});});
+ add('Série de doze anos completa e sem pendências padrão',()=>{const e=M.explodir('89470','C','SD',db.uf.indexOf('MA'),c);const s=M.serie(e,c,'MA');eq(s.length,12);s.forEach(y=>{yes(y.completo);eq(y.pendencias,0);yes(y.credito>=0);});});
  add('Regimes previdenciários produzem resultados finitos',()=>{for(const reg of ['SD','CD','SE']){const e=M.explodir('88309','C',reg,sp,c);yes(e);yes(M.avaliar(e,c,'SP',2033).total.completo);}});
   /* v2.4: tests of integrated rule selection, reproducibility and the constitutional invariant. */
  add('Matriz cobre todos os códigos SICRO carregados',()=>{eq(Object.keys(M.matrizTributaria.insumos).length,db.ins.size);for(const cod of db.ins.keys())yes(!!M.matrizTributaria.insumos[cod]);});
@@ -893,9 +898,9 @@ function csvAdvice(){return '<p class="csv-advice"><b>Diverge do enquadramento o
 function taxSource(id){const f=M.matrizTributaria.fontes[id];if(!f)return '';const href=/^https?:\/\//.test(f.url||'')?` <a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">Consultar fonte</a>`:'';return `<span><b>${esc(f.titulo)}</b> — ${esc(f.dispositivo)}${f.paginas?.length?' · coletânea, p. '+f.paginas.join(', '):''}${f.origem==='coletanea'?' · reprodução documental fornecida':''}.${href}</span>`;}
 function taxEvidence(a,open=false){if(!a?.regra)return '';const r=a.regra,quant=a.tipo==='ADREM';return `<details class="tax-evidence" ${open?'open':''}><summary>${esc(a.tipo)} ${quant?dec(a.adRem)+' R$/un':pc(a.cargaEfetivaPct)} · ${esc(r.nome)}</summary><div class="tax-evidence-body"><p><span class="badge">${esc(taxLabels[r.criterio]||r.criterio)}</span> ${r.projecao?'<span class="badge">Projeção de referência</span>':''}</p><p><b>Família:</b> ${esc(r.familiaNome)}${r.ncmIndicativa?'<br><b>NCM indicativa:</b> '+esc(r.ncmIndicativa)+' — enquadramento por descrição, não nota fiscal.':''}</p>${quant?'':`<p><b>Alíquota nominal / referência:</b> ${pc(a.nominalPct)} · <b>Fração tributável:</b> ${pc(a.fracaoBase*100)} · <b>Carga efetiva antes da transição:</b> ${pc(a.cargaEfetivaPct)}</p>`}<p>${esc(r.nota)}</p>${r.condicao?`<p><b>Condição / hipótese:</b> ${esc(r.condicao)}</p>`:''}${r.projecaoNota?`<p>${esc(r.projecaoNota)}</p>`:''}${r.fontes.map(id=>`<p class="small">${taxSource(id)}</p>`).join('')}<p class="small">Regra ${esc(r.id)} · matriz ${esc(M.matrizTributaria.versao)}.</p></div></details>`;}
 
-function rates(){return sheet('Alíquotas do IVA e transição','Cenário hipotético de IVA de 28% em 2033. A transição do ICMS/ISS é fixa e não depende das escolhas tributárias da consulta.',
+function rates(){return sheet('Alíquotas do IVA e transição','Premissa editável de IVA de 30% em 2033 (CBS 11,3% + IBS 18,7%). A transição do ICMS/ISS é fixa e não depende das escolhas tributárias da consulta.',
  table(['Ano','CBS (%)','IBS (%)','IVA nominal (%)','Redução do ICMS/ISS','Percentual do ICMS/ISS remanescente'],M.ANOS.map((a,i)=>`<tr><td><b>${a}</b></td><td class="num">${input('cbs.'+i,CFG.cbs[i])}</td><td class="num">${input('ibs.'+i,CFG.ibs[i])}</td><td class="num">${pc(CFG.cbs[i]+CFG.ibs[i])}</td><td class="num">${pc(100-M.REMANESCENTE[i])}</td><td class="num"><span class="badge green">${pc(M.REMANESCENTE[i])} · fixo</span></td></tr>`))+
- `<div class="actions">${btn('Restaurar cenário de IVA de 28%','reset-rates')}</div><div class="notice"><b>Transição constitucional protegida.</b> ICMS/ISS integrais até 2028; reduções de 10%, 20%, 30%, 40% e 100% em 2029, 2030, 2031, 2032 e 2033. O motor aplica o percentual remanescente uma única vez sobre a carga efetiva de referência de cada insumo. A importação de cenários não altera esses percentuais.</div><p class="small">Base: ADCT, arts. 128 e 129, incluídos pela EC 132/2023. As cargas dos combustíveis são calculadas separadamente; alterar o IVA nominal altera sua equivalência, não a carga unitária já simulada.</p>`+csvAdvice());}
+ `<div class="actions">${btn('Restaurar cenário de IVA de 30%','reset-rates')}</div><div class="notice"><b>Transição constitucional protegida.</b> ICMS/ISS integrais até 2028; reduções de 10%, 20%, 30%, 40% e 100% em 2029, 2030, 2031, 2032 e 2033. O motor aplica o percentual remanescente uma única vez sobre a carga efetiva de referência de cada insumo. A importação de cenários não altera esses percentuais.</div><p class="small">Base: ADCT, arts. 128 e 129, incluídos pela EC 132/2023. As cargas dos combustíveis são calculadas separadamente; alterar o IVA nominal altera sua equivalência, não a carga unitária já simulada.</p>`+csvAdvice());}
 
 function municipal(){
  const tx=M.matrizTributaria,u=ST.uf,estado=tx.estados[u],rem=M.remanescente(CFG,ST.ano),rs=tx.regras.filter(r=>r.ufs.includes(u));
@@ -923,10 +928,10 @@ function baseTab(){
  <div class="fields">
  ${field('Interpretação do preço de referência',sel('base.modo',[['semIVA','IVA adicionado ao valor de referência'],['comIVA','Preço informado já inclui IVA']],CFG.base.modo))}
  ${field('Tratamento de 2026',sel('base.ano2026',[['potencial','Crédito potencial de teste (0,9% + 0,1%)'],['desconsiderar','Desconsiderar crédito do período de teste']],CFG.base.ano2026))}
- ${field('Tratamento do equipamento',sel('ativo.modo',[['economico','Rateio econômico pelo ano de aquisição'],['corrente','Alíquota do exercício corrente']],CFG.ativo.modo))}
+ ${field('Tratamento do equipamento',sel('ativo.modo',[['economico','Rateio econômico pelo ano de aquisição'],['corrente','Alíquota do exercício corrente'],['progressivo','Recuperação progressiva da depreciação (2027–2037)'],['progressivo','Recuperação progressiva da depreciação (2027–2037)']],CFG.ativo.modo))}
  ${field('Ano de aquisição do parque',`<div>${input('ativo.ano',anoAtivo,{min:1950,max:2033,step:1,disabled:CFG.ativo.anoAutomatico})}<label class="check" style="margin-top:8px"><input type="checkbox" data-iva-path="ativo.anoAutomatico" ${CFG.ativo.anoAutomatico?'checked':''}> Acompanhar automaticamente o exercício consultado (padrão)</label><div class="small" style="margin-top:5px">${CFG.ativo.anoAutomatico?'Ano efetivo atual: '+ST.ano+'. Desmarque para informar outro ano.':'Ano manual em uso: '+CFG.ativo.ano+'. Marque a opção acima para voltar ao exercício consultado.'}</div></div>`)}
  </div>
- <h3>Base ponderada com combustíveis</h3><div class="formula">Base equivalente do combustível = crédito bruto simulado ÷ IVA nominal
+ <p class="small">Recuperação progressiva da depreciação: 2027: 0%; 2028: 10%; 2029: 20%; 2030: 30%; 2031: 40%; 2032: 50%; 2033: 60%; 2034: 70%; 2035: 80%; 2036: 90%; 2037 em diante: 100%. Usa o ano do crédito consultado, não o ano manual de aquisição; aplica o fator uma única vez e somente à depreciação. Premissa de simulação fornecida pelo usuário.</p><p class="small">Recuperação progressiva da depreciação: 2027: 0%; 2028: 10%; 2029: 20%; 2030: 30%; 2031: 40%; 2032: 50%; 2033: 60%; 2034: 70%; 2035: 80%; 2036: 90%; 2037 em diante: 100%. Usa o ano do crédito consultado, não o ano manual de aquisição; aplica o fator uma única vez e somente à depreciação. Premissa de simulação fornecida pelo usuário.</p><h3>Base ponderada com combustíveis</h3><div class="formula">Base equivalente do combustível = crédito bruto simulado ÷ IVA nominal
 Base ponderada total = Σ(base dos demais itens × aproveitamento)
                      + Σ(base equivalente do combustível × aproveitamento)</div>
  <p>A equivalência expressa em reais permite incorporar o combustível à base ponderada. A base física continua disponível na memória: litros e quilos são usados para obter o crédito e só depois convertidos em uma equivalência monetária.</p>

@@ -7,7 +7,13 @@ const fixtureRoot = path.resolve(__dirname, '../../../../../../legacy/orcaplan-1
 const read = (file: string): LegacyRecord => JSON.parse(fs.readFileSync(path.join(fixtureRoot, file), 'utf8'));
 const raw = read('sinapi-2026-08.raw.json');
 const baseline = read('fixtures/baseline.json');
-const fixture = (name: string) => read(`fixtures/${name}.project.json`);
+// Pin the historical fiscal assumptions of the 1.8.3 golden fixtures explicitly.
+// New scenario defaults are independently exercised by tax-scenario-defaults.spec.cjs.
+const fixture = (name: string) => {
+  const project=read(`fixtures/${name}.project.json`);
+  project.iva={...(project.iva||{}),cfg:{cbs:[.9,8.7,8.7,8.8,8.8,8.8,8.8,8.8],ibs:[.1,.1,.1,1.92,3.84,5.76,7.68,19.2],combustiveis:{diesel:{federalModo:'percentual',federal:4.24},gasolina:{federalModo:'unitario',federal:.60},glp:{federalModo:'unitario',federal:0},etanol:{federalModo:'unitario',federal:0},biodiesel:{federalModo:'percentual',federal:4.24}},...(project.iva?.cfg||{}),schemaVersion:8}};
+  return project;
+};
 
 describe('preserved OrçaPlan 1.8.3 engines', () => {
   let runtime: LegacyRuntime;

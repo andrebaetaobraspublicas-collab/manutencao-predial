@@ -155,7 +155,7 @@
       "name": "21_bdi_core.js",
       "firstLine": 3661,
       "lastLine": 4843,
-      "sha256": "bcbf149c15c9cd1728d129466a4c376528795510ac0f92a095e48c93cc4f59b3"
+      "sha256": "ef7790284887f332a0f5fb0aa4820f2f04e88da6e86774baa831d47a5a810117"
     },
     {
       "file": "022-22_ui_bdi.js",
@@ -197,7 +197,7 @@
       "name": "28_abc_ui.js",
       "firstLine": 5873,
       "lastLine": 6551,
-      "sha256": "eb47a12db906daf3f5d43d9a255a75d3510409a1b12dd895c8c96016e9b60e54"
+      "sha256": "261fdde9a4747efc030509317faee4848ee2e09c9e79e72e3b6f225bbb5ca501"
     },
     {
       "file": "028-29_iva_bridge.js",
@@ -211,7 +211,7 @@
       "name": "30_iva_ui.js",
       "firstLine": 6711,
       "lastLine": 6964,
-      "sha256": "1d7c7722d0b56777c1aa1a900ce782886a9e371ded593c6d8381a79ad42efb26"
+      "sha256": "092db70b48f0f0efe10f884ee2e00f1fa62c2653bf37f19b87d910aa417c4912"
     },
     {
       "file": "030-29_basic_diagnostics.js",

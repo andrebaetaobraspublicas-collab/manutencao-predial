@@ -71,16 +71,16 @@ const TabelasTributarias = {
   },
   reforma: {
     2026:{pisCofins:true,cbs:0,ibs:0,issFator:1,cprb:.027,obs:'PIS, Cofins, ISS integral e CPRB de 2,7% quando aplicável.'},
-    2027:{pisCofins:false,cbs:.087,ibs:.001,issFator:1,cprb:.018,obs:'CBS, IBS teste, ISS integral e CPRB de 1,8% quando aplicável.'},
-    2028:{pisCofins:false,cbs:.087,ibs:.001,issFator:1,cprb:0,obs:'CBS, IBS teste, ISS integral e CPRB zerada.'},
-    2029:{pisCofins:false,cbs:.088,ibs:.0177,issFator:.9,cprb:0,obs:'CBS, IBS e redução de 10% do ISS.'},
-    2030:{pisCofins:false,cbs:.088,ibs:.0354,issFator:.8,cprb:0,obs:'CBS, IBS e redução de 20% do ISS.'},
-    2031:{pisCofins:false,cbs:.088,ibs:.0531,issFator:.7,cprb:0,obs:'CBS, IBS e redução de 30% do ISS.'},
-    2032:{pisCofins:false,cbs:.088,ibs:.0708,issFator:.6,cprb:0,obs:'CBS, IBS e redução de 40% do ISS.'},
-    2033:{pisCofins:false,cbs:.088,ibs:.177,issFator:0,cprb:0,obs:'Regime sem ISS; CBS e IBS em regime definitivo.'},
-    2034:{pisCofins:false,cbs:.088,ibs:.177,issFator:0,cprb:0,obs:'Regime definitivo.'}
+    2027:{pisCofins:false,cbs:.112,ibs:.001,issFator:1,cprb:.018,obs:'CBS, IBS teste, ISS integral e CPRB de 1,8% quando aplicável.'},
+    2028:{pisCofins:false,cbs:.112,ibs:.001,issFator:1,cprb:0,obs:'CBS, IBS teste, ISS integral e CPRB zerada.'},
+    2029:{pisCofins:false,cbs:.113,ibs:.0187,issFator:.9,cprb:0,obs:'CBS, IBS e redução de 10% do ISS.'},
+    2030:{pisCofins:false,cbs:.113,ibs:.0374,issFator:.8,cprb:0,obs:'CBS, IBS e redução de 20% do ISS.'},
+    2031:{pisCofins:false,cbs:.113,ibs:.0561,issFator:.7,cprb:0,obs:'CBS, IBS e redução de 30% do ISS.'},
+    2032:{pisCofins:false,cbs:.113,ibs:.0748,issFator:.6,cprb:0,obs:'CBS, IBS e redução de 40% do ISS.'},
+    2033:{pisCofins:false,cbs:.113,ibs:.187,issFator:0,cprb:0,obs:'Regime sem ISS; CBS e IBS em regime definitivo.'},
+    2034:{pisCofins:false,cbs:.113,ibs:.187,issFator:0,cprb:0,obs:'Regime definitivo.'}
   },
-  bdi: {defaults: {ac:.0401, r:.0056, sg:.0040, df:.0111, lucro:.0730, matcd:.4023, fatorSetorial:.50, redutorGov:0, icms2027:.18}}
+  bdi: {defaults: {ac:.0401, r:.0056, sg:.0040, df:.0111, lucro:.0730, matcd:.4023, fatorSetorial:.50, redutorGov:.442, icms2027:.18}}
 };
 window.TabelasTributarias = TabelasTributarias;
 let ultimoResultadoSimples = null;
@@ -115,7 +115,7 @@ function ibsParaIvaeqSimplesPorAno(ano,ibsCheio2033){
 }
 function cbsParaIvaeqSimplesPorAno(ano,cbsCheia){
   const y=Number(ano)||0;
-  return y>=2027?Math.max(0,Number(cbsCheia)||0):0;
+  return y>=2027?Math.max(0,(Number(cbsCheia)||0)-(y<=2028?.001:0)):0;
 }
 function ivatParaIvaeqSimplesPorAno(ano,cbsCheia,ibsCheio2033){
   return cbsParaIvaeqSimplesPorAno(ano,cbsCheia)+ibsParaIvaeqSimplesPorAno(ano,ibsCheio2033);
@@ -124,8 +124,8 @@ window.icmsResidualPorAno = icmsResidualPorAno;
 window.matcdAjustadoPorIcms = matcdAjustadoPorIcms;
 window.ibsParaIvaeqSimplesPorAno = ibsParaIvaeqSimplesPorAno;
 window.ivatParaIvaeqSimplesPorAno = ivatParaIvaeqSimplesPorAno;
-function lerSimples(){return {modelo:$sim('simModelo')?.value||'das',anexo:$sim('simAnexo')?.value||'IV',tipoObra:$sim('simTipoObra')?.value||'edificios',quartilBdi:$sim('simQuartilBdi')?.value||'medio',rbt12:parseSimNum($sim('simRbt12')?.value),ano:Number($sim('simAno')?.value||2027),cprbOpt:($sim('simCprbOpt')?.value||'sim')==='sim',custoDireto:parseSimNum($sim('simCustoDireto')?.value),matcd:parseSimPct($sim('simMatcd')?.value),fatorSetorial:parseSimPct($sim('simFatorSetorial')?.value),redutorGov:parseSimPct($sim('simRedutorGov')?.value),icms2027:parseSimPct($sim('simIcms2027')?.value||'18'),cbsCheia:parseSimPct($sim('simCbsCheia')?.value||'8,8'),ibsCheio:parseSimPct($sim('simIbsCheio')?.value||'17,7'),ac:parseSimPct($sim('simAc')?.value),r:parseSimPct($sim('simRisco')?.value),sg:parseSimPct($sim('simSg')?.value),df:parseSimPct($sim('simDf')?.value),lucro:parseSimPct($sim('simLucro')?.value)}}
-function aplicaTransicaoSimples(trib,ano){const y=Number(ano),pisCofins=(trib.pis||0)+(trib.cofins||0),issOriginal=trib.iss||0;trib.pis=trib.pis||0;trib.cofins=trib.cofins||0;trib.cbs=0;trib.ibs=0;if(y===2026){return trib}if(y<=2028){const total=.088;trib.cbs=pisCofins*(.087/total);trib.ibs=pisCofins*(.001/total);trib.pis=0;trib.cofins=0;return trib}trib.pis=0;trib.cofins=0;trib.cbs=pisCofins;if(y===2029){trib.iss=issOriginal*.90;trib.ibs=issOriginal*.10}else if(y===2030){trib.iss=issOriginal*.80;trib.ibs=issOriginal*.20}else if(y===2031){trib.iss=issOriginal*.70;trib.ibs=issOriginal*.30}else if(y===2032){trib.iss=issOriginal*.60;trib.ibs=issOriginal*.40}else{trib.iss=0;trib.ibs=issOriginal}return trib}
+function lerSimples(){return {modelo:$sim('simModelo')?.value||'das',anexo:$sim('simAnexo')?.value||'IV',tipoObra:$sim('simTipoObra')?.value||'edificios',quartilBdi:$sim('simQuartilBdi')?.value||'medio',rbt12:parseSimNum($sim('simRbt12')?.value),ano:Number($sim('simAno')?.value||2027),cprbOpt:($sim('simCprbOpt')?.value||'sim')==='sim',custoDireto:parseSimNum($sim('simCustoDireto')?.value),matcd:parseSimPct($sim('simMatcd')?.value),fatorSetorial:parseSimPct($sim('simFatorSetorial')?.value),redutorGov:parseSimPct($sim('simRedutorGov')?.value),icms2027:parseSimPct($sim('simIcms2027')?.value||'18'),cbsCheia:parseSimPct($sim('simCbsCheia')?.value||'11,3'),ibsCheio:parseSimPct($sim('simIbsCheio')?.value||'18,7'),ac:parseSimPct($sim('simAc')?.value),r:parseSimPct($sim('simRisco')?.value),sg:parseSimPct($sim('simSg')?.value),df:parseSimPct($sim('simDf')?.value),lucro:parseSimPct($sim('simLucro')?.value)}}
+function aplicaTransicaoSimples(trib,ano){const y=Number(ano),pisCofins=(trib.pis||0)+(trib.cofins||0),issOriginal=trib.iss||0;trib.pis=trib.pis||0;trib.cofins=trib.cofins||0;trib.cbs=0;trib.ibs=0;if(y===2026){return trib}if(y<=2028){const total=.113;trib.cbs=pisCofins*(.112/total);trib.ibs=pisCofins*(.001/total);trib.pis=0;trib.cofins=0;return trib}trib.pis=0;trib.cofins=0;trib.cbs=pisCofins;if(y===2029){trib.iss=issOriginal*.90;trib.ibs=issOriginal*.10}else if(y===2030){trib.iss=issOriginal*.80;trib.ibs=issOriginal*.20}else if(y===2031){trib.iss=issOriginal*.70;trib.ibs=issOriginal*.30}else if(y===2032){trib.iss=issOriginal*.60;trib.ibs=issOriginal*.40}else{trib.iss=0;trib.ibs=issOriginal}return trib}
 function decomporDasSimples(base,faixa,aliqEf){
   const rep=faixa.rep;
   const trib={
@@ -168,7 +168,7 @@ function tBdiSimples(tributos,ivaNominalEfetivo=0){
   return Math.max(0,(tributos.pis||0)+(tributos.cofins||0)+(tributos.iss||0)+(tributos.cpp||0)+(tributos.cprb||0)+ivaNominalEfetivo);
 }
 function calculaBdiSimples(base){
-  const dec=calculaDecomposicaoSimples(base),K=(1+base.ac+base.r+base.sg)*(1+base.df)*(1+base.lucro),f=(1-base.fatorSetorial)*(1-base.redutorGov),ivaNominalEfetivo=(dec.tributos.cbs||0)+(dec.tributos.ibs||0),cbsCheia=Number.isFinite(base.cbsCheia)?base.cbsCheia:.088,ibsCheio=Number.isFinite(base.ibsCheio)?base.ibsCheio:.177,ibsIvaeq=ibsParaIvaeqSimplesPorAno(base.ano,ibsCheio),cbsIvaeq=cbsParaIvaeqSimplesPorAno(base.ano,cbsCheia),ivatCheio=ivatParaIvaeqSimplesPorAno(base.ano,cbsCheia,ibsCheio),modelo=base.modelo||'das';
+  const dec=calculaDecomposicaoSimples(base),K=(1+base.ac+base.r+base.sg)*(1+base.df)*(1+base.lucro),f=(1-base.fatorSetorial)*(1-base.redutorGov),ivaNominalEfetivo=(dec.tributos.cbs||0)+(dec.tributos.ibs||0),cbsCheia=Number.isFinite(base.cbsCheia)?base.cbsCheia:.113,ibsCheio=Number.isFinite(base.ibsCheio)?base.ibsCheio:.187,ibsIvaeq=ibsParaIvaeqSimplesPorAno(base.ano,ibsCheio),cbsIvaeq=cbsParaIvaeqSimplesPorAno(base.ano,cbsCheia),ivatCheio=ivatParaIvaeqSimplesPorAno(base.ano,cbsCheia,ibsCheio),modelo=base.modelo||'das';
   const icmsResidual=icmsResidualPorAno(base.ano,base.icms2027),matcdAjustado=matcdAjustadoPorIcms(base.matcd,base.ano,base.icms2027);
   let ivaeq=0,T=0,bdi=0;
   if(modelo==='hibrido'){
@@ -224,20 +224,20 @@ window.initSimples=initSimples;
 
 const transicao=[
 {ano:2026,iva:.0100,cbs:.0090,ibs:.0010,pis:.0365,iss:.0500,icms:.1800,ipi:''},
-{ano:2027,iva:.0880,cbs:.0870,ibs:.0010,pis:0,iss:.0500,icms:.1800,ipi:''},
-{ano:2028,iva:.0880,cbs:.0870,ibs:.0010,pis:0,iss:.0500,icms:.1800,ipi:''},
-{ano:2029,iva:.1057,cbs:.0880,ibs:.0177,pis:0,iss:.0450,icms:.1620,ipi:''},
-{ano:2030,iva:.1234,cbs:.0880,ibs:.0354,pis:0,iss:.0400,icms:.1440,ipi:''},
-{ano:2031,iva:.1411,cbs:.0880,ibs:.0531,pis:0,iss:.0350,icms:.1260,ipi:''},
-{ano:2032,iva:.1588,cbs:.0880,ibs:.0708,pis:0,iss:.0300,icms:.1080,ipi:''},
-{ano:2033,iva:.2650,cbs:.0880,ibs:.1770,pis:0,iss:0,icms:0,ipi:''},
-{ano:2034,iva:.2650,cbs:.0880,ibs:.1770,pis:0,iss:0,icms:0,ipi:''},
-{ano:2035,iva:.2650,cbs:.0880,ibs:.1770,pis:0,iss:0,icms:0,ipi:''},
-{ano:2036,iva:.2650,cbs:.0880,ibs:.1770,pis:0,iss:0,icms:0,ipi:''},
-{ano:2037,iva:.2650,cbs:.0880,ibs:.1770,pis:0,iss:0,icms:0,ipi:''},
-{ano:2038,iva:.2650,cbs:.0880,ibs:.1770,pis:0,iss:0,icms:0,ipi:''},
-{ano:2039,iva:.2650,cbs:.0880,ibs:.1770,pis:0,iss:0,icms:0,ipi:''},
-{ano:2040,iva:.2650,cbs:.0880,ibs:.1770,pis:0,iss:0,icms:0,ipi:''}
+{ano:2027,iva:.1130,cbs:.1120,ibs:.0010,pis:0,iss:.0500,icms:.1800,ipi:''},
+{ano:2028,iva:.1130,cbs:.1120,ibs:.0010,pis:0,iss:.0500,icms:.1800,ipi:''},
+{ano:2029,iva:.1317,cbs:.1130,ibs:.0187,pis:0,iss:.0450,icms:.1620,ipi:''},
+{ano:2030,iva:.1504,cbs:.1130,ibs:.0374,pis:0,iss:.0400,icms:.1440,ipi:''},
+{ano:2031,iva:.1691,cbs:.1130,ibs:.0561,pis:0,iss:.0350,icms:.1260,ipi:''},
+{ano:2032,iva:.1878,cbs:.1130,ibs:.0748,pis:0,iss:.0300,icms:.1080,ipi:''},
+{ano:2033,iva:.3000,cbs:.1130,ibs:.1870,pis:0,iss:0,icms:0,ipi:''},
+{ano:2034,iva:.3000,cbs:.1130,ibs:.1870,pis:0,iss:0,icms:0,ipi:''},
+{ano:2035,iva:.3000,cbs:.1130,ibs:.1870,pis:0,iss:0,icms:0,ipi:''},
+{ano:2036,iva:.3000,cbs:.1130,ibs:.1870,pis:0,iss:0,icms:0,ipi:''},
+{ano:2037,iva:.3000,cbs:.1130,ibs:.1870,pis:0,iss:0,icms:0,ipi:''},
+{ano:2038,iva:.3000,cbs:.1130,ibs:.1870,pis:0,iss:0,icms:0,ipi:''},
+{ano:2039,iva:.3000,cbs:.1130,ibs:.1870,pis:0,iss:0,icms:0,ipi:''},
+{ano:2040,iva:.3000,cbs:.1130,ibs:.1870,pis:0,iss:0,icms:0,ipi:''}
 ];
 const referenciasCredito=[{"tipo":"Rodoviária","situacao":"terraplenagem, transporte e compactação","credEqMin":0.6,"credEqMax":0.65,"credEqSug":0.625,"tipoTcu":"Construção de rodovias e ferrovias","matcd":0.35,"mocd":0.25,"eqcd":0.4,"matcdTipico":0.625,"obs":"Obra linear com uso relevante de equipamentos.","tipoObraKey":"rodovias"},{"tipo":"Ferroviária","situacao":"terraplenagem, lastro, dormentes, trilhos e equipamentos especiais","credEqMin":0.58,"credEqMax":0.63,"credEqSug":0.605,"tipoTcu":"Construção de rodovias e ferrovias","matcd":0.45,"mocd":0.2,"eqcd":0.35,"matcdTipico":0.6817500000000001,"obs":"Materiais permanentes relevantes.","tipoObraKey":"rodovias"},{"tipo":"Portuária","situacao":"dragagem, enrocamento, guindastes, equipamentos navais e apoio pesado","credEqMin":0.55,"credEqMax":0.62,"credEqSug":0.585,"tipoTcu":"Obras portuárias, marítimas e fluviais","matcd":0.3,"mocd":0.25,"eqcd":0.45,"matcdTipico":0.5882499999999999,"obs":"Equipamentos pesados e apoio naval.","tipoObraKey":"portuarias"},{"tipo":"Aeroportuária","situacao":"terraplenagem, pavimentação rígida/flexível e sinalização","credEqMin":0.58,"credEqMax":0.64,"credEqSug":0.61,"tipoTcu":"Construção de rodovias e ferrovias","matcd":0.35,"mocd":0.25,"eqcd":0.4,"matcdTipico":0.619,"obs":"Pavimentação e terraplenagem.","tipoObraKey":"rodovias"},{"tipo":"Saneamento – redes","situacao":"escavação, reaterro, transporte, compactação, assentamento de tubos","credEqMin":0.55,"credEqMax":0.62,"credEqSug":0.585,"tipoTcu":"Redes de abastecimento de água, coleta de esgoto e construções correlatas","matcd":0.45,"mocd":0.25,"eqcd":0.3,"matcdTipico":0.6505000000000001,"obs":"Tubos e acessórios pesam na parcela material.","tipoObraKey":"saneamento"},{"tipo":"Saneamento – ETE/ETA","situacao":"obra civil + equipamentos eletromecânicos fixos","credEqMin":0.48,"credEqMax":0.55,"credEqSug":0.515,"tipoTcu":"Redes de abastecimento de água, coleta de esgoto e construções correlatas","matcd":0.5,"mocd":0.25,"eqcd":0.25,"matcdTipico":0.65375,"obs":"Equipamentos fixos e obra civil.","tipoObraKey":"saneamento"},{"tipo":"Drenagem urbana/canais","situacao":"escavação, concreto, contenções, transporte e bombeamento","credEqMin":0.55,"credEqMax":0.62,"credEqSug":0.585,"tipoTcu":"Redes de abastecimento de água, coleta de esgoto e construções correlatas","matcd":0.35,"mocd":0.3,"eqcd":0.35,"matcdTipico":0.58475,"obs":"Escavação e concreto.","tipoObraKey":"saneamento"},{"tipo":"Barragens/diques","situacao":"terraplenagem pesada, enrocamento, compactação, transporte","credEqMin":0.6,"credEqMax":0.66,"credEqSug":0.63,"tipoTcu":"Obras portuárias, marítimas e fluviais","matcd":0.3,"mocd":0.2,"eqcd":0.5,"matcdTipico":0.635,"obs":"Enrocamento e equipamentos pesados.","tipoObraKey":"portuarias"},{"tipo":"Energia elétrica – transmissão","situacao":"torres, fundações, lançamento de cabos, guindastes e caminhões","credEqMin":0.5,"credEqMax":0.58,"credEqSug":0.54,"tipoTcu":"Manutenção de estações e redes de distribuição de energia elétrica","matcd":0.55,"mocd":0.2,"eqcd":0.25,"matcdTipico":0.7050000000000001,"obs":"Torres, cabos e fundações.","tipoObraKey":"energia"},{"tipo":"Energia elétrica – subestação","situacao":"obra civil + montagem eletromecânica + equipamentos fixos","credEqMin":0.45,"credEqMax":0.52,"credEqSug":0.485,"tipoTcu":"Manutenção de estações e redes de distribuição de energia elétrica","matcd":0.6,"mocd":0.2,"eqcd":0.2,"matcdTipico":0.717,"obs":"Equipamentos fixos predominantes.","tipoObraKey":"energia"},{"tipo":"Energia elétrica – iluminação pública","situacao":"caminhão cesto, munck, perfuração, instalação de postes/luminárias","credEqMin":0.45,"credEqMax":0.55,"credEqSug":0.5,"tipoTcu":"Manutenção de estações e redes de distribuição de energia elétrica","matcd":0.55,"mocd":0.25,"eqcd":0.2,"matcdTipico":0.675,"obs":"Postes, luminárias e equipamentos de apoio.","tipoObraKey":"energia"},{"tipo":"Energia solar fotovoltaica","situacao":"montagem, fundações leves, transporte interno, pouca operação","credEqMin":0.4,"credEqMax":0.5,"credEqSug":0.45,"tipoTcu":"Manutenção de estações e redes de distribuição de energia elétrica","matcd":0.7,"mocd":0.15,"eqcd":0.15,"matcdTipico":0.7825,"obs":"Módulos, inversores e materiais predominam.","tipoObraKey":"energia"},{"tipo":"Parques eólicos","situacao":"guindastes pesados, transporte especial, fundações e montagem","credEqMin":0.5,"credEqMax":0.58,"credEqSug":0.54,"tipoTcu":"Manutenção de estações e redes de distribuição de energia elétrica","matcd":0.65,"mocd":0.15,"eqcd":0.2,"matcdTipico":0.773,"obs":"Componentes eólicos com montagem especializada.","tipoObraKey":"energia"},{"tipo":"Gasodutos/adutoras","situacao":"escavação linear, soldagem, lançamento de tubos, reaterro","credEqMin":0.55,"credEqMax":0.63,"credEqSug":0.59,"tipoTcu":"Redes de abastecimento de água, coleta de esgoto e construções correlatas","matcd":0.45,"mocd":0.25,"eqcd":0.3,"matcdTipico":0.652,"obs":"Obra linear de tubulações.","tipoObraKey":"saneamento"},{"tipo":"Obras de contenção","situacao":"perfuração, concreto projetado, tirantes, escavação localizada","credEqMin":0.48,"credEqMax":0.58,"credEqSug":0.53,"tipoTcu":"Construção de rodovias e ferrovias","matcd":0.45,"mocd":0.3,"eqcd":0.25,"matcdTipico":0.6125,"obs":"Geotecnia, concreto e perfuração.","tipoObraKey":"rodovias"},{"tipo":"Túneis","situacao":"escavação mecanizada, perfuração, ventilação, bombeamento, concreto","credEqMin":0.55,"credEqMax":0.65,"credEqSug":0.6,"tipoTcu":"Construção de rodovias e ferrovias","matcd":0.3,"mocd":0.25,"eqcd":0.45,"matcdTipico":0.595,"obs":"Equipamentos e sistemas temporários relevantes.","tipoObraKey":"rodovias"},{"tipo":"Pontes/viadutos","situacao":"concreto, formas, escoramentos, guindastes e transporte","credEqMin":0.45,"credEqMax":0.55,"credEqSug":0.5,"tipoTcu":"Construção de rodovias e ferrovias","matcd":0.45,"mocd":0.3,"eqcd":0.25,"matcdTipico":0.605,"obs":"Estrutura de concreto e equipamentos de apoio.","tipoObraKey":"rodovias"},{"tipo":"Edificação – energia própria","situacao":"energia própria","credEqMin":0.45,"credEqMax":0.5,"credEqSug":0.475,"tipoTcu":"Construção de edifícios","matcd":0.4,"mocd":0.4,"eqcd":0.2,"matcdTipico":0.535,"obs":"Edificação típica: 40% materiais, 40% mão de obra, 20% equipamentos.","tipoObraKey":"edificios"},{"tipo":"Edificação – energia do contratante","situacao":"energia do contratante","credEqMin":0.4,"credEqMax":0.45,"credEqSug":0.425,"tipoTcu":"Construção de edifícios","matcd":0.4,"mocd":0.4,"eqcd":0.2,"matcdTipico":0.525,"obs":"Edificação típica: 40% materiais, 40% mão de obra, 20% equipamentos.","tipoObraKey":"edificios"},{"tipo":"Reforma – energia própria","situacao":"energia própria","credEqMin":0.5,"credEqMax":0.55,"credEqSug":0.525,"tipoTcu":"Construção de edifícios","matcd":0.35,"mocd":0.5,"eqcd":0.15,"matcdTipico":0.47874999999999995,"obs":"Reformas tendem a ter maior participação de mão de obra.","tipoObraKey":"edificios"},{"tipo":"Reforma – energia do contratante","situacao":"energia do contratante","credEqMin":0.35,"credEqMax":0.4,"credEqSug":0.375,"tipoTcu":"Construção de edifícios","matcd":0.35,"mocd":0.55,"eqcd":0.1,"matcdTipico":0.4425,"obs":"Reforma com menor parcela de equipamentos creditáveis.","tipoObraKey":"edificios"}];
 const tabelaBdi={
@@ -248,7 +248,7 @@ const tabelaBdi={
  portuarias:{nome:'Obras Portuárias',q1:{ac:.0400,sg:.0081,r:.0146,df:.0094,lucro:.0714},medio:{ac:.0552,sg:.0122,r:.0232,df:.0102,lucro:.0840},q3:{ac:.0785,sg:.0199,r:.0316,df:.0133,lucro:.1043}},
  bdi_materiais:{nome:'BDI reduzido para fornecimento de materiais',q1:{ac:.0150,sg:.0030,r:.0056,df:.0085,lucro:.0350},medio:{ac:.0345,sg:.0048,r:.0085,df:.0085,lucro:.0511},q3:{ac:.0449,sg:.0082,r:.0089,df:.0111,lucro:.0622}}
 };
-const defaults={ano:2027,anoOrigem:2026,ivatManual:.088,usarIvatManual:0,f:.5,redutor:0,icms2027:.18,tipoObra:'edificios',quartilBdi:'medio',ac:.04,r:.0127,sg:.008,df:.0123,lucro:.074,alpha:.4,issManual:.05,usarIssManual:0,cprb:.018,valorContrato:1000000,bdiOriginalManual:.25,usarBdiOriginal:0,matcd:.4,mocd:.4,eqcd:.2,credeq:.4,credBdi:0,tipoRefCredito:'Rodoviária'};
+const defaults={ano:2027,anoOrigem:2026,ivatManual:.113,usarIvatManual:0,f:.5,redutor:.442,icms2027:.18,tipoObra:'edificios',quartilBdi:'medio',ac:.04,r:.0127,sg:.008,df:.0123,lucro:.074,alpha:.4,issManual:.05,usarIssManual:0,cprb:.018,valorContrato:1000000,bdiOriginalManual:.25,usarBdiOriginal:0,matcd:.4,mocd:.4,eqcd:.2,credeq:.4,credBdi:0,tipoRefCredito:'Rodoviária'};
 window.__BDIProData={transicao,tabelaBdi};
 
 /* ===================== HELPERS DE INTERFACE ===================== */
@@ -604,7 +604,7 @@ const EXEMPLO = [
 const TIPOS = ["Material","Equipamento","Mão de Obra"];
 
 let rows = [];
-const ANOS_EXATO=[{ano:2026,iva:.0100},{ano:2027,iva:.0880},{ano:2028,iva:.0880},{ano:2029,iva:.1057},{ano:2030,iva:.1234},{ano:2031,iva:.1411},{ano:2032,iva:.1588},{ano:2033,iva:.2650},{ano:2034,iva:.2650},{ano:2035,iva:.2650},{ano:2036,iva:.2650},{ano:2037,iva:.2650},{ano:2038,iva:.2650},{ano:2039,iva:.2650},{ano:2040,iva:.2650}];
+const ANOS_EXATO=[{ano:2026,iva:.0100},{ano:2027,iva:.1130},{ano:2028,iva:.1130},{ano:2029,iva:.1317},{ano:2030,iva:.1504},{ano:2031,iva:.1691},{ano:2032,iva:.1878},{ano:2033,iva:.3000},{ano:2034,iva:.3000},{ano:2035,iva:.3000},{ano:2036,iva:.3000},{ano:2037,iva:.3000},{ano:2038,iva:.3000},{ano:2039,iva:.3000},{ano:2040,iva:.3000}];
 const DADOS_EXATO=window.__BDIProData||{};
 const TRANSICAO_EXATO=DADOS_EXATO.transicao||ANOS_EXATO.map(x=>({...x,pis:0,iss:.05}));
 const TABELA_BDI_EXATO=DADOS_EXATO.tabelaBdi||{};
@@ -1147,7 +1147,7 @@ function calcExatoPuro(p, rows){
   };
   BD.exatoAno = (e) => { const a = B.anualExato(Number(e.ano)); e.ivaCheia = a.iva; BD.exatoSyncIva(e); e.iss = a.iss; BD.exatoNormaliza(e); }; // aplicarAnoExato()
   BD.exatoDefaults = () => {
-    const e = { ano: 2027, tipo: 'rodovias', quartil: 'q1', ivaCheia: .088, fatorSetorial: .5, redutorGov: 0, icms2027: .18, iss: .05, alpha: .4, cprb: .018,
+    const e = { ano: 2027, tipo: 'rodovias', quartil: 'q1', ivaCheia: .113, fatorSetorial: .5, redutorGov: .442, icms2027: .18, iss: .05, alpha: .4, cprb: .018,
       valorContrato: 1000000, anoOrigem: 2026, usarBdiOriginal: 0, bdiOriginalManual: .25, ac: 0, risco: 0, sg: 0, df: 0, lucro: 0, rows: [] };
     BD.exatoAno(e); BD.exatoTipo(e); e.rows = B.EXEMPLO.map((r) => ({ ...r })); BD.exatoFillIva(e); return e;
   };
@@ -1157,7 +1157,7 @@ function calcExatoPuro(p, rows){
   BD.simplesTipo = (s) => { const ref = A.tabelaBdi[s.tipoObra || 'rodovias']?.[s.quartilBdi || 'medio']; if (ref) ['ac', 'r', 'sg', 'df', 'lucro'].forEach((k) => (s[k] = ref[k])); }; // aplicarParametrosBdiSimples()
   BD.simplesDefaults = () => {
     const s = { modelo: 'das', anexo: 'IV', tipoObra: 'rodovias', quartilBdi: 'q1', rbt12: 1800000, ano: 2026, cprbOpt: true, custoDireto: 1000000, matcd: .4,
-      fatorSetorial: .5, redutorGov: 0, icms2027: .18, cbsCheia: .088, ibsCheio: .177, ac: 0, r: 0, sg: 0, df: 0, lucro: 0,
+      fatorSetorial: .5, redutorGov: .442, icms2027: .18, cbsCheia: .113, ibsCheio: .187, ac: 0, r: 0, sg: 0, df: 0, lucro: 0,
       razao: 'Empresa optante pelo Simples Nacional', cnpj: '00.000.000/0001-00', cnae: '42.11-1-01', cnaeSec: '', municipio: 'Belo Horizonte', estado: 'MG', cenRbt12: 2200000, cenAnexo: 'IV' };
     BD.simplesTipo(s); return s;
   };

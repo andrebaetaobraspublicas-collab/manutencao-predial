@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { assertBmDevelopment, bmReceipt, BmExportReceiptDto, pleReceipt, PleExportReceiptDto, CompatibleCopyDto, compatibleCopyData } from '../../common/transferegov-bm';
+import { assertBmDevelopment, assertTransferegovEnvironment, bmReceipt, BmExportReceiptDto, pleReceipt, PleExportReceiptDto, CompatibleCopyDto, compatibleCopyData } from '../../common/transferegov-bm';
 import { createHash, randomUUID } from 'node:crypto';
 import { Prisma, OrcaproReferenceStatus, type OrcaproProject } from '../../generated/prisma/client';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
@@ -31,13 +31,13 @@ export class OrcaproService {
   constructor(private readonly prisma: PrismaService, private readonly access: OrcaproAccess, @Optional() private readonly config?: ConfigService) {}
 
   async recordBmExport(user:AuthenticatedUser,id:string,dto:BmExportReceiptDto) {
-    assertBmDevelopment(this.config?.get<string>('WEB_BASE_URL'));
+    assertTransferegovEnvironment(this.config?.get<string>('WEB_BASE_URL'));
     const project=await this.project(user,id),receipt=bmReceipt(project,dto);
     const event=await this.prisma.orcaproAudit.create({data:{actorUserId:user.userId,tenantId:user.tenantId,action:'export.transferegov.bm',entityId:id,metadata:receipt}});
     return {...receipt,eventId:event.id};
   }
   async recordPleExport(user:AuthenticatedUser,id:string,dto:PleExportReceiptDto) {
-    assertBmDevelopment(this.config?.get<string>('WEB_BASE_URL'));
+    assertTransferegovEnvironment(this.config?.get<string>('WEB_BASE_URL'));
     const project=await this.project(user,id),receipt=pleReceipt(project,dto);
     const event=await this.prisma.orcaproAudit.create({data:{actorUserId:user.userId,tenantId:user.tenantId,action:'export.transferegov.ple',entityId:id,metadata:receipt}});
     return {...receipt,eventId:event.id};

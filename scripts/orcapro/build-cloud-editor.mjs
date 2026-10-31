@@ -48,7 +48,7 @@ const manualContent = fs.readFileSync(path.join(root,'scripts/orcapro/manual-con
 const manual = JSON.parse(manualContent);
 // This URL is the API origin, not the browser origin. Include the exact
 // development API host; commercial API origins still hide development chapters.
-if(!['api.gestaodepredios.com.br','gestaodepredios.com.br','www.gestaodepredios.com.br','localhost','127.0.0.1','[::1]'].includes(api.hostname))manual.chapters=manual.chapters.filter(c=>!c.developmentOnly);
+if(!['api.orcaproobras.com.br','api.orcaproinfra.com.br','api.gestaodepredios.com.br','gestaodepredios.com.br','www.gestaodepredios.com.br','localhost','127.0.0.1','[::1]'].includes(api.hostname))manual.chapters=manual.chapters.filter(c=>!c.developmentOnly);
 const manualUi = fs.readFileSync(path.join(root,'scripts/orcapro/manual-ui.js'),'utf8').replaceAll('\r\n','\n');
 const inputPrices = fs.readFileSync(path.join(root,'apps/api/src/modules/orcapro/legacy/assets/project-input-prices.js'),'utf8');
 const inputPricesUi = fs.readFileSync(path.join(root,'scripts/shared/project-input-prices-ui.js'),'utf8');

@@ -58,3 +58,7 @@ Frentes sem quantidade são omitidas da distribuição automática, evitando lin
 ### Atualização: ajustes temporários de precisão (desenvolvimento)
 
 O assistente BM/PLE deixou de oferecer criação de orçamento compatível. `exportPrecision=temporary-half-up-2` é confirmado em prévia, serializado somente na configuração exportada e calculado sobre a fotografia original imutável. O relatório conserva o total original e a diferença por serviço/frente. Não há novos projetos, versões, conversão de riscos ou alteração do motor do orçamento. As cópias antigas e seu motor de compatibilidade permanecem suportados; o endpoint legado não é utilizado pela nova interface. O registro de geração continua limitado ao recibo de auditoria com hashes e totais. Não há migração de banco.
+
+
+### Produção — 31/10/2026
+BM e PLE habilitados nos domínios exatos sistema.orcaproobras.com.br e orcaproinfra.com.br. Recibos continuam exigindo proprietário, tenant, versão e hash original. Criação legada de cópias continua restrita ao desenvolvimento. Sem migrations ou seed; ajustes temporários na configuração e arquivo, com manual 1.1.7. Aceitação no importador oficial ainda requer homologação.

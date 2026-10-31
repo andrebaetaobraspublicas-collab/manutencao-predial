@@ -53,3 +53,35 @@ test('the build patch is idempotent and the UI awaits the full report',()=>{
  for(const name of ['027-28_abc_ui.js','028-29_iva_bridge.js','029-30_iva_ui.js']){const source=fs.readFileSync(path.join(assets,'modules',name),'utf8');assert.equal(patch(source),source);}
  const source=fs.readFileSync(path.join(assets,'modules/029-30_iva_ui.js'),'utf8');assert.ok(source.includes('const results=await T.runTests()'));assert.ok(source.includes('button.disabled=false'));
 });
+test('absent current compositions are warnings; historical and independent checks continue',async()=>{
+ const c=context(),O=c.OP,codes=['101219','91784','91785','91786','91787','91788','91789','91790'];
+ O.app.pj.catalog={compositions:[{items:codes.map(code=>({type:'C',code}))}]};
+ const before=JSON.stringify(O.app.pj),base=JSON.stringify(O.app.base.raw);let calls=0;
+ O.cloud={loadCodes:async()=>{calls++;throw Object.assign(new Error('Composição ausente na referência: '+codes.join(', ')+'.'),{status:400});}};
+ const results=await O.iva.runTests({fixture}),warning=results.find(r=>r.status==='warning');
+ assert.deepEqual(Array.from(warning.codes),codes);assert.equal(calls,1);
+ assert.equal(results.filter(r=>r.nome.startsWith('Regressão histórica')&&r.ok).length,124);
+ assert.equal(results.filter(r=>r.status==='skipped').length,3);
+ assert.equal(results.filter(r=>r.ok===false).length,0);
+ assert.equal(JSON.stringify(O.app.pj),before);assert.equal(JSON.stringify(O.app.base.raw),base);
+ const text=O.fiscalTests.format(results);assert.ok(text.includes('0 reprovadas; 1 aviso(s); 3 não executadas'));assert.ok(text.includes('⚠ Aviso'));assert.ok(text.includes('91790'));
+});
+test('missing roots reported eight at a time do not prevent loading the remaining valid roots',async()=>{
+ const c=context(),O=c.OP,codes=Array.from({length:12},(_,i)=>String(990000+i)),valid='888888';
+ O.app.pj.catalog={compositions:[{items:[...codes,valid].map(code=>({type:'C',code}))}]};
+ const calls=[];O.cloud={loadCodes:async(comp)=>{calls.push(Array.from(comp));const missing=comp.filter(code=>codes.includes(code));if(missing.length)throw Object.assign(new Error('Composição ausente na referência: '+missing.slice(0,8).join(', ')+'.'),{status:400});}};
+ const results=await O.iva.runTests({fixture});assert.deepEqual(Array.from(results.find(r=>r.status==='warning').codes),codes);assert.equal(calls.length,3);assert.deepEqual(calls[2],[valid]);
+});
+test('an absent nested dependency becomes a warning without an endless retry',async()=>{
+ const c=context(),O=c.OP;O.app.pj.catalog={compositions:[{items:[{type:'C',code:'888888'}]}]};let calls=0;
+ O.cloud={loadCodes:async()=>{calls++;throw Object.assign(new Error('Composição ausente na referência: 91784.'),{status:400});}};
+ const results=await O.iva.runTests({fixture});assert.equal(calls,1);assert.ok(results.some(r=>r.status==='warning'&&r.codes.includes('91784')));assert.equal(results.filter(r=>r.status==='skipped').length,3);
+});
+test('authentication and unexpected server failures remain blocking errors',async()=>{
+ for(const status of [403,500]){const c=context(),O=c.OP;O.app.pj.catalog={compositions:[{items:[{type:'C',code:'91784'}]}]};O.cloud={loadCodes:async()=>{throw Object.assign(new Error('Composição ausente na referência: 91784.'),{status});}};await assert.rejects(()=>O.iva.runTests({fixture}),/91784/);}
+});
+test('a missing input is advisory and report counts exclude warnings and skipped checks',async()=>{
+ const c=context(),O=c.OP;O.app.pj.catalog={compositions:[{items:[{type:'I',code:'999999'}]}]};O.cloud={loadCodes:async()=>{throw Object.assign(new Error('Insumo solicitado ausente nesta referência.'),{status:400});}};
+ const results=await O.iva.runTests({fixture});assert.ok(results.find(r=>r.status==='warning').erro.includes('insumo solicitado ausente'));assert.equal(results.filter(r=>r.ok===false).length,0);
+ const report=O.fiscalTests.format([{nome:'A',ok:true},{nome:'B',ok:false},{nome:'C',ok:null,status:'warning'},{nome:'D',ok:null,status:'skipped'}]);assert.ok(report.includes('1/2 verificações aprovadas; 1 reprovadas; 1 aviso(s); 1 não executadas'));
+});

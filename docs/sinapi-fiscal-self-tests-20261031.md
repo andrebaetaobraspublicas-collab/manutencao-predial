@@ -32,6 +32,16 @@ durante a preparação, pode ser reutilizado ao terminar e informa falhas de red
 ou de integridade. Uma mudança de orçamento/referência durante a preparação
 cancela a execução para impedir resultados misturados.
 
+Ausências de composições na referência atual são avisos, sem interromper a
+regressão histórica ou os testes independentes. A preparação remove os códigos
+ausentes informados pela API (até oito por resposta) e tenta carregar os demais.
+Se a ausência ocorrer em uma dependência interna, interrompe apenas essa
+preparação, evitando repetições sem progresso. Ausência de insumo também gera
+aviso. As três verificações completas da memória do orçamento ficam como **não
+executadas**, com motivo explícito. Avisos e verificações não executadas não
+entram como aprovações nem reprovações no resumo. Falhas de autorização, rede,
+integridade ou erros inesperados do servidor continuam impedindo a execução.
+
 A cobertura histórica agora exige a presença de todos os códigos da matriz,
 permitindo os insumos adicionais da referência. A conferência do cenário atual
 expõe a quantidade efetivamente carregada e não confunde isso com o total do

@@ -92,6 +92,14 @@ export class AuthController {
     response.clearCookie(REFRESH_COOKIE, this.baseCookieOptions());
   }
 
+  @Public()
+  @Get('session-status')
+  @ApiOperation({ summary: 'Verifica sessão no desenvolvimento sem renovar tokens nem revelar dados da conta.' })
+  async sessionStatus(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    response.setHeader('Cache-Control', 'no-store');
+    return this.auth.sessionStatus(request.cookies?.[REFRESH_COOKIE]);
+  }
+
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.auth.me(user);

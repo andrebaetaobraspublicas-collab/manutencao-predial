@@ -576,3 +576,9 @@ Rotas /api/v1/system-bulletins: GET capabilities; POST preview (subject, body te
 
 ## Sessão única — desenvolvimento, 02/11/2026
 AUTH_SINGLE_SESSION=true, restrito por WEB_BASE_URL ao desenvolvimento. Login comum incrementa sessionVersion de todos os vínculos e revoga refresh anteriores numa transação serializada por identidade (User FOR UPDATE). JWT já verifica a versão em cada requisição. Refresh opaco inclui geração autenticada pelo hash existente; rotação confere geração e revogação dentro da mesma transação. Nenhuma tabela nova. Administradores globais OrçaPro/Infra configurados e perfis locais Infra ADMIN ativos são isentos. Não usa IP ou fingerprint. Abas compartilham cookies; outro navegador exige novo login e encerra o anterior. Os dois produtos compartilham a sessão de desenvolvimento. Não salva ou descarta automaticamente edições locais, nem cria versões de orçamentos. Sessões anteriores à ativação permanecem válidas até novo login. Rollback: AUTH_SINGLE_SESSION=false, sem restaurar dados. Produção não alterada.
+
+
+### Detecção visual de sessão encerrada
+GET /auth/session-status é público, sem cache, sem renovar cookies e sem expor identidade. No desenvolvimento retorna enforced e active, conferindo o refresh opaco com hash, validade, revogação e situação da conta/vínculo. Fora do desenvolvimento retorna apenas enforced:false. Monitor externo nas páginas verifica a cada 15 segundos e ao voltar ao navegador; duas respostas inativas exibem bloqueio sem desmontar o iframe ou apagar alterações locais. Falha de rede não invalida sessão. Nova autenticação permite retomar a aba preservada.
+
+Verificação publicada em 02/11/2026: geração anterior da conta informada recebeu HTTP401 e geração atual HTTP200. Endpoint e script público conferidos. Foram atualizadas somente API e páginas estáticas de desenvolvimento; backups privados em single-session-monitor-dev-20261102. Nenhuma escrita em orçamento ou sessão durante a verificação.

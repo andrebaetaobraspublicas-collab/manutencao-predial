@@ -47,5 +47,20 @@ describe('Sessão única no desenvolvimento', () => {
   it.each([{AUTH_SINGLE_SESSION:'false'},{WEB_BASE_URL:'https://sistema.orcaproobras.com.br'},{WEB_BASE_URL:'https://orcaproinfra.com.br'}])('não ativa fora do desenvolvimento autorizado: %j', async options => {
     const {issue,tx}=setup(options);await issue();expect(tx.tenantMembership.updateMany).not.toHaveBeenCalled();
   });
+  it('monitor usa consulta somente de leitura e retorna estado inválido sem renovar', async () => {
+    const {service,tx}=setup();
+    const findFirst=jest.fn().mockResolvedValue(null);
+    (service as any).prisma.refreshSession={findFirst};
+    expect(await service.sessionStatus('opaque-token')).toEqual({enforced:true,active:false});
+    expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({where:expect.objectContaining({revokedAt:null,tokenHash:expect.any(String)})}));
+    expect(tx.refreshSession.create).not.toHaveBeenCalled();
+    findFirst.mockResolvedValue({id:'r'});
+    expect(await service.sessionStatus('opaque-token')).toEqual({enforced:true,active:true});
+  });
+  it('monitor não ativa na produção nem consulta o banco',async()=>{
+    const {service}=setup({WEB_BASE_URL:'https://orcaproinfra.com.br'});
+    expect(await service.sessionStatus('opaque')).toEqual({enforced:false});
+  });
+
 });
 

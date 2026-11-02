@@ -555,6 +555,20 @@ export class AuthService {
     );
   }
 
+  async sessionStatus(rawRefreshToken?: string) {
+    if (!this.singleSessionEnabled()) return { enforced: false };
+    if (!rawRefreshToken) return { enforced: true, active: false };
+    const now = new Date();
+    const session = await this.prisma.refreshSession.findFirst({
+      where: {
+        tokenHash: this.hashRefreshToken(rawRefreshToken), revokedAt: null, expiresAt: { gt: now },
+        user: { status: UserStatus.ACTIVE, deletedAt: null },
+        membership: { status: MembershipStatus.ACTIVE, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }], tenant: { deletedAt: null, status: { in: [TenantStatus.TRIAL, TenantStatus.ACTIVE, TenantStatus.PAST_DUE, TenantStatus.CANCELED] } } },
+      }, select: { id: true },
+    });
+    return { enforced: true, active: !!session };
+  }
+
   async logout(rawRefreshToken?: string): Promise<void> {
     if (!rawRefreshToken) return;
     const session = this.config.get<string>('ORCAPRO_ENABLED') === 'true' ? await this.prisma.refreshSession.findUnique({ where: { tokenHash: this.hashRefreshToken(rawRefreshToken) }, select: { userId: true, revokedAt: true, membership: { select: { tenantId: true } } } }) : null;

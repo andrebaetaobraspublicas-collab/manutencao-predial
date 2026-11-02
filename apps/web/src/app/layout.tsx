@@ -19,7 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="stylesheet" href="/orcapro-brand/react-palette.css?v=20261006-auth3" precedence="orcapro-palette" />
         <link rel="stylesheet" href="/orcapro-brand/production.css?v=20261006-auth3" precedence="orcapro-brand" />
       </head> : <head><link rel="stylesheet" href="/orcapro-brand/development.css?v=20261006-dev1" precedence="orcapro-development" /></head>}
-      <body>{children}</body>
+      <body>{children}<script src="/session-monitor.js?v=20261102" defer /></body>
     </html>
   );
 }

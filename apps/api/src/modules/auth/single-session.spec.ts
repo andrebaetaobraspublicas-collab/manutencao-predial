@@ -44,7 +44,7 @@ describe('Sessão única no desenvolvimento', () => {
     (service as any).modules={get:()=>({query:async()=>[{role:'ADMIN'}]})};
     await issue();expect(tx.tenantMembership.updateMany).not.toHaveBeenCalled();
   });
-  it.each([{AUTH_SINGLE_SESSION:'false'},{WEB_BASE_URL:'https://sistema.orcaproobras.com.br'},{WEB_BASE_URL:'https://orcaproinfra.com.br'}])('não ativa fora do desenvolvimento autorizado: %j', async options => {
+  it.each([{AUTH_SINGLE_SESSION:'false'},{WEB_BASE_URL:'https://unrelated.example'}])('não ativa fora do desenvolvimento autorizado: %j', async options => {
     const {issue,tx}=setup(options);await issue();expect(tx.tenantMembership.updateMany).not.toHaveBeenCalled();
   });
   it('monitor usa consulta somente de leitura e retorna estado inválido sem renovar', async () => {
@@ -57,9 +57,14 @@ describe('Sessão única no desenvolvimento', () => {
     findFirst.mockResolvedValue({id:'r'});
     expect(await service.sessionStatus('opaque-token')).toEqual({enforced:true,active:true});
   });
-  it('monitor não ativa na produção nem consulta o banco',async()=>{
-    const {service}=setup({WEB_BASE_URL:'https://orcaproinfra.com.br'});
+  it('monitor não ativa em domínio não autorizado',async()=>{
+    const {service}=setup({WEB_BASE_URL:'https://unrelated.example'});
     expect(await service.sessionStatus('opaque')).toEqual({enforced:false});
+  });
+
+  it.each(['https://sistema.orcaproobras.com.br','https://orcaproinfra.com.br'])('produção autorizada %s aplica a mesma regra', async url=>{
+    const {issue}=setup({WEB_BASE_URL:url});const a=await issue();await issue();
+    await expect(issue({id:'r',token:a.refreshToken})).rejects.toThrow('novo login');
   });
 
 });

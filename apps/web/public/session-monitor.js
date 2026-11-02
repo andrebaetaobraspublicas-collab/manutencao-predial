@@ -1,7 +1,9 @@
-/* Session visibility guard: development only; never refreshes or clears cookies. */
+/* Session visibility guard: authorized environments only; never refreshes or clears cookies. */
 (function () {
   'use strict';
-  if (!['www.gestaodepredios.com.br', 'gestaodepredios.com.br'].includes(location.hostname) || window.__sessionMonitor) return;
+  var apis = {'www.gestaodepredios.com.br':'https://api.gestaodepredios.com.br','gestaodepredios.com.br':'https://api.gestaodepredios.com.br','sistema.orcaproobras.com.br':'https://api.orcaproobras.com.br','orcaproinfra.com.br':'https://api.orcaproinfra.com.br','www.orcaproinfra.com.br':'https://api.orcaproinfra.com.br'};
+  var api = apis[location.hostname];
+  if (!api || window.__sessionMonitor) return;
   window.__sessionMonitor = true;
   var busy = false, failures = 0, blocked = false, currentOverlay;
   function applicable() { return /^\/(orcapro(?:-infraestrutura)?)(?:\/|$)/.test(location.pathname) && !/\/(cadastro|assinaturas?)\/?$/.test(location.pathname); }
@@ -24,7 +26,7 @@
     if (busy || !applicable() || document.visibilityState === 'hidden') return;
     busy = true;
     try {
-      var response = await fetch('https://api.gestaodepredios.com.br/api/v1/auth/session-status', {credentials:'include',cache:'no-store',signal:AbortSignal.timeout(10000)});
+      var response = await fetch(api + '/api/v1/auth/session-status', {credentials:'include',cache:'no-store',signal:AbortSignal.timeout(10000)});
       if (!response.ok) return;
       var result = await response.json();
       if (result.enforced && result.active === false) { failures++; if (failures >= 2) block(); else setTimeout(check, 1200); }

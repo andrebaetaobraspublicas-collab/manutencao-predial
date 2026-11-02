@@ -680,7 +680,7 @@ export class AuthService {
 
   private singleSessionEnabled(): boolean {
     return this.config.get<string>('AUTH_SINGLE_SESSION') === 'true' &&
-      ['https://www.gestaodepredios.com.br', 'https://gestaodepredios.com.br'].includes(this.config.get<string>('WEB_BASE_URL')?.replace(/\/$/, '') ?? '');
+      ['https://www.gestaodepredios.com.br', 'https://gestaodepredios.com.br', 'https://sistema.orcaproobras.com.br', 'https://orcaproinfra.com.br', 'https://www.orcaproinfra.com.br'].includes(this.config.get<string>('WEB_BASE_URL')?.replace(/\/$/, '') ?? '');
   }
 
   private async concurrentAdmin(userId: string, tenantId: string): Promise<boolean> {

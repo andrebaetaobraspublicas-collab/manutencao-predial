@@ -10,7 +10,11 @@ test('sessão revogada bloqueia a interface, preserva DOM e retoma depois do log
  const b=browser([{enforced:true,active:false},{enforced:true,active:false},{enforced:true,active:true}]);
  await b.timers[0]();assert.equal(b.nodes.length,0);await b.timers[0]();assert.equal(b.nodes.length,1);await b.timers[0]();assert.equal(b.nodes.length,0);
 });
-test('falha de rede não bloqueia e produção não instala monitor',async()=>{
+test('falha de rede não bloqueia e domínio não autorizado não instala monitor',async()=>{
  const b=browser([new Error('offline')]);await b.timers[0]();assert.equal(b.nodes.length,0);
- assert.equal(browser([],'orcaproinfra.com.br').timers.length,0);
+ assert.equal(browser([],'unrelated.example').timers.length,0);
+});
+
+test('produções consultam somente sua API correspondente',async()=>{
+ for(const host of ['sistema.orcaproobras.com.br','orcaproinfra.com.br'])assert(browser([],host).timers.length>0);
 });

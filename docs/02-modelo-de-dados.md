@@ -486,3 +486,7 @@ O assistente de frentes TransfereGov usa somente o JSON de configuração de exp
 ## Informativos do sistema (desenvolvimento)
 
 SystemBulletin guarda a prévia imutável, tenant/autor, produtos, filtros, hash/contagem do público e confirmação. SystemBulletinDelivery guarda apenas userId/hash do e-mail, claim/lease, tentativas e resultado seguro. Migration aditiva 20261031140000_system_bulletins; não altera identidades, orçamentos ou licenças. Histórico sem exclusão física. Diretório é global apenas para administradores SaaS configurados; leitura do histórico tem tenant autenticado.
+
+
+## Sessão única — desenvolvimento, 02/11/2026
+AUTH_SINGLE_SESSION=true, restrito por WEB_BASE_URL ao desenvolvimento. Login comum incrementa sessionVersion de todos os vínculos e revoga refresh anteriores numa transação serializada por identidade (User FOR UPDATE). JWT já verifica a versão em cada requisição. Refresh opaco inclui geração autenticada pelo hash existente; rotação confere geração e revogação dentro da mesma transação. Nenhuma tabela nova. Administradores globais OrçaPro/Infra configurados e perfis locais Infra ADMIN ativos são isentos. Não usa IP ou fingerprint. Abas compartilham cookies; outro navegador exige novo login e encerra o anterior. Os dois produtos compartilham a sessão de desenvolvimento. Não salva ou descarta automaticamente edições locais, nem cria versões de orçamentos. Sessões anteriores à ativação permanecem válidas até novo login. Rollback: AUTH_SINGLE_SESSION=false, sem restaurar dados. Produção não alterada.

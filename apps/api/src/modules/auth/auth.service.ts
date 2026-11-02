@@ -7,6 +7,8 @@ import {
   UnauthorizedException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
+import { InfraDatabase } from '../infraestrutura/infra-db';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
@@ -51,6 +53,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly mail: MailService,
     private readonly operations: OperationsService,
+    private readonly modules?: ModuleRef,
   ) {}
 
   async acceptInvitation(dto: AcceptInvitationDto) {
@@ -542,19 +545,13 @@ export class AuthService {
     }
     if (session.membership.tenant.status === 'CANCELED' && !(await hasOrcaproAccount(session.userId, this.prisma, this.config))) throw new UnauthorizedException('A organização não possui acesso contratado.');
 
-    const revoked = await this.prisma.refreshSession.updateMany({
-      where: { id: session.id, revokedAt: null, expiresAt: { gt: now } },
-      data: { revokedAt: now },
-    });
-    if (revoked.count !== 1) {
-      throw new UnauthorizedException('Sessão já utilizada ou revogada.');
-    }
 
     return this.issueSession(
       session.user,
       session.membership,
       session.membership.tenant,
       request,
+      { id: session.id, token: rawRefreshToken },
     );
   }
 
@@ -603,11 +600,29 @@ export class AuthService {
     membership: { id: string; tenantId: string; role: MembershipRole; sessionVersion: number; maintenanceAccess?: boolean },
     tenant: { id: string; slug: string; status?: TenantStatus },
     request: Request,
+    refresh?: { id: string; token: string },
   ): Promise<IssuedSession> {
+    const restricted = this.singleSessionEnabled() && !(await this.concurrentAdmin(user.id, tenant.id));
+    return this.prisma.$transaction(async tx => {
+      // Serialize logins and refreshes for this identity, including across tenants.
+      await tx.$queryRaw`SELECT id FROM User WHERE id = ${user.id} FOR UPDATE`;
+      const current = await tx.tenantMembership.findUniqueOrThrow({ where: { id: membership.id } });
+      if (refresh) {
+        const generation = /^v(\d+)\./.exec(refresh.token);
+        if (restricted && Number(generation?.[1] ?? 0) !== current.sessionVersion) {
+          throw new UnauthorizedException('Sua sessão foi encerrada por um novo login. Entre novamente.');
+        }
+        const consumed = await tx.refreshSession.updateMany({ where: { id: refresh.id, revokedAt: null, expiresAt: { gt: new Date() } }, data: { revokedAt: new Date() } });
+        if (consumed.count !== 1) throw new UnauthorizedException('Sessão encerrada ou já utilizada.');
+      } else if (restricted) {
+        await tx.tenantMembership.updateMany({ where: { userId: user.id }, data: { sessionVersion: { increment: 1 } } });
+        await tx.refreshSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+        current.sessionVersion++;
+      }
     const payload: JwtPayload = {
       sub: user.id,
       membershipId: membership.id,
-      sessionVersion: membership.sessionVersion,
+      sessionVersion: current.sessionVersion,
       tenantId: tenant.id,
       tenantSlug: tenant.slug,
       role: membership.role,
@@ -616,11 +631,11 @@ export class AuthService {
     };
 
     const accessToken = await this.jwt.signAsync(payload);
-    const refreshToken = randomBytes(48).toString('base64url');
+    const refreshToken = `v${current.sessionVersion}.${randomBytes(48).toString('base64url')}`;
     const ttlDays = Number(this.config.get('REFRESH_TOKEN_TTL_DAYS') ?? 30);
     const refreshExpiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
 
-    await this.prisma.refreshSession.create({
+    await tx.refreshSession.create({
       data: {
         userId: user.id,
         membershipId: membership.id,
@@ -646,6 +661,24 @@ export class AuthService {
         maintenanceAccess: membership.maintenanceAccess !== false && tenant.status !== 'CANCELED',
       },
     };
+    });
+  }
+
+  private singleSessionEnabled(): boolean {
+    return this.config.get<string>('AUTH_SINGLE_SESSION') === 'true' &&
+      ['https://www.gestaodepredios.com.br', 'https://gestaodepredios.com.br'].includes(this.config.get<string>('WEB_BASE_URL')?.replace(/\/$/, '') ?? '');
+  }
+
+  private async concurrentAdmin(userId: string, tenantId: string): Promise<boolean> {
+    for (const key of ['ORCAPRO_ADMIN_USER_IDS', 'INFRA_ADMIN_USER_IDS']) {
+      if ((this.config.get<string>(key) ?? '').split(',').some(id => id.trim() === userId)) return true;
+    }
+    if (this.config.get<string>('INFRA_ENABLED') === 'true' && this.modules) {
+      const db = this.modules.get(InfraDatabase, { strict: false });
+      const rows = await db.query<Array<{role: string}>>("SELECT role FROM InfraUser WHERE external_user_id=? AND tenant_id=? AND status='ACTIVE' AND deleted_at IS NULL LIMIT 1", [userId, tenantId]);
+      if (rows[0]?.role === 'ADMIN') return true;
+    }
+    return false;
   }
 
   private hashRefreshToken(token: string): string {

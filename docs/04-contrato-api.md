@@ -1,5 +1,94 @@
 # Contrato inicial da API
 
+## Conferência do novo usuário da Gestão Contratual — desenvolvimento, 14/11/2026
+
+`POST /auth/password/change` continua sendo a operação compartilhada de troca autenticada. A interface `Minha conta` da Gestão Contratual a utiliza, confirma a senha e o encerramento das sessões e mantém o retorno em `/login?next=/gestao-contratual`. O servidor invalida também tokens de recuperação anteriores na mesma transação da senha/sessões e rejeita senhas que excedam 72 bytes UTF-8, evitando truncamento pelo bcrypt.
+
+Quando existe perfil `GcSaasUser` no tenant autenticado, o resultado aparece em `GcSaasAudit` como `account.password.changed` ou `account.password.failed`. Somente status e efeito sobre sessões são gravados; corpos, senhas e cookies não são lidos pela auditoria. A ausência de perfil não registra identidades de outros produtos. `activity/navigation` aceita a seção `account`. Nenhuma nova permissão para contratos ou administração é concedida por essa tela, que permanece acessível sem licença contratual ativa.
+
+## Gestão Contratual V3 — planilhas integrais e prévias
+
+`GET /contract-management/contracts/:id/metadata-preview` requer papel de gestor e retorna `{requestId,expectedVersion,kind:'metadata-enrichment',payload,previewHash,checkedSourceItems,unresolved,changes,ready}` sem gravar. Confere a fotografia privada pelo tenant/proprietário e resolve descrição/unidade faltantes na referência SINAPI capturada. O gestor confirma por `POST /contracts/:id/actions` com os mesmos `requestId`, `expectedVersion`, `kind`, `payload` e `previewHash`. A confirmação recalcula no servidor todos os descritores, rejeita payload divergente ou pendência e registra uma única ação auditada/idempotente. Não aceita preço ou quantidade cadastral enviado pelo cliente. `metadata-enrichment` também pode usar a prévia genérica; não converte unidades nem altera qualquer valor financeiro.
+
+Planilhas atuais e históricas retornam rótulos legíveis com `descriptionAtSnapshot`, `unitAtSnapshot` e `metadataProvenance:{actionId,contractVersion,sourceHash,referenceId,definitionVersionId,resourceType,code,descriptionSource,unitSource}` quando houver enriquecimento posterior. A versão histórica, as quantidades, os preços, os totais e a memória original do movimento permanecem preservados. Exportadores devem explicitar a anotação cadastral nas evidências, inclusive quando a versão da anotação for posterior à aprovação do boletim.
+
+Extensão aditiva destinada ao desenvolvimento, após migration independente `004_contract_scenarios.sql`. Mantém identidade, licença do proprietário do contrato, papéis, origem confiável, tenant e versão. Não altera os endpoints dos orçamentadores nem modifica a origem capturada.
+
+| Método | Rota após `/api/v1/contract-management` | Contrato |
+|---|---|---|
+| GET | `/contracts/:id/worksheet?date=YYYY-MM-DD` | Todas as linhas com EAP/grupos, quantidades da data, preços vigentes, paradigma, desconto comparável e saldos. Data opcional. |
+| GET | `/contracts/:id/worksheet?measurementId=UUID` | Replay até aprovação, ou criação do rascunho, com todas as linhas e memória de anterior/período/acumulado/saldo. |
+| GET | `/contracts/:id/worksheet?amendmentId=UUID` | Planilha após o termo, `before` integral anterior e memória `amendment`. Não incorpora movimentos posteriores. |
+| POST | `/contracts/:id/preview` | Corpo `{expectedVersion,kind,payload,requestId?}`. Calcula sem persistir e retorna ID, hashes, resultado, antes/depois, detalhe e planilha. |
+| POST | `/contracts/:id/actions` | Acrescenta `price-batch` e `previewHash?`; confirmação usa o mesmo ID, versão e payload da prévia. |
+
+Os cortes `date`, `measurementId` e `amendmentId` são mutuamente exclusivos. Resposta histórica tem `historical:true` e a versão efetivamente reconstruída. Medições unitárias retornam `rows` com todos os itens, `contractQuantity`, `previousQuantity`, `presentedQuantity`, `periodQuantity`, `accumulatedQuantity`, `remainingQuantity`, `unitPrice`, `previousAmount`, `periodAmount`/`amount` e `accumulatedAmount`. Valores anteriores são os valores históricos aprovados, sem reprecificação. Eventos globais têm `isAggregate` e `coveredByParent`; totais vêm do boletim, nunca da soma indiscriminada de pais e filhos.
+
+Prévia aceita `measurement`, `difference-measurement`, `amendment`, `price-rule` e `price-batch`. Sua resposta contém `{requestId,expectedVersion,kind,payloadHash,previewHash,before:{summary},after:{summary},result,detail,worksheet}`. Para boletim, acrescenta `approvalPreview`, explicitamente hipotética e dependente de aprovação: estima glosa, centavos e compensação com o motor real, sem aceitar execução, reservar valores ou gravar ações. Alteração de versão ou payload invalida a confirmação. O hash é vinculado ao ator e ao contrato; não substitui autorização nem recalculação financeira.
+
+`price-batch` recebe campos comuns `{title,reason,effectiveDate,mode,baseIndex?,currentIndex?,components?,formalReference?,retroactive?}` e `targets:[{targetType:'ITEM'|'EVENT',itemId?/eventId?,newPrice?,anchorRuleId?}]`. São permitidos até 1.000 alvos distintos. Falha em qualquer alvo rejeita o lote inteiro, sem regras parciais. Uma ação conserva auditoria e idempotência; regras derivadas usam IDs `actionId-índice`. Reequilíbrio exige referência formal. Medições e aditivos também aceitam até 1.000 linhas, com corpo limitado a 512 KiB.
+
+`POST /contracts/demo` aceita `demoScenario:'BUILDING_ANALYTICAL_V3'`, `scenarioReason`, `proposalPrices` integrais e `referencePrices` opcionais. Mantém preços e totais originais da fonte como memória; a proposta é demonstrativa. Eventograma fornecido aceita `parentId`, valida ciclos, soma dos pais e total das folhas. O cenário cria uma captura independente e reutiliza o snapshot autorizado; não sobrescreve demonstrações anteriores.
+
+## Gestão Contratual v2 — desenvolvimento, 14/11/2026
+
+Prefixo `/api/v1/contract-management`, identidade JWT/cookie central, host de desenvolvimento e `GESTAO_ENABLED=true` obrigatórios. Produção responde404 mesmo com flag ativa. Banco próprio e arquivos privados independentes; tenant nunca é recebido do corpo. Mutações exigem Origin confiável. Administrador cadastrado por ID/e-mail é isento comercialmente; membros usam a licença do proprietário do contrato alvo. Licença compartilhada não permite criar contratos próprios.
+
+- `GET /access`: enabled/admin/entitled/canCreate/databaseConfigured e limitações. Permite identidade sem assinatura consultar opções comerciais. `GET /sources` retorna fontes autorizadas ORCAPRO/INFRA; `GET /sources/:product/:id/preview` calcula versão/hash/itens/eventos sem alterar origem. `GET /capacity` informa estimativa MySQL.
+- `GET /contracts`, `GET /contracts/:id`: contratos próprios/compartilhados autorizados, permissões, itens/eventos, resumo, planejamento, auditoria e exemplos calculados.
+- `POST /contracts`: sourceProduct, sourceProjectId, expectedSourceVersion, sourceHash, name, regime UNIT_PRICE/GLOBAL_PRICE, referencePrices[{itemId,price}], baseDate, reason e eventDefinitions opcionais [{id,name,value,deadline?}]. Prazo é o dia da obra, inteiro entre 0 e 36.500; não é data ISO. Confere cobertura do paradigma, versão/hash, totais e eventograma. `POST /contracts/demo` captura demonstração explicitamente didática.
+- `POST /contracts/:id/actions`: expectedVersion, requestId UUID, kind e payload. Tipos: amendment, price-rule, measurement, difference-measurement, approve-measurement, cancel-measurement, payment, refund, compensation-reconciliation e progress. Decimal em string, data ISO; conflito409, inconsistência400, objeto alheio/licença contratual insuficiente404. Lock/versionamento/idempotência e auditoria na mesma transação.
+- `GET /members/candidates`: candidatos ativos, não excluídos e com vínculo vigente na organização. `GET/POST /contracts/:id/members`: gestor atribui userId/role MANAGER/FISCAL/READER/REVOKED; revogação preserva dados e histórico.
+- `GET/POST /contracts/:id/attachments`: listar ou anexar multipart `file` PDF/XLSX/PNG/JPEG de até10MB; fiscal/gestor anexa. `GET /contracts/:id/attachments/:aid/download` sempre autoriza tenant/contrato, retorna attachment/no-store, nunca URL pública. `GET /contracts/:id/measurements/:mid/export?format=xlsx|pdf` exporta boletim com estado, valores, origem/hash e identificação de demonstração.
+- `POST /imports/preview`: XLSX/PDF textual multipart, até10MB, 40abas/10.000linhas/50colunas úteis, PDF até1.000páginas. XLSX usa valores numéricos brutos, sem executar fórmulas. PDF escaneado requer OCR externo; relatórios de composições unitárias não são tratados como orçamento contratual e retornam supported:false/unsupportedReason.
+- `POST /imports/:id/map`: sheet, headerRow base1, mapping de colunas base0 (code/description/unit/quantity/unitPrice/referencePrice), referenceOverrides[{row,price}] opcionais; referencePrice=-1 permite completar paradigma na tela. excludedRows base1 exigem exclusionReason. Códigos repetidos ficam distintos por linha/aba, nunca mesclados. Retorna rows/errors/warnings/hash/ready. `POST /imports/:id/confirm` recebe hash/name/regime/baseDate/reason/eventDefinitions; cria contrato real somente com prévia integralmente válida e preserva original como anexo.
+- `POST /contracts/:id/imports/preview`: prévia de medição acessível a fiscal/gestor do contrato. `POST /imports/:id/measurement-map`: contractId, expectedVersion, sheet/headerRow, mapping{code,quantity}, itemMappings[{row,itemId}], exclusões justificadas. Quantidade corresponde ao período; códigos ambíguos exigem correspondência explícita. Arquivo idêntico à origem pode resolver por linha/aba/hash; valores nulos/zero são contados e ignorados. Global seleciona eventos integrais; não há pagamento por percentual de evento.
+- `POST /imports/:id/measurement-confirm`: contractId/hash/expectedVersion/requestId/title/period/executionDate/evidence. Revalida mapa/versão; cria DRAFT, vincula arquivo original e audita em uma transação. Não toma preço do arquivo nem incorpora automaticamente acumulados anteriores: medições históricas devem ser importadas na sequência e aprovadas separadamente.
+
+Medições reais exigem autor e aprovador distintos; demonstrações permitem treino pelo administrador. Aprovação global exige accepted:true explícito. Aditivos globais preservam eventos medidos e reconciliam os futuros; preços por índice/cesta/recomposição têm vigência/âncora e referência formal. Retroatividade gera boletim de diferenças, sem reescrever boletim aprovado. Novas recomposições exigem formalReference. Limites de aditivos e exceções ficam em memória explícita; o sistema não certifica regularidade jurídica automaticamente. Pagamentos parciais, liquidação sem desembolso, recuperação e restituição mantêm caixa separado de reservas. Planejamento compara previsto/executado/medido/pago com bases declaradas, sem inventar progresso ausente. Cobrança Stripe é exclusivamente teste; não há transferência bancária de pagamentos contratuais.
+
+### Login e assinatura própria de teste
+
+`POST /auth/gestao/login` recebe `{email,password}`, reutiliza a identidade central e cria a sessão autenticada do desenvolvimento. Não recebe tenant livre, não concede acesso por mero e-mail e não depende da licença OrçaPro para apresentar o painel de assinatura da Gestão Contratual. Exige host/flag de desenvolvimento, origem autorizada e limite de tentativas. O frontend oferece essa opção exclusivamente nos hosts DEV permitidos.
+
+Os endpoints abaixo usam o prefixo `/api/v1/contract-management/billing`:
+
+| Método e rota | Entrada / resposta | Regra |
+|---|---|---|
+| `GET /config` | `configured`, `testMode:true`, `adminExempt`, `canCheckout`, `canPortal`, `subscription` e `message` | Usuário autenticado pode consultar sem assinatura prévia. Ausência de configuração mantém botões de cobrança desabilitados. |
+| `POST /checkout` | `{requestId:UUID}` → `{url}` | Sessão recorrente exclusivamente de teste, vinculada à identidade autenticada. Retorno do navegador não libera licença. |
+| `POST /portal` | Corpo vazio → `{url}` | Portal da conta Stripe associada ao tenant/proprietário autenticados, nunca customer arbitrário enviado pelo cliente. |
+| `POST /webhook` | Corpo bruto e cabeçalho `stripe-signature` | Exceção de autenticação por cookie: assinatura própria é obrigatória. Rejeita `livemode`, valida produto/conta, deduplica evento e atualiza estado no banco próprio. |
+
+Há um produto/preço **fictício de R$ 1,00/mês em Stripe TEST**, para homologação do fluxo. Não é plano comercial e não gera cobrança real. A configuração utiliza `GESTAO_STRIPE_MODE=test`, chave de teste, `GESTAO_STRIPE_PRICE_ID` e segredo próprio de webhook; configuração de portal é opcional. Nenhuma credencial é retornada pela API. `GcBillingAccount` e `GcBillingEvent` mantêm conta/assinatura e recibos de eventos independentes dos outros produtos.
+
+`enabled` indica disponibilidade técnica do módulo; `entitled` indica licença aplicável à sessão; `canCreate` exige licença própria ou isenção administrativa. Licença do proprietário de contrato compartilhado permite somente as operações autorizadas naquele contrato. O administrador isento continua sujeito ao isolamento de tenant e contrato. Os redirects do frontend aceitam somente HTTPS nos hosts exatos do Checkout/portal Stripe.
+
+### Payloads financeiros e revisão de estado
+
+Todos os exemplos de chaves abaixo fazem parte de `payload` em `POST /contracts/:id/actions`; o envelope externo exige `expectedVersion` e `requestId` UUID. Valores financeiros, quantidades e índices usam strings decimais. Datas de efeitos/execução são `YYYY-MM-DD`; prazos de eventos são inteiros em dias. A versão e as regras são verificadas novamente na transação.
+
+| `kind` | Campos e comportamento |
+|---|---|
+| `amendment` | `title,effectiveDate,reason,lines`. Item existente usa `{itemId,quantityDelta}`; serviço novo usa `{description,unit,quantity,unitPrice,referencePrice}`. Global acrescenta `formalReference,eventChanges` com evento existente/novo, valor, prazo, pai ou supressão; total das folhas deve reconciliar com o escopo. |
+| `price-rule` | `title,effectiveDate,reason,targetType,itemId/eventId,mode`. `INDEX`: base/currentIndex; `BASKET`: components com weight/baseIndex/currentIndex, até 12 componentes; `REEQUILIBRIUM`: newPrice e formalReference. Reajuste posterior a reequilíbrio exige anchorRuleId explícito e formalReference. Alvo global deve ser evento-folha. |
+| `measurement` | `title,period,executionDate,evidence`; unitário: lines com itemId/quantity/presentedQuantity; global: eventIds. Cria DRAFT, sem movimentar pagamento. Quantidade aprovada e apresentada são distintas para explicitar glosa. |
+| `difference-measurement` | `title,period,executionDate,reason,originalMeasurementIds`. Calcula diferenças de preço nas datas de execução originais, descontando diferenças já aprovadas; não consome novas quantidades. |
+| `approve-measurement` | measurementId; medição global ordinária exige accepted:true. Contrato real veda aprovação pelo autor do rascunho. Preço/evento alterado depois do rascunho exige reconferência e novo boletim. |
+| `cancel-measurement` | measurementId,reason; apenas rascunhos, preservando histórico. |
+| `payment` | measurementId,amount,date,reference. Pagamento parcial é limitado ao saldo efetivo; recuperação de diferença negativa exige direction:RECOVERY e amount positivo informado. Líquido zero exige amount:"0" e noCashSettlement:true. Não executa transferência bancária. |
+| `refund` | amount,date,reason; limitada ao excesso efetivamente retido, não à reserva ainda não paga. |
+| `compensation-reconciliation` | reason,formalReference e mode. REALLOCATE recebe allocations[{measurementId,deduction}], sendo deduction o total pretendido, preservando já pago/retido. RECOVERY recebe amount,date,reference e registra recuperação efetivada. |
+| `progress` | date,plannedPercent,executedPercent,reason; avanço informado independentemente de medição e pagamento. |
+
+Aditivos recebem `additionLimitPercent` (25/50), `renovationJustification` quando aplicável e `limitExceptionReason`/`formalReference` para exceções. Acréscimos e supressões são cumulativos e separados. Em global com preços atualizados, `limitsMemory` informa originalUpdatedValue/additionsUpdatedValue/suppressionsUpdatedValue/referenceDate/justification/documentReference. `compensationResolution:MANUAL_RECONCILIATION` admite pendência expressa quando o saldo futuro não comporta a compensação. A aceitação do registro não certifica enquadramento jurídico.
+
+Regras com impacto em boletins aprovados exigem `retroactive:true` e referência formal. O detalhe conserva bruto/dedução/líquido originais e disponibiliza `effectiveDeduction`/`effectiveNet` após conciliações. O frontend e as exportações mostram valores efetivos, mantendo memória original consultável. `summary.currentValue` permanece na data-base; `currentPricedValue`, `priceAdjustmentValue` e `priceReferenceDate` apresentam valorização na última referência registrada, sem se confundirem com saldo a pagar. `planningComparison` declara a base e distingue execução informada, medição e caixa.
+
+### Estado de entrega documentado
+
+A v2 foi implementada para desenvolvimento e suas migrations foram aplicadas antes da ativação. Este contrato documenta interfaces e invariantes; não declara concluídas as verificações remotas dessa versão. A [ADR 0010](adr/0010-gestao-contratual-banco-independente.md) conserva a entrega histórica da v1, identifica as limitações superadas e separa testes locais de homologação operacional.
+
 ## Exportação TransfereGov BM / PLE — DEV
 
 `POST /orcapro/projects/:id/transferegov/bm/receipt` e `POST /infraestrutura/projects/:id/transferegov/bm/receipt`: guard/CSRF do produto, proprietário e tenant autenticados. Recebem expectedVersion, sourceHash/fileHash/configHash SHA-256, profile documentation|example, services/groups/fronts, submeta e totais em centavos textuais. Exigem versão/hash da origem salva; retornam409 para divergência e404 fora do desenvolvimento. Acrescentam somente auditoria PREPARED, sem alteração de projeto ou nova versão. Não enviam ao TransfereGov. [Contrato e metodologia](transferegov-bm.md).
@@ -58,6 +147,7 @@ Exemplo de erro:
 | POST | `/auth/register-tenant` | cria tenant trial e proprietário |
 | POST | `/auth/login` | autentica por tenant, e-mail e senha |
 | POST | `/auth/orcapro/login` | autentica OrçaPro por e-mail e senha; usa tenant original da licença |
+| POST | `/auth/gestao/login` | autentica Gestão Contratual por e-mail/senha da identidade central, somente DEV; assinatura verificada separadamente |
 | POST | `/auth/refresh` | rotaciona sessão |
 | POST | `/auth/logout` | revoga refresh e limpa cookies |
 | GET | `/auth/me` | retorna usuário, tenant e papel atuais |
@@ -89,7 +179,7 @@ Login:
 ```json
 {
   "tenantSlug": "demonstracao",
-  "email": "admin@gestaodepredios.com.br",
+  "email": "<email-da-conta>",
   "password": "senha"
 }
 ```
@@ -585,4 +675,168 @@ Verificação publicada em 02/11/2026: geração anterior da conta informada rec
 
 
 ## Promoção de sessões únicas à produção — 02/11/2026
-A regra e o monitor foram promovidos para sistema.orcaproobras.com.br e orcaproinfra.com.br por autorização expressa. AUTH_SINGLE_SESSION=true nos dois backends; lista explícita de domínios permite desenvolvimento e essas produções. O monitor escolhe exclusivamente a API correspondente ao hostname. Contas e sessões permanecem independentes entre os dois bancos de produção. Novo login comum invalida versões anteriores; administradores configurados e perfis Infra ADMIN ativos são isentos. Não exige migration ou cópia de orçamento. Rollback: remover a inclusão do monitor nas páginas ou repor os HTML de backup, desativar AUTH_SINGLE_SESSION e restaurar o symlink de runtime anterior, sem restaurar banco de dados. Backups privados completos e arquivos anteriores em single-session-production-20261102 na conta u528277311.
+A regra e o monitor foram promovidos para sistema.orcaproobras.com.br e orcaproinfra.com.br por autorização expressa. AUTH_SINGLE_SESSION=true nos dois backends; lista explícita de domínios permite desenvolvimento e essas produções. O monitor escolhe exclusivamente a API correspondente ao hostname. Contas e sessões permanecem independentes entre os dois bancos de produção. Novo login comum invalida versões anteriores; administradores configurados e perfis Infra ADMIN ativos são isentos. Não exige migration ou cópia de orçamento. Rollback: remover a inclusão do monitor nas páginas ou repor os HTML de backup, desativar AUTH_SINGLE_SESSION e restaurar o symlink de runtime anterior, sem restaurar banco de dados. Backups privados completos e arquivos anteriores em single-session-production-20261102 na conta <conta-hostinger>.
+
+### Conciliação de centavos nas planilhas contratuais
+
+`GET /contract-management/contracts/:id/worksheet` inclui no `summary` os campos decimais opcionais `lineSumBaseValue`, `baseRoundingAdjustment`, `lineSumPricedValue` e `priceRoundingAdjustment`. A soma das linhas arredondadas mais o ajuste informado resulta em `currentValue` ou `currentPricedValue`, respectivamente. Esses totais respeitam a política de arredondamento agregado do histórico, sem regravar ações ou medições. Os campos também acompanham as fotografias históricas de aditivos e suas versões anteriores.
+
+
+### Exportações da Gestão Contratual (desenvolvimento, 14/11/2026)
+
+`GET /contract-management/contracts/:id/amendments/:aid/export?format=xlsx|pdf` retorna a fotografia do termo, com quantitativos originais, anteriores e atualizados, acréscimos/supressões, conciliação e eventograma nos contratos globais.
+
+`GET /contract-management/contracts/:id/prices/export?format=xlsx|pdf&date=YYYY-MM-DD` retorna a valorização do escopo na data selecionada e a memória dos atos de preço aplicáveis. Regras posteriores à data são excluídas. A data omitida usa a data padrão da planilha.
+
+As rotas usam a mesma autenticação, tenant e autorização de leitura do contrato. Formato inválido é recusado. Os arquivos são gerados em memória e enviados como anexos privados, sem gravação no banco. Medições continuam em `/contracts/:id/measurements/:mid/export`; valores históricos não são recalculados pela exportação. XLSX contém células numéricas, cabeçalho congelado e filtros. PDF A3 paisagem repete cabeçalhos e identifica subtotais não aditivos.
+
+### Histórico de desenvolvimento por sessão/dia
+
+Com a retenção de desenvolvimento ativa, os endpoints de histórico OrçaPro e Infra acrescentam `retentionState: KEPT | RECOVERY` e `recoveryUntil: ISO UTC | null`. Registros antigos e protegidos são `KEPT`; campos são aditivos e não alteram a restauração, que cria uma nova versão. A lista do OrçaPro deixa de cortar em 200 itens para permitir consultar todos os pontos preservados. O cliente exibe intermediários mediante opção de recuperação. `workSessionId` é emitido internamente no JWT e não é aceito livremente no corpo das operações. A API Gestão Contratual mantém todos os atos; seus metadados de retenção são internos e protegidos.
+
+
+### Importação de medições: vínculos explícitos (desenvolvimento, 14/11/2026)
+
+`POST /contract-management/imports/:id/measurement-map` aceita `identifierKind: CODE | NUMBER` opcional (padrão CODE), persistido no mapeamento e incluído no hash da confirmação. CODE identifica a composição; NUMBER usa o número do item do orçamento, sem confundi-lo com códigos iguais de outros serviços. Eventos continuam identificados pelo ID do eventograma. Código repetido exige vínculo manual. Identificação e quantidade não podem usar a mesma coluna.
+
+A prévia global valida sobreposição pai/filho e eventos previamente medidos com a mesma regra do motor financeiro. Colunas mapeadas contendo erros do Excel ou fórmulas sem valor calculado geram pendência, em vez de serem tratadas como células vazias. Os preços do XLSX não são importados. Quantidade zero é ignorada; quantidade negativa, saldo excedido, alvo inexistente/arquivado e duplicidade impedem confirmar. A confirmação continua criando apenas rascunho, com arquivo original privado, controle de tenant/usuário, versão e hash.
+
+
+## Retenção automática no OrçaPro comercial — 14/11/2026
+
+Autorização específica: somente `sistema.orcaproobras.com.br`, banco `<conta-hostinger>_orcapro_live`. A flag `VERSION_RETENTION_ORCAPRO_PROD=true` exige origem HTTPS e nome exatos; a flag de desenvolvimento não ativa produção. Infraestrutura comercial permanece inalterado. Migration manual `apps/api/retention-migrations/002_orcapro_production_history.sql`, com os mesmos nove campos da tabela de desenvolvimento. Sem seed de histórico: sessões antigas não são inventadas.
+
+Novos logins recebem identificador aleatório de sessão assinado no JWT; refresh mantém o identificador. Cada orçamento mantém a última versão de cada sessão/dia (America/Sao_Paulo), mesmo após fechar o navegador sem logoff. Versões intermediárias ficam recuperáveis por 24 horas desde sua substituição; o worker roda a cada minuto enquanto o processo estiver ativo. Atraso do processo apenas amplia a recuperação. Salvamentos sem alteração material não criam cópias. Logout aguarda o salvamento pendente. A interface apresenta recuperação opcional e o prazo; restaurar cria nova versão.
+
+Worker comercial separado acessa somente o banco OrçaPro. Usa transação/bloqueio do orçamento, tenant em consultas/mutações e auditoria atômica `history.consolidate`. Protege versão atual, metadados protegidos, fontes e alterações das análises de riscos, referências de auditoria (incluindo `details.sourceVersion`) e contratos. Referência contratual opaca ao orçamento preserva todo seu histórico. Tabela Gc* nova, GESTAO_DATABASE_URL configurada, FK histórica não revisada ou falha de consulta interrompem limpeza até revisão explícita. Atos contratuais não são removidos. Históricos legados sem metadados continuam preservados. Não há OPTIMIZE automático.
+
+Publicação restrita: seis módulos JS sobre o runtime comercial anterior, páginas gerenciar/editor e recursos estáticos necessários. Nenhum módulo de Gestão Contratual em desenvolvimento é promovido. Backup privado verificado do histórico/configuração e runtime/páginas anteriores em `/home/<conta-hostinger>/version-retention-production-20261114`; hashes no manifesto. Rollback: desativar VERSION_RETENTION_ORCAPRO_PROD, repor symlink e páginas anteriores; conservar VersionRetention. Expurgo posterior ao prazo é definitivo e eventual recuperação exige backup.
+
+
+### Gestão Contratual: acompanhamento do cronograma (desenvolvimento)
+
+`GET /api/v1/contract-management/contracts/:id/planning?date=AAAA-MM-DD` autoriza contrato/tenant antes de ler sua fotografia comprimida. Retorna curva S original, execução física, medições aprovadas, pagamentos na base e caixa separado, Gantt por serviço, desvios em dias corridos, folgas/durações úteis, equipes e recursos da origem. A consulta não altera nem substitui a fotografia por uma versão viva do OrçaPro/Infra. Capturas Infra novas preservam datas, produtividades e curva S calculadas pelo motor original. Capturas antigas sem esses dados exibem a lacuna.
+
+A ação auditada `progress-items` aceita `{date, reason, lines:[{itemId, executedPercent, actualStart?, actualEnd?, forecastEnd?, actualTeams?}]}`; gestor/fiscal, versão esperada e ID idempotente obrigatórios. Quantidades e valor-base do apontamento ficam congelados no registro. Bloqueia IDs duplicados/inexistentes, percentuais fora de 0–100, início/término incoerentes e regressão da quantidade física. Não transforma execução física em aceite ou pagamento. Levantamento parcial não gera percentual físico total presumido.
+
+Pagamentos que usam deduções conciliadas não podem anteceder o ajuste aplicado. Movimentos financeiros respeitam sua ordem cronológica. Restituições não podem anteceder o aditivo vigente ou movimentos financeiros anteriores, nem ultrapassar o excesso efetivamente retido. A tela informa saldo, retenção efetivada e dedução vigente antes do registro.
+
+
+## Retenção automática Infraestrutura comercial — 14/11/2026
+
+Ativação exclusiva por `VERSION_RETENTION_INFRA_PROD=true`, origem `https://orcaproinfra.com.br`, identidade `<conta-hostinger>_infra_auth` e orçamentos `<conta-hostinger>_infra_live`; os três destinos são validados. Migration manual `003_infra_production_history.sql` apenas no banco de orçamentos. Não há migration no banco de identidade, sem seed de sessões históricas.
+
+A mesma política sessão/dia e recuperação de 24 horas substitui o corte numérico INFRA_PROJECT_VERSION_RETENTION quando habilitada. Versões sem sessão/metadados, última de cada sessão/dia, versão atual e referências protegidas permanecem. Datas UTC e agrupamento America/Sao_Paulo. Refresh conserva a sessão; novo login cria outra. Saves sem mudança material não criam cópias. Logout da interface aguarda flush. Histórico inclui retentionState/recoveryUntil e permite mostrar/restaurar intermediárias.
+
+`InfraProductionVersionRetentionWorker` executa a cada minuto. Antes de exclusão transacional com tenant/bloqueio do orçamento, revalida fontes e alterações de análises decodificando snapshots gzip com limite de 21 MiB, auditorias e referências contratuais nos bancos Infra e identidade. Contrato opaco protege todo o orçamento; erro de leitura, gzip inválido, GESTAO_DATABASE_URL, novo registro Gc* ou FK histórica não revisada impedem limpeza. O banco de identidade é somente consultado pelo worker. Exclusão e auditoria InfraAudit history.consolidate são atômicas no banco Infra.
+
+Backup privado verificado do histórico e configuração em `/home/<conta-hostinger>/version-retention-infra-production-20261114`; runtime anterior `single-session-production-20261102` e páginas previous-web preservados. Rollback: desativar flag, restaurar ponteiro/páginas e conservar metadados. Não promove alterações da Gestão Contratual. O build web isolado exclui a rota de Gestão Contratual em desenvolvimento e usa NEXT_PUBLIC_ORCAPRO_ONLY=false com API Infra explícita. Apenas páginas gerenciar/editor e recursos necessários publicados; nenhum catálogo, orçamento ou runtime de outro ambiente alterado. Sem compactação automática.
+
+
+## Compressão nativa do histórico e importações OrçaPro — 14/11/2026
+
+Aplicação manual exclusiva em `<conta-hostinger>_orcapro_live`, MariaDB 11.8: `OrcaproProjectVersion.data` e `OrcaproImport.report` usam `LONGTEXT COMPRESSED` (zlib). O banco comprime ao gravar e descomprime ao ler. JSON, bytes lógicos, metadados, PKs/FKs e assinaturas de análise continuam intactos; nenhum envelope/base64 ou mudança de payload/API é introduzido. Prisma continua declarando esses campos como Json. Não foram alterados runtime, páginas, configurações, Infraestrutura ou desenvolvimento.
+
+Migration física manual: `apps/api/retention-migrations/004_orcapro_column_compression.sql`. Rollback: arquivo `.rollback.sql` correspondente. Não integra deploy Prisma automático, não requer seed e depende de MariaDB com suporte a COMPRESSED. Antes de futuras reconstruções/migrations desses campos, conferir SHOW CREATE TABLE para conservar compressão e validação; não usar db push para remover atributos físicos por acidente. Exports lógicos seguem legíveis; restauração em MySQL Oracle requer schema sem o atributo específico MariaDB.
+
+A cláusula `CHECK (JSON_VALID(...))` deve ser declarada explicitamente no MODIFY: o teste temporário demonstrou que a alteração sem CHECK remove a validação inline. MariaDB exibe DEFAULT '' na definição comprimida; JSON_VALID continua rejeitando esse valor inválido. Charset utf8mb4, collation utf8mb4_bin e NOT NULL preservados. Colunas comprimidas não são indexadas; índices e relacionamentos existentes das demais colunas foram comparados antes/depois.
+
+Backup privado antes da alteração: `/home/<conta-hostinger>/orcapro-column-compression-20261114`, com schema, 146 versões, três relatórios, texto integral, metadados, vínculos e SHA-256, relidos antes de cada alteração. A conversão levou aproximadamente 5,3 s no histórico e 0,5 s nos relatórios. As 149 linhas originais tiveram conteúdo e metadados verificados após a conversão; nenhum registro eliminado.
+
+Validação no runtime comercial: criação/conversão/leitura/escrita em tabelas TEMPORARY via Prisma; JSON inválido recusado; restauração avaliada sem efetivar um novo orçamento; três relatórios completos comparados com backup; endpoints JSON/CSV retornaram HTTP200 e 23.507.246 bytes de CSV conferidos incluindo BOM; histórico HTTP200; isolamento de tenant; fingerprint de origem de análise reconstruído pelo motor real; API ok/ready. Não houve mudança de código de aplicação, portanto não é necessário novo build.
+
+Alocação física das duas tabelas caiu de 154.206.208 para 23.134.208 bytes, incluindo índices: redução de 131.072.000 bytes (125 MiB). A migration já reconstrói as tabelas, sem necessidade de OPTIMIZE adicional. O total do hPanel é medido separadamente.
+
+
+### Reprogramação contratual após aditivos — desenvolvimento, 14/11/2026
+
+`POST /contract-management/contracts/:id/planning/proposal` aceita `{expectedVersion,effectiveDate}` e exige gestor do contrato/tenant autenticado. Retorna proposta editável por saldo físico, duração/equipes capturadas e calendário útil da origem; serviços novos sem duração ficam pendentes de prazo informado. Não grava nem altera OrçaPro/Infra. O gestor confere precedências, frentes e capacidade de recursos. A proposta não executa novo CPM nem nivelamento de equipes.
+
+A ação `schedule-revision` usa `/preview` e `/actions`, com hash de prévia obrigatório, versão esperada, requestId idempotente e auditoria. Payload: `{title,reason,formalReference,effectiveDate,amendmentId,calendar,lines:[{itemId,start,end,teams}]}`. Exige último aditivo, todos os serviços (inclusive suprimidos), levantamento físico completo, calendário válido, início/fim úteis do saldo estritamente posteriores ao corte e datas reais intactas nos serviços concluídos. A data não antecede último aditivo/revisão/apontamento. Datas editáveis representam somente saldo; novo registro conserva todos os anteriores.
+
+`GET .../planning?date=YYYY-MM-DD&revisionId=UUID|ORIGINAL` compara original, revisão selecionada e execução. Sem revisionId adota última revisão até o corte. Revisão de outro contrato é recusada. O retorno inclui metadados de revisões, curva reprogramada, datas/equipes reprogramadas por item, desvios ante origem e revisão, compatibilidade com escopo vigente e histórico. O saldo é distribuído linearmente por dias úteis e fecha no valor-base congelado; reajustes não criam avanço físico. Novo aditivo torna a revisão anterior desatualizada para indicadores agregados, sem modificar seu conteúdo. Revisões não alteram aceite do eventograma, medições, pagamentos, valores ou fontes.
+
+A ponderação das curvas conserva a precisão decimal por serviço e arredonda apenas a soma acumulada; o último ponto coincide exatamente com o valor-base contratual. Metadados da revisão incluem `lineSumBaseValue` e `baseRoundingAdjustment` para conciliar a apresentação das linhas arredondadas.
+
+
+## Gestão Contratual — SaaS e manual (DEV)
+
+`/api/v1/contract-management/admin` exige identidade autenticada, origem permitida e administrador específico deste produto; `OWNER` da organização não basta. O diretório SaaS é uma consulta administrativa global explícita, independente das permissões sobre contratos privados. Serviços de contrato continuam usando tenant e associação do token. Nunca aceitar tenant livre no cadastro: a concessão recebe `membershipId`, resolvido no servidor; organização nova é criada pelo fluxo administrativo.
+
+- `GET overview`, `GET users`, `GET accounts`: indicadores sem segredos, diretório e busca paginados.
+- `POST users`, `POST users/grant`: cadastrar conta/organização com teste local de 30 dias ou conceder acesso a identidade existente.
+- `PATCH users/:id`: papel/situação com versão e motivo; suspensão e exclusão recuperável do produto. Administrador inicial e própria conta protegidos. Só o administrador inicial concede ADMIN.
+- `GET users/:id/sessions`, `POST users/:id/password`, `POST users/:id/revoke-sessions`: senha compartilhada exige confirmação de alcance, 10 caracteres a 72 bytes, revoga JWTs/refresh e consome links de reset; nunca retorna ou audita senhas.
+- `PUT users/:id/subscription`: licença manual ou controle Stripe, sem alterar cobranças. Validade obrigatória para trial; manual não remove bloqueio de risco.
+- `GET/POST plans`, `PUT plans/:id`: catálogo mensal/anual manual ou Stripe TEST, valor exato, produto/periodicidade verificados; plano usado não muda condições financeiras.
+- `POST users/:id/stripe`: `SYNC`, `CANCEL_AT_PERIOD_END`, `RESUME`, com versão da conta de cobrança, UUID idempotente e motivo. Recusa ambiente/cliente/produto divergente e não retoma assinatura encerrada.
+- `GET audit`, `GET audit/export`: filtros por responsável, operação, registro e datas de Brasília; CSV da página filtrada, máximo 100 linhas, com neutralização de fórmulas. Inclui registros anteriores sem expor payloads de contratos.
+- `GET settings`, `PUT settings/:name`: `privacy`, `terms`, `notice`, com versão/motivo. Informativo apenas dentro do aplicativo; não envia e-mail.
+
+`GET /contract-management/saas-access`, `GET /content` e `POST /activity/navigation` exigem login e ambiente DEV, mas não assinatura ativa. Manual também acessível sem contrato. Navegação envia apenas uma seção da lista permitida. Atividades, downloads, ações e login do módulo geram metadados compactos. Interceptor não registra corpo, senha ou token. Guard administrativo limita 120 requisições/minuto/usuário e não permite cache.
+
+Manual interativo: 17 capítulos pesquisáveis, percursos de uso, listas de conferência, questões comentadas, atalhos para as telas, impressão e três simuladores isolados (medição unitária, cesta de índices e compensação/restituição). Não escreve medições, contratos nem pagamentos. Os exemplos são didáticos; a memória aprovada do contrato é a fonte dos valores reais.
+
+### Compartilhamento contratual — validação de desenvolvimento (14/11/2026)
+
+- `GET /contract-management/contracts/:id/members` inclui o titular com papel de apresentação `OWNER` (gestor permanente). Esse papel não é aceito para concessões; o proprietário não pode ser rebaixado ou removido. Demais papéis: `MANAGER`, `FISCAL`, `READER`, `REVOKED`.
+- `POST .../members` registra autor e alteração em auditoria. A autorrevogação de gestor delegado responde `201 []` após confirmação da transação, sem reler a equipe após perder autorização. O cliente recarrega os direitos e remove o contrato da tela.
+- Cada boletim em `GET .../contracts/:id` informa `canApprove`, calculado por papel, situação e autoria. Em contratos reais, nenhum gestor ou fiscal aprova o próprio boletim. Demonstrações preservam a exceção didática. A API revalida a regra dentro da transação; a indicação na interface não substitui a autorização.
+- O gestor altera escopo/preços, registra pagamentos e administra a equipe; o fiscal apresenta medições, aprova as de outro autor, registra execução física e anexa documentos; o leitor consulta e exporta. Acesso limitado a contratos explicitamente compartilhados da mesma organização.
+- Revogação e rebaixamento valem na próxima requisição, inclusive para downloads e exportações. A licença do titular permite colaborar, mas não constituir contratos próprios; suspensão do perfil e perda da licença do titular prevalecem.
+- Mudanças desta validação publicadas somente em desenvolvimento; sem migração de banco e com versão anterior preservada para rollback.
+
+
+### Gestão Contratual — cadastro autônomo DEV (14/11/2026)
+
+- `GET /contract-management/billing/public/plans`: planos ativos vinculados a preços Stripe TEST.
+- `POST /contract-management/billing/public/register`: nome, email, senha e planId; valida origem/host DEV e limite por IP, cria organização e acesso exclusivo ao produto, inicia sessão e Checkout TEST. Email existente não altera a identidade.
+- O cadastro não concede administrador nem licença manual. A assinatura é liberada pelo webhook assinado e idempotente. Falha no Checkout preserva a conta para nova tentativa autenticada.
+- Captura Infra preserva versão, preços e fotografia original. Linhas com quantidade e total exatamente zero são omitidas da planilha contratual com aviso explícito. Descrições, unidades e curva S vêm do cálculo SICRO. O projeto temporário gerado pelo cálculo (timestamps e IDs voláteis) não integra o hash; o projeto original integral permanece na fotografia.
+
+### Correção de preferências do Infraestrutura — desenvolvimento, 15/11/2026
+
+O driver MariaDB decodifica automaticamente colunas JSON. Preferências escalares como `"light"` chegavam como `light` e eram decodificadas novamente, causando HTTP 500 em `GET /infraestrutura/settings` e impedindo a inicialização do editor. A leitura das preferências e sua exportação agora usam `CAST(data AS CHAR) AS data`, mantendo exatamente uma decodificação, inclusive para strings que parecem números/booleanos/JSON. Filtros de tenant e usuário permanecem obrigatórios. Nenhuma alteração de schema ou dados.
+
+Publicado somente no desenvolvimento, runtime `infra-settings-fix-20261115`, com o runtime anterior preservado e backup privado em `/home/<conta-hostinger>/infra-settings-fix-20261115`. Apenas duas consultas no módulo compilado InfraService foram alteradas; 1.175 arquivos conferidos. Testes: 17 unitários, 12 tipos de valores no MariaDB com tabela temporária e isolamento entre tenant/usuário; preferências e orçamento retornaram HTTP 200 após a publicação. Orçamento afetado permaneceu na versão 68, gravada em 15/11/2026 às 16:20:21 UTC (13:20:21 São Paulo). Produção não alterada.
+
+### Publicação da correção de preferências — Infraestrutura em produção, 15/11/2026
+
+A falha de dupla decodificação de `"light"` foi reproduzida no runtime de produção por tabela temporária, sem modificar preferências reais. Publicado somente em `api.orcaproinfra.com.br`, runtime `infra-settings-production-20261115`, com duas substituições SQL no InfraService (consulta e exportação de preferências); os demais 1.091 arquivos compilados permaneceram idênticos. Backup privado do arquivo e configuração em `/home/<conta-hostinger>/infra-settings-production-20261115`; runtime anterior `version-retention-infra-production-20261114` preservado integralmente. Rollback: apontar `hbuilds/current` para esse runtime anterior e reiniciar somente a API Infraestrutura; não há migração ou alteração persistente de dados a reverter.
+
+Verificação: 12 valores JSON em tabela temporária MariaDB e isolamento por tenant/usuário; reprodução original passou após correção; sete endpoints HTTP 200 (preferências, saúde geral/Infra, referências, insumos próprios, composições próprias e orçamento). Preferências existentes preservadas, configuração inalterada, arquivo anterior validado por SHA-256. O ponteiro de runtime e a configuração do OrçaPro em produção continuaram idênticos; desenvolvimento não acessado nesta publicação.
+
+
+### 2026-11-15 — Infraestrutura: analítico básico e famílias de escavação (desenvolvimento)
+
+- Corrigido o cancelamento/reinício indefinido do analítico básico na consulta do catálogo: a tarefa assíncrona captura a referência de consulta e compara o contexto efetivo do drawer, sem manter `OP.app.base/pj` trocados durante `await`. Fechar o painel/trocar a aba cancela o trabalho. Filtros, CSV e caminhos usam a mesma referência. Nenhuma gravação do orçamento é disparada por essa consulta.
+- As 283 composições da família Escavação do SICRO SP 07/2026 foram distribuídas em 25 famílias de navegação (1–13 composições): material, camada final quando aplicável, via e equipamento. Os 308 códigos do grupo Terraplenagem continuam presentes exatamente uma vez, com caminhos localizáveis; o catálogo, coeficientes e preços não são alterados.
+- Publicação restrita a `gestaodepredios.com.br/public_html/infraestrutura-editor`: novos assets e substituição atômica do index, preservando assets antigos. Backup privado: `/home/<conta-hostinger>/infra-catalog-dev-20261115/editor-before.tar.gz`, SHA256 `6f73dfcb8f4a8fee139fe32cb0f3972b54c7d4cd62704c6d5579f37a8b189a9f`. Rollback: recuperar index.html desse arquivo; os assets anteriores permanecem disponíveis. API, bancos e produção não foram modificados.
+- Verificação: 25 testes direcionados passaram; build Vite concluído; 8 arquivos publicados conferidos por hash; index e 4 assets referenciados conferidos via HTTP 200. Suíte completa: 93/95 passaram. Divergências preexistentes: comparação do IVA com o HTML legado e hash desatualizado de `21_bdi_core.js` no inventário. Comparação adicional com os módulos anteriores à correção confirmou todos os totais, inclusive IVA, idênticos. Hashes do inventário atualizados somente para os dois módulos alterados nesta tarefa.
+- Teste visual autenticado pendente de reentrada do usuário no navegador integrado. Evidências e scripts locais em `.runtime/infra-catalog-dev-20261115` (raiz do workspace), teste de regressão novo em `apps/infraestrutura/tests/basic-consultation.test.cjs`.
+
+- Validação visual concluída em 15/11/2026 no navegador integrado, após login e aceite pelo usuário: consulta SP com orçamento QA em AP; composição 5502978 abriu o analítico com 25 linhas, total R$ 6,38, filtro Servente 1/25 mantendo o total; botão Fechar encerrou o painel normalmente. Família 1ª categoria / leito natural / carregadeira apresentou 13 composições; escolha DMT 200–400 m selecionou 5501876, R$ 12,11. Nenhuma composição adicionada ao orçamento. As 25 partições de escavação são apresentadas como 22 árvores e 3 serviços avulsos. Capturas em .runtime/infra-catalog-dev-20261115/analitico-validado.jpg e arvore-validada.jpg, na raiz do workspace. Produção não acessada nem alterada nesta validação.
+
+
+### 2026-11-15 — Publicação autorizada do analítico e famílias em Infraestrutura produção
+
+- Escopo exclusivo: `/home/<conta-hostinger>/domains/orcaproinfra.com.br/public_html/infraestrutura-editor`. Sem alterações de API, banco, OrçaPro ou desenvolvimento.
+- Build da versão anterior (retirando somente as duas correções) comparado com produção: os sete assets coincidem por SHA256; index coincide desconsiderando finais de linha. Build publicado usa `https://api.orcaproinfra.com.br/api/v1`; módulos de cálculo e interface coincidem com os validados visualmente no desenvolvimento.
+- Backup privado validado por leitura do tar: `/home/<conta-hostinger>/infra-catalog-production-20261115/editor-before.tar.gz`, SHA256 `36218c5cc81882960ab6b21f2db31e8e36543e447647ca1da5940694fd0da863`. Index anterior também guardado em `index-before.html` nessa pasta. Rollback: repor index anterior atomicamente; assets antigos foram preservados.
+- Oito arquivos publicados conferidos por hash; index e quatro assets referenciados confirmados via HTTP 200/hash. Index novo SHA256 `8dd672e5ac76a738ee5c187859ce3f42a479f236352beedfd84273210d9ef31f`. Ponteiros das APIs Infraestrutura e OrçaPro e index do OrçaPro permaneceram iguais.
+- Navegador integrado autenticado abriu o orçamento informado pelo usuário; editor carregou até o aviso legal. Teste visual aguardando aceite pelo usuário na aba de produção. Evidências/scripts locais: `.runtime/infra-catalog-production-20261115` na raiz do workspace.
+
+- Validação visual de produção concluída em 15/11/2026 após aceite pelo usuário: 5502978, PR 07/2026, analítico com 25 linhas/3 níveis, custo e soma R$ 6,56, sem linhas não detalhadas ou preços ausentes. Filtro Servente 1/25 preservou total; painel Fechar funcionou. Escavação: 22 árvores somando 280 composições e três avulsos 5501710/5502187/5502820 confirmados (283 preservadas); grupo Terraplenagem continua com 308 composições. Árvore 1ª categoria/leito natural/carregadeira com 13 opções; DMT 200–400 m selecionou 5501876 por R$ 12,41. Total do orçamento permaneceu R$ 33.851.075,92. Nenhuma edição de orçamento ou adição de serviço realizada. Capturas analitico-validado.jpg e arvore-validada.jpg em .runtime/infra-catalog-production-20261115 na raiz do workspace.
+# Gestão Contratual — API independente de produção (15/11/2026)
+
+Base: `https://api.orcaprogestaocontratual.com.br/api/v1`. O entrypoint `main-gestao.ts` registra apenas identidade, saúde e Gestão Contratual. Os endpoints operacionais de OrçaPro, Infra e manutenção não estão disponíveis nessa implantação.
+
+- `POST /auth/gestao/login`: no primeiro acesso, valida conta/assinatura prévia em OrçaPro ou Infra e cria identidade independente. A senha local não modifica a origem.
+- `GET /auth/gestao/sources`: informa elegibilidade comercial por vínculos verificados do usuário autenticado.
+- `POST /auth/gestao/sources`: vincula outro produto após validar a senha e a assinatura desse mesmo e-mail; não aceita tenant livre.
+- `GET /contract-management/billing/public/plans`: planos mensal/anual de produção e `requiresExistingSubscription=true`.
+- `POST /contract-management/billing/public/register`: recusado em produção; não existe contratação avulsa.
+- Checkout: exige assinatura ativa de pelo menos uma origem, preço recorrente BRL do produto próprio e valores R$ 299/mês ou R$ 2.990/ano. A verificação é repetida antes de criar a sessão.
+- `POST /contract-management/billing/webhook`: valida assinatura, modo LIVE e cliente próprio; eventos de outros produtos são ignorados antes de qualquer escrita. Modo TEST é recusado.
+
+Demais operações contratuais conservam autorização por tenant, papel, versão/hash e auditoria. Somente a própria API emite suas sessões e altera suas senhas. Ver ADR 0011.

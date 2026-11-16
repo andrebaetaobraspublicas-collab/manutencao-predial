@@ -1,3 +1,5 @@
+> Atualização de 15/11/2026: consulte o [estado consolidado dos programas](46-estado-consolidado-programas-20261115.md). As seções anteriores conservam o histórico das entregas.
+
 # Documentação do Gestão de Prédios
 
 Este diretório é a fonte de verdade funcional e técnica do produto. Atualize os documentos no mesmo pull request que alterar regras de negócio, integrações, modelo de dados ou arquitetura.

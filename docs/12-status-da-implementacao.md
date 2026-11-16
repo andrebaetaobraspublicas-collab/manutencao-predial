@@ -1,3 +1,5 @@
+> Atualização de 15/11/2026: consulte o [estado consolidado dos programas](46-estado-consolidado-programas-20261115.md). As seções anteriores conservam o histórico das entregas.
+
 # Estado verificável da implementação — v0.16.0
 
 Data de referência: **3 de agosto de 2026**.

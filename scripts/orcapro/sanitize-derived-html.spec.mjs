@@ -22,7 +22,9 @@ test('generated editor scripts compile and bridge is outside report template lit
   const risks = html.lastIndexOf('<script>window.installOrcaProRisks');
   const mainStart = html.indexOf('<script>window.OP_FONTS');
   const review = html.lastIndexOf('<script>/* Reference-scoped interpretation overlay.');
-  const mainEnd = html.lastIndexOf('</script>', review);
+  // Extra standalone scripts may sit between the legacy editor and review.
+  // End the raw-text script at its own closing tag, not its neighbour's.
+  const mainEnd = html.indexOf('</script>', mainStart);
   const manualData = html.lastIndexOf('<script>window.ORCAPRO_MANUAL=');
   const manualUi = html.lastIndexOf('<script>window.installOrcaProManual');
   const riskEnd = html.indexOf('</script>', risks);
@@ -30,14 +32,15 @@ test('generated editor scripts compile and bridge is outside report template lit
   assert.ok(mainStart > 0 && mainEnd > mainStart && bridge > mainEnd && bodyEnd > bridge);
   assert.ok(!html.includes('id="op-base"'));
   assert.ok(!html.includes('${r.id}'));
-  new vm.Script(html.slice(mainStart + '<script>'.length, mainEnd));
+  const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)];
+  for (const [index, script] of scripts.entries()) {
+    new vm.Script(script[1], { filename: `editor-inline-${index}.js` });
+  }
+  // A marker inside a report template is not a standalone HTML script.
+  const starts = new Set(scripts.map(script => script.index));
+  for (const start of [mainStart, review, risks, manualData, manualUi, bridge]) assert.ok(starts.has(start));
   assert.ok(review > mainEnd && risks > review);
-  new vm.Script(html.slice(review + '<script>'.length, html.indexOf('</script>', review)));
   assert.ok(risks>mainEnd && riskEnd>risks && bridge>riskEnd);
   assert.ok(html.includes("['reforma', 'Reforma Tributária', 'pct'], ['risks', 'Riscos e contingências', 'flag'],"));
-  new vm.Script(html.slice(risks + '<script>'.length, riskEnd));
   assert.ok(manualData > riskEnd && manualUi > manualData && bridge > manualUi);
-  new vm.Script(html.slice(manualData + '<script>'.length, html.indexOf('</script>', manualData)));
-  new vm.Script(html.slice(manualUi + '<script>'.length, html.indexOf('</script>', manualUi)));
-  new vm.Script(html.slice(bridge + '<script>'.length, html.lastIndexOf('</script>')));
 });

@@ -10,6 +10,7 @@ import styles from './workspace.module.css';
 import { ProjectImport, ProjectHistory, ReferenceImport } from './panels';
 import { ReferenceReport } from './sinapi-import-panel';
 import { VideoLessons } from './video-lessons';
+import { ContractManagementLink } from '@/components/contract-management-link';
 
 type Access = { enabled: boolean; role: 'ADMIN' | 'USER'; userId: string; tenantId: string };
 type Reference = { id: string; label: string; year: number; month: number; revision: number; status: string };
@@ -184,7 +185,7 @@ export default function OrcaproPage() {
         {access.role === 'ADMIN' ? <Link href="/orcapro/administracao"><ShieldCheck size={19} /> Gestão do SaaS</Link> : null}
         <Link href="/orcapro/assinatura">Minha assinatura</Link>
       </nav>
-      <footer><span className={styles.badge}>Sessão protegida · {access.role}</span>{!ORCAPRO_ONLY ? <Link href="/programas"><Building2 size={16} /> Trocar programa</Link> : null}<button disabled={signingOut} onClick={logout}><LogOut size={16} /> {signingOut ? 'Saindo…' : 'Sair'}</button></footer>
+      <footer><span className={styles.badge}>Sessão protegida · {access.role}</span><ContractManagementLink />{!ORCAPRO_ONLY ? <Link href="/programas"><Building2 size={16} /> Trocar programa</Link> : null}<button disabled={signingOut} onClick={logout}><LogOut size={16} /> {signingOut ? 'Saindo…' : 'Sair'}</button></footer>
     </aside>
     <main className={styles.main}>
       <header className={styles.topbar}><h1>{view === 'projects' ? 'Meus orçamentos' : view === 'catalog' ? 'Catálogo SINAPI' : view === 'videos' ? 'Vídeo-aulas' : 'Base de dados'}</h1>{!ORCAPRO_ONLY ? <Link href="/programas">Gestão de Prédios / OrçaPro</Link> : <Link href="/orcapro">Voltar ao editor</Link>}</header>

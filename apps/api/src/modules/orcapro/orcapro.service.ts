@@ -1,3 +1,4 @@
+import { historySelectSql, effectiveDocument, annotateHistory, versionRetentionEnabled, historySql, historyValues, supersedeHistorySql, supersedeHistoryValues } from '../../common/version-retention';
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { assertBmDevelopment, assertTransferegovEnvironment, bmReceipt, BmExportReceiptDto, pleReceipt, PleExportReceiptDto, CompatibleCopyDto, compatibleCopyData } from '../../common/transferegov-bm';
@@ -281,8 +282,17 @@ export class OrcaproService {
   private canonicalData(data: unknown, project: { id: string; name: string; referenceId: string; uf: string; regime: string }): JsonRecord {
     return validateProjectData({ ...(data as JsonRecord), id: project.id, name: project.name, uf: project.uf, rg: project.regime, sinapiReferenceId: project.referenceId });
   }
-  private async snapshot(db: Db, user: AuthenticatedUser, project: OrcaproProject) {
+  private async snapshot(db: Db, user: AuthenticatedUser, project: OrcaproProject, protectedVersion = false) {
     await db.orcaproProjectVersion.create({ data: { projectId: project.id, version: project.version, referenceId: project.referenceId, uf: project.uf, regime: project.regime, name: project.name, data: json(project.data), engineVersion: ORCAPRO_ENGINE_VERSION, createdByUserId: user.userId } });
+    if (versionRetentionEnabled(this.config)) {
+      await db.$executeRawUnsafe(historySql, ...historyValues(user, project.id, project.version, protectedVersion));
+      await db.$executeRawUnsafe(supersedeHistorySql, ...supersedeHistoryValues(user, project.id, project.version));
+      const analyses = (project.data as any)?.risks?.analyses;
+      if (Array.isArray(analyses)) for (const analysis of analyses) {
+        const version = analysis?.snapshot?.projectVersion;
+        if (Number.isSafeInteger(version) && version > 0) await db.$executeRawUnsafe('UPDATE VersionRetention SET protected=1 WHERE entity_id=? AND tenant_id=? AND version=?', project.id, user.tenantId, version);
+      }
+    }
   }
   private async syncCustomCatalog(db: Db, user: AuthenticatedUser, data: JsonRecord, onlyMissing = false) {
     const catalog = (data.catalog ?? {}) as JsonRecord;
@@ -369,11 +379,12 @@ export class OrcaproService {
       if (!restoringHistoricalVersion && !operation && stableJson(data.risks ?? null) !== stableJson((current.data as JsonRecord).risks ?? null)) {
         throw new BadRequestException('Análises de riscos devem ser alteradas pelo menu Riscos e contingências.');
       }
+      if(versionRetentionEnabled(this.config) && !restoringHistoricalVersion && !operation && name===current.name && referenceId===current.referenceId && uf===current.uf && regime===current.regime && effectiveDocument(data)===effectiveDocument(current.data)) return current;
       const codes = projectOfficialCodes(data); await this.graph(referenceId, codes.compositions, codes.inputs, uf, regime, db, false, new Set(codes.optional));
       const updated = await db.orcaproProject.updateMany({ where: { id, ...this.owner(user), version: dto.expectedVersion, archivedAt: null }, data: { name, referenceId, uf, regime, data: json(data), version: { increment: 1 } } });
       if (updated.count !== 1) throw new ConflictException('Conflito de versão do projeto.');
       const project = await this.project(user, id, db);
-      await this.snapshot(db, user, project);
+      await this.snapshot(db, user, project, !!operation?.action.startsWith('risk.'));
       const previous = current.data as JsonRecord;
       const changedSections = ['name', 'uf', 'rg', 'bdi', 'items', 'stages', 'schedule', 'teams', 'iva', 'tax', 'risks', 'catalog', 'inputPriceOverrides', 'start', 'calendar'].filter(key => stableJson(previous[key] ?? null) !== stableJson(data[key] ?? null));
       await this.audit(db, user, 'project.save', id, { version: project.version, previousVersion: current.version, referenceId, uf, regime, changedSections, ...(referenceId !== current.referenceId || uf !== current.uf || regime !== current.regime ? { previousContext: { referenceId: current.referenceId, uf: current.uf, regime: current.regime } } : {}) });
@@ -403,7 +414,10 @@ export class OrcaproService {
   }
   async versions(user: AuthenticatedUser, id: string) {
     await this.project(user, id);
-    return this.prisma.orcaproProjectVersion.findMany({ where: { projectId: id }, orderBy: { version: 'desc' }, take: 200, select: { id: true, version: true, name: true, referenceId: true, uf: true, regime: true, engineVersion: true, createdAt: true } });
+    const versions = await this.prisma.orcaproProjectVersion.findMany({ where: { projectId: id }, orderBy: { version: 'desc' }, take: versionRetentionEnabled(this.config) ? undefined : 200, select: { id: true, version: true, name: true, referenceId: true, uf: true, regime: true, engineVersion: true, createdAt: true } });
+    if (!versionRetentionEnabled(this.config)) return versions;
+    const metadata = await this.prisma.$queryRawUnsafe<any[]>(historySelectSql, id, user.tenantId);
+    return annotateHistory(versions, metadata);
   }
   async restore(user: AuthenticatedUser, id: string, version: number, expectedVersion: number) {
     await this.project(user, id);

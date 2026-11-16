@@ -478,7 +478,22 @@
     for (let j = 0; j < base.nComp; j++) if (C.g[j] === gi) js.push(j);
     const list = prep(base, js);
     list.sort((a, b) => keyOf(a.head).localeCompare(keyOf(b.head)));
-    const fams = []; cluster(list, 1, base, fams, 0);
+    const fams = [], remaining = [], excavations = new Map();
+    // Navigation only: retain official group, composition indices and prices.
+    for (const c of list) {
+      const text = U.norm(C.d[c.j]).toLowerCase();
+      if (!/terraplenagem/.test(U.norm(base.raw.grupos[gi]).toLowerCase()) || !/^escavacao,? carga e transporte/.test(text)) { remaining.push(c); continue; }
+      const category = text.match(/([123])[ªa°º]? categoria/);
+      const material = /solos moles/.test(text) ? 'Solos moles' : category ? category[1] + 'ª categoria' : 'Outros materiais';
+      const finish = /camada final/.test(text) ? 'Camada final de aterro em rocha' : '';
+      const road = /leito natural/.test(text) ? 'Leito natural' : /revestimento primario/.test(text) ? 'Revestimento primário' : /pavimentado/.test(text) ? 'Pavimentado' : /motoscraper/.test(text) ? '' : 'Pequenas distâncias';
+      const equipment = /motoscraper/.test(text) ? 'Motoscraper' : /carregadeira/.test(text) ? 'Carregadeira' : /escavadeira/.test(text) ? 'Escavadeira' : '';
+      const title = ['Escavação, carga e transporte', material, finish, road, equipment].filter(Boolean).join(' · ');
+      if (!excavations.has(title)) excavations.set(title, []);
+      excavations.get(title).push(c);
+    }
+    cluster(remaining, 1, base, fams, 0);
+    for (const [title, members] of excavations) fams.push({ ...makeFamily(members, base), title });
     fams.sort((a, b) => (b.size > 1) - (a.size > 1) || a.title.localeCompare(b.title, 'pt-BR'));
     fams.forEach((f, i) => { f.id = i; f.gi = gi; });
     const res = { gi, name: base.raw.grupos[gi], url: base.raw.ct[gi], families: fams, count: list.length };

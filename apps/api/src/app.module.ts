@@ -1,3 +1,6 @@
+import { InfraProductionVersionRetentionWorker } from './common/version-retention.infra-production-worker';
+import { ProductionVersionRetentionWorker } from './common/version-retention.production-worker';
+import { VersionRetentionWorker } from './common/version-retention.worker';
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { OrcaproAuditInterceptor } from './modules/orcapro/orcapro-audit.interceptor';
@@ -28,11 +31,12 @@ import { InspectorsModule } from './modules/inspectors/inspectors.module';
 import { OrcaproModule } from './modules/orcapro/orcapro.module';
 import { InfraModule } from './modules/infraestrutura/infra.module';
 import { BulletinsModule } from './modules/bulletins/bulletins.module';
+import { ContractManagementModule } from './modules/contract-management/contract.module';
 
 configureBigIntJsonSerialization();
 
 @Module({
-  providers: [{ provide: APP_INTERCEPTOR, useClass: OrcaproAuditInterceptor }],
+  providers: [InfraProductionVersionRetentionWorker, ProductionVersionRetentionWorker, VersionRetentionWorker, { provide: APP_INTERCEPTOR, useClass: OrcaproAuditInterceptor }],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -63,6 +67,7 @@ configureBigIntJsonSerialization();
     OrcaproModule,
     InfraModule,
     BulletinsModule,
+    ContractManagementModule,
   ],
 })
 export class AppModule {}

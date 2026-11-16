@@ -5,13 +5,14 @@ import type { ReactNode } from 'react';
 import styles from '../orcapro/workspace.module.css';
 import infraStyles from './infra.module.css';
 import { INFRA_PRODUCTION } from './branding';
+import { ContractManagementLink } from '@/components/contract-management-link';
 
 export default function InfraShell({ title, admin, bulletins, children }: { title: string; admin?: boolean; bulletins?: boolean; children: ReactNode }) {
   return <main className={styles.workspace + ' ' + infraStyles.responsive}>
     <aside className={styles.sidebar}>
       <Link className={styles.brand} href="/orcapro-infraestrutura"><span><Route size={24} /></span><strong>OrçaPro<small>Infraestrutura · SICRO</small></strong></Link>
       <nav><Link className={styles.linkbutton} href="/orcapro-infraestrutura/gerenciar"><FolderOpen size={17} /> Meus orçamentos</Link>{admin ? <Link className={styles.linkbutton} href="/orcapro-infraestrutura/administracao"><Shield size={17} /> Administração</Link> : null}{admin && bulletins ? <a className={styles.linkbutton} href="/orcapro-infraestrutura/administracao/?tab=bulletins"><Mail size={17} /> Informativos do sistema</a> : null}</nav>
-      <footer><span className={styles.badge}>Projetos privados · catálogo global</span><Link href="/orcapro-infraestrutura">Voltar ao editor</Link><Link href="/programas"><ArrowLeftRight size={16} /> Trocar programa</Link></footer>
+      <footer><span className={styles.badge}>Projetos privados · catálogo global</span><Link href="/orcapro-infraestrutura">Voltar ao editor</Link><ContractManagementLink /><Link href="/programas"><ArrowLeftRight size={16} /> Trocar programa</Link></footer>
     </aside>
     <div className={styles.main}><header className={styles.topbar}><h1>{title}</h1><Link href="/programas">{INFRA_PRODUCTION ? 'OrçaPro Infraestrutura' : 'Gestão de Prédios / Infraestrutura'}</Link></header><div className={styles.content}>{children}</div></div>
   </main>;

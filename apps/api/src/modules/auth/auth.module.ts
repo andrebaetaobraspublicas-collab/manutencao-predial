@@ -10,6 +10,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { OperationsModule } from '../operations/operations.module';
 import { OrcaproPublicGuard } from '../../common/guards/orcapro-public.guard';
+import { GestaoLoginGuard } from './gestao-login.guard';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { OrcaproPublicGuard } from '../../common/guards/orcapro-public.guard';
   providers: [
     AuthService,
     OrcaproPublicGuard,
+    GestaoLoginGuard,
     JwtStrategy,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

@@ -28,8 +28,8 @@
     {
       "file": "03_factors.js",
       "originalSha256": "24280d659b089b26c52b6dc50efae4d639e9333d283835c9e164673db884bd86",
-      "extractedSha256": "24280d659b089b26c52b6dc50efae4d639e9333d283835c9e164673db884bd86",
-      "bytes": 30647
+      "extractedSha256": "402901e22b3a2af1c9741769f4d36a57d5c72f504e6ef61a51cd947a6395b2ab",
+      "bytes": 32012
     },
     {
       "file": "04_search.js",
@@ -208,8 +208,8 @@
     {
       "file": "29_basic_diagnostics.js",
       "originalSha256": "13107a7a1d2f5f80f80fc57e6d745e250c387f15bfaf4b332a4d206f1c333a4d",
-      "extractedSha256": "13107a7a1d2f5f80f80fc57e6d745e250c387f15bfaf4b332a4d206f1c333a4d",
-      "bytes": 48138
+      "extractedSha256": "290844a37dec9e8e8217ed9810eac65d13477779aeed042ad43f88900da88a6d",
+      "bytes": 48293
     },
     {
       "file": "30_catalog_core.js",

@@ -36,6 +36,20 @@ describe('Sessão única no desenvolvimento', () => {
     tx.refreshSession.updateMany.mockResolvedValueOnce({count:0});
     await expect(issue({id:'r',token:b.refreshToken})).rejects.toThrow('já utilizada');
   });
+  it('retenção distingue logins concorrentes e mantém a sessão durante refresh', async () => {
+    const {issue}=setup({VERSION_RETENTION_DEV:'true',DATABASE_URL:'mysql://test@localhost/u296746636_gestaopredios',ORCAPRO_ADMIN_USER_IDS:'u'});
+    const jwt=new JwtService({secret:'test'});
+    const a=await issue(),b=await issue(),renewed=await issue({id:'r',token:a.refreshToken});
+    const first=jwt.verify(a.accessToken).workSessionId;
+    expect(first).toMatch(/^[a-f0-9]{32}$/);
+    expect(jwt.verify(b.accessToken).workSessionId).not.toBe(first);
+    expect(jwt.verify(renewed.accessToken).workSessionId).toBe(first);
+  });
+  it('não inclui identificador de retenção em produção mesmo com flag incorreta',async()=>{
+    const {issue}=setup({VERSION_RETENTION_DEV:'true',DATABASE_URL:'mysql://test@localhost/u296746636_gestaopredios',WEB_BASE_URL:'https://orcaproinfra.com.br'});
+    const session=await issue();expect(new JwtService({secret:'test'}).verify(session.accessToken).workSessionId).toBeUndefined();
+    expect(session.refreshToken).not.toMatch(/^v\d+\.s[a-f0-9]{32}\./);
+  });
   it.each(['ORCAPRO_ADMIN_USER_IDS','INFRA_ADMIN_USER_IDS'])('administrador %s pode manter sessões', async key => {
     const {issue,tx}=setup({[key]:'u'});await issue();await issue();expect(tx.tenantMembership.updateMany).not.toHaveBeenCalled();
   });

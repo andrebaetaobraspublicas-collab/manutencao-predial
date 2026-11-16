@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LoadingPanel } from '@/components/loading';
+import { ContractManagementLink } from '@/components/contract-management-link';
 import { apiFetch, ApiError } from '@/lib/api';
 import { endSession } from '@/lib/end-session';
 import { ORCAPRO_ONLY, PRODUCT_DOMAIN } from '@/lib/product-config';
+import { productionProgram, productionPrograms, type ProductionProgram } from '@/lib/program-navigation';
 import type { CurrentSession } from '@/lib/types';
 import styles from './programas.module.css';
 
@@ -39,11 +41,33 @@ export default function ProgramsPage() {
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
+  const [production, setProduction] = useState<ProductionProgram | null>(null);
+  const [domain, setDomain] = useState(PRODUCT_DOMAIN);
 
   useEffect(() => {
     let active = true;
 
     async function loadPrograms() {
+      const currentProduct = productionProgram(window.location.hostname);
+      if (active) { setProduction(currentProduct); setDomain(window.location.hostname); }
+      if (currentProduct) {
+        try {
+          // Consult only the API of the current product. Other subscriptions are
+          // checked by their own login flow, without sharing cross-domain tokens.
+          const localAccess = await apiFetch<OrcaProAccess>(currentProduct === 'GESTAO' ? '/contract-management/access' : currentProduct === 'INFRA' ? '/infraestrutura/access' : '/orcapro/access').catch(cause => {
+            if (!(cause instanceof ApiError) || cause.status !== 403) throw cause;
+            return null;
+          });
+          const current = await apiFetch<CurrentSession>('/auth/me');
+          if (active) { setSession(current); setAvailability({enabled: !!localAccess?.enabled, admin: localAccess?.role === 'ADMIN', message: ''}); setError(''); setLoading(false); }
+        } catch (cause) {
+          if (!active) return;
+          if (cause instanceof ApiError && cause.status === 401) { router.replace('/login?next=/programas'); return; }
+          setError('Não foi possível validar sua sessão. Verifique a conexão e tente novamente.');
+          setLoading(false);
+        }
+        return;
+      }
       let access: Availability;
       try {
         // This protected route uses apiFetch's existing refresh-and-retry behavior.
@@ -128,12 +152,12 @@ export default function ProgramsPage() {
   }
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page}${production ? ` ${styles.production}` : ''}`}>
       <div className={styles.container}>
         <header className={styles.header}>
           <div>
-            <span className={styles.eyebrow}>{PRODUCT_DOMAIN}</span>
-            <h1>{ORCAPRO_ONLY ? 'Acessar OrçaPro' : 'Escolha seu programa'}</h1>
+            <span className={styles.eyebrow}>{domain}</span>
+            <h1>{!production && ORCAPRO_ONLY ? 'Acessar OrçaPro' : 'Escolha seu programa'}</h1>
             <p>{session.user.name} · {session.tenant.name}</p>
           </div>
           <button className="btn btn-ghost" type="button" disabled={signingOut} onClick={() => void logout()}>
@@ -144,6 +168,14 @@ export default function ProgramsPage() {
         {error ? <p className="notice error" role="alert">{error}</p> : null}
 
         <section className={styles.programs} aria-label="Programas da sua organização">
+          {production ? productionPrograms.map(program => <article key={program.id} className={styles.card}>
+            <Image src="/orcapro-brand/logo.png" alt={program.title} width={180} height={39} className={styles.appLogo} />
+            <h2>{program.title}</h2>
+            <p>{program.description}</p>
+            <span className={styles.status}>{program.id === 'GESTAO' ? 'Assinatura adicional, exclusiva para assinantes ativos do OrçaPro ou do Infra.' : program.id === production ? 'Programa desta sessão. O acesso segue sua assinatura.' : 'Entre com sua conta e confira sua assinatura neste programa.'}</span>
+            <a className="btn btn-primary" href={program.href}>Acessar {program.title} <ArrowRight size={16} /></a>
+            {program.id === production && availability.admin && program.id !== 'GESTAO' && <a className="auth-link" href={program.id === 'INFRA' ? '/orcapro-infraestrutura/administracao/' : '/orcapro/administracao/'}>{program.id === 'INFRA' ? 'Administração do Infraestrutura' : 'Gestão do SaaS'}</a>}
+          </article>) : <>
           {!ORCAPRO_ONLY ? <article className={styles.card}>
             <span className={styles.icon}><Building2 size={28} /></span>
             <h2>Gestão de Prédios</h2>
@@ -182,9 +214,10 @@ export default function ProgramsPage() {
             {infraAvailability.enabled ? <Link className="btn btn-primary" href="/orcapro-infraestrutura">Acessar OrçaPro Infraestrutura <ArrowRight size={16} /></Link> : <button className="btn btn-primary" type="button" disabled>Indisponível para esta conta</button>}
             {infraAvailability.admin ? <Link className="auth-link" href="/orcapro-infraestrutura/administracao">Administração do Infraestrutura</Link> : null}
           </article> : null}
+          <ContractManagementLink cardClassName={styles.card} logoClassName={styles.appLogo} statusClassName={styles.status} />
+          </>}
         </section>
-
-        <p className={styles.footer}>{ORCAPRO_ONLY ? 'Sair encerra sua sessão e retorna ao site do OrçaPro.' : 'A troca de programa mantém sua conta e sua organização. Sair encerra a sessão compartilhada.'}</p>
+        <p className={styles.footer}>{production ? 'Cada programa tem seu próprio ambiente e sua própria sessão. Se solicitado, entre novamente com sua conta. Sair encerra a sessão deste programa.' : ORCAPRO_ONLY ? 'Sair encerra sua sessão e retorna ao site do OrçaPro.' : 'A troca de programa mantém sua conta e sua organização. Sair encerra a sessão compartilhada.'}</p>
       </div>
     </main>
   );

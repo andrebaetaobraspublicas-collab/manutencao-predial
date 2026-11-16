@@ -194,6 +194,22 @@ async function afterModules(O) {
   const A = O.app, UI = O.ui, U = O.util, M = O.main, N = O.register;
   state.ready = true; O.infra = state;
   state.request = request;
+  state.transferegovContext = () => {
+    if(!state.ready||state.saving||state.conflict||state.error||edits.size||O.register.editor?.dirty||O.risks?.dirty||JSON.stringify(projectData(O))!==state.lastSaved)throw new Error('Salve as alterações e resolva os conflitos antes de exportar a versão do orçamento.');
+    return {projectId:state.project.id,version:state.project.version,sourceData:clone(state.project.data)};
+  };
+  state.transferegovReceipt = async (dto,kind='BM') => {
+    const previous=state.access,fresh=await request('/infraestrutura/access');
+    if(!fresh.enabled||fresh.userId!==previous.userId||fresh.tenantId!==previous.tenantId)throw new Error('O acesso ou a conta mudou. Reabra o programa antes de exportar.');
+    state.access=fresh;
+    return request(`/infraestrutura/projects/${state.project.id}/transferegov/${kind==='PLE'?'ple':'bm'}/receipt`,{method:'POST',body:JSON.stringify(dto)});
+  };
+  state.transferegovCompatibleCopy = async dto => {
+    const previous=state.access,fresh=await request('/infraestrutura/access');
+    if(!fresh.enabled||fresh.userId!==previous.userId||fresh.tenantId!==previous.tenantId)throw new Error('O acesso ou a conta mudou. Reabra o programa antes de criar a cópia.');
+    state.access=fresh;
+    return request(`/infraestrutura/projects/${state.project.id}/transferegov/compatible-copy`,{method:'POST',body:JSON.stringify(dto)});
+  };
   const checkEditors = () => {
     if (O.risks?.busy) throw new Error('Aguarde a conclusão da simulação de riscos antes de sair desta tela.');
     if (O.risks?.dirty) throw new Error('Salve ou descarte as alterações da análise de riscos antes de sair desta tela.');
@@ -234,6 +250,7 @@ async function afterModules(O) {
     try { await originalBoot(); } finally { initializing = false; }
     if (key && A.base?._costCache?.size) {
       await local('derived', key, { tables: [...A.base._costCache], transport: A.base._tsig,
+        inputPrices: A.base._inputPriceSignature || '',
         fic: A.base._fsig || '', pem: A.base._psig || '', count: A.base.nComp, at: Date.now() }).catch(() => {});
       await pruneDerived();
     }
@@ -250,11 +267,12 @@ async function afterModules(O) {
   };
   N.makeBase = (...args) => {
     const base = originalMakeBase(...args);
+    if (A.pj) O.inputPrices?.bind(base, A.pj);
     if (initializing && derived?.count === base.nComp && Array.isArray(derived.tables)) {
       base.setTransport((O.fit && O.fit.effective(A.pj)) || A.pj.dmt || null);
       base.setPem('', null);
       if (O.fic) { const fic = O.fic.overrides(A.pj, base); base.setFic(fic ? fic.sig : '', fic ? fic.arr : null); }
-      if (derived.transport === base._tsig && derived.fic === (base._fsig || '') && derived.pem === (base._psig || '') &&
+      if (derived.inputPrices === (base._inputPriceSignature || '') && derived.transport === base._tsig && derived.fic === (base._fsig || '') && derived.pem === (base._psig || '') &&
         derived.tables.every(([key, table]) => typeof key === 'string' && table.cost?.length === base.nComp && table.as?.length === base.nComp && table.detail?.length === base.nComp)) {
         base._costCache = new Map(derived.tables); state.derivedRestored = true;
       }
@@ -335,6 +353,16 @@ async function afterModules(O) {
     await navigate('/orcapro-infraestrutura/editor?id=' + encodeURIComponent(created.id), true);
   };
   installReferences(O, checkEditors);
+  const render = UI.render;
+  let lastAuditScreen = '';
+  UI.render = (...args) => {
+    const result = render(...args), screen = String(A.view || '');
+    if (/^[a-z][a-z0-9-]{0,49}$/.test(screen) && screen !== lastAuditScreen) {
+      lastAuditScreen = screen;
+      void request('/infraestrutura/activity/navigation', { method: 'POST', body: JSON.stringify({ screen, projectId: state.project.id }) }).catch(() => undefined);
+    }
+    return result;
+  };
   window.addEventListener('beforeunload', event => { if (state.saving || state.error || state.conflict || edits.size || JSON.stringify(projectData(O)) !== state.lastSaved) { event.preventDefault(); event.returnValue = ''; } });
 }
 const config = window.ORCAPRO_INFRA_CONFIG = { prepare, loadSnapshot: snapshot, loadPem: pem, installAdapter, afterModules };
@@ -395,7 +423,11 @@ function installReferences(O, checkEditors) {
   const selected = () => consulting() ? consultation.cycle || current() : current();
   const bases = new Map();
   const ownKey = () => JSON.stringify([A.inputs || [], A.customs || []]);
-  const makeConsultationBase = (raw, cycle) => consultationPricing(O.register.makeBase(clone(raw), cycle.id, A.inputs || [], A.customs || [], []));
+  const makeConsultationBase = (raw, cycle) => {
+    const base = O.register.makeBase(clone(raw), cycle.id, A.inputs || [], A.customs || [], []);
+    O.inputPrices?.bind(base, { ...A.pj, uf: cycle.uf, inputPriceOverrides: [] });
+    return consultationPricing(base);
+  };
   let frame = null, selectionRun = 0, budgetSource = false;
   const withBudget = fn => {
     if (!frame) return fn();
@@ -418,6 +450,7 @@ function installReferences(O, checkEditors) {
     const contextKey = JSON.stringify([A.pj.iva, A.pj.calendar, A.pj.bdi, A.pj.rg]);
     if (!consultation.project || consultation.contextKey !== contextKey) {
       consultation.project = clone(A.pj); consultation.contextKey = contextKey;
+      consultation.project.inputPriceOverrides = [];
     }
     consultation.project.uf = cycle.uf; consultation.project.rg = consultation.regime || A.pj.rg;
     frame = { base: A.base, pj: A.pj };
@@ -593,6 +626,18 @@ function installReferences(O, checkEditors) {
   if (!O.drawer) return;
   const renderDrawer = O.drawer.render;
   const consultationDrawer = () => consulting() && A.drawer && !A.drawer.fromBudgetId && !A.drawer.ivaItemId;
+  // Async diagnostics retain their captured reference without keeping global
+  // budget state swapped across an await. Filters/exports use the same scope.
+  const drawerScope = fn => consultationDrawer() ? withConsultation(fn) : withBudget(fn);
+  if (O.basic) {
+    O.basic.context = () => drawerScope(() => ({ base: A.base, pj: A.pj }));
+    const refresh = O.basic.refresh;
+    O.basic.refresh = (...args) => drawerScope(() => refresh(...args));
+    for (const name of ['basicCSV', 'basicPaths']) {
+      const action = UI.act[name];
+      if (action) UI.act[name] = (...args) => drawerScope(() => action(...args));
+    }
+  }
   O.drawer.render = () => {
     if (consultationDrawer()) withConsultation(() => renderDrawer()); else withBudget(() => renderDrawer());
     const tabs = document.getElementById('drawer')?.querySelector('.tabs');

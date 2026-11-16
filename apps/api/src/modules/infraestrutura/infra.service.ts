@@ -1,3 +1,4 @@
+import { historySelectSql, effectiveDocument, annotateHistory, versionRetentionEnabled, historySql, historyValues, supersedeHistorySql, supersedeHistoryValues } from '../../common/version-retention';
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { validateInputPriceOverrides } from '../../common/project-input-prices';
@@ -60,9 +61,14 @@ export class InfraService {
     const ufs = Array.isArray(validation?.ufs) ? validation.ufs : [cycle.uf];
     if (uf !== cycle.uf || ufs.length !== 1 || ufs[0] !== cycle.uf) throw new BadRequestException('Cada fotografia SICRO representa uma única UF. Importe o ciclo da UF desejada e compare a migração do orçamento para mudar o estado.');
   }
-  private async history(db: InfraSql, user: AuthenticatedUser, row: ProjectRow) {
+  private async history(db: InfraSql, user: AuthenticatedUser, row: ProjectRow, protectedVersion = false) {
     const copy = { ...this.shape(row), bdi: row.bdi };
     await db.query('INSERT INTO InfraProjectVersion(project_id,version,gz_blob,created_by) VALUES(?,?,?,?)',[row.id,row.version,gzipSync(Buffer.from(json(copy,21 * 1024 * 1024))),user.userId]);
+    if (versionRetentionEnabled(this.config)) {
+      await db.query(historySql, historyValues(user, row.id, row.version, protectedVersion));
+      await db.query(supersedeHistorySql, supersedeHistoryValues(user, row.id, row.version));
+      return;
+    }
     const retention = Math.max(10,Math.min(500,Number(this.config.get<string>('INFRA_PROJECT_VERSION_RETENTION') ?? 100)));
     await db.query('DELETE FROM InfraProjectVersion WHERE project_id=? AND version < ?',[row.id,Math.max(1,row.version - retention + 1)]);
   }
@@ -102,6 +108,23 @@ export class InfraService {
     return { items: rows.map(row => this.shape(row,false)) };
   }
   async project(user: AuthenticatedUser, id: string) { return this.shape(await this.owned(this.db as unknown as InfraSql,user,id)); }
+  async contractSnapshot(user:AuthenticatedUser,id:string){
+    await this.assertContractSourceAccess(user);
+    const project=await this.owned(this.db as unknown as InfraSql,user,id);
+    const snapshots=await this.db.query<any[]>('SELECT gz_blob FROM InfraCycleSnapshot WHERE cycle_id=?',[project.cycle_id]);
+    if(!snapshots[0])throw new NotFoundException('Base SICRO da versão não disponível.');
+    const pemRows=await this.db.query<any[]>('SELECT gz_blob FROM InfraPemSnapshot WHERE cycle_id=?',[project.cycle_id]);
+    const raw=JSON.parse(gunzipSync(snapshots[0].gz_blob,{maxOutputLength:40*1024*1024}).toString('utf8'));
+    const pem=pemRows[0]?JSON.parse(gunzipSync(pemRows[0].gz_blob,{maxOutputLength:20*1024*1024}).toString('utf8')):undefined;
+    const result=await new Promise<any>((resolve,reject)=>{const worker=new Worker(join(__dirname,'assets','contract-worker.cjs'),{workerData:{raw,pem,project:parsed(project.data),cycleId:project.cycle_id},resourceLimits:{maxOldGenerationSizeMb:256}});let done=false;const finish=(error?:Error,value?:any)=>{if(done)return;done=true;clearTimeout(timer);void worker.terminate();error?reject(error):resolve(value);};const timer=setTimeout(()=>finish(new BadRequestException('Cálculo SICRO excedeu 35 segundos.')),35000);worker.once('message',m=>m?.ok?finish(undefined,m.result):finish(new BadRequestException('Falha no cálculo SICRO.')));worker.once('error',()=>finish(new BadRequestException('Falha no processo de cálculo SICRO.')));worker.once('exit',()=>{if(!done)finish(new BadRequestException('Cálculo SICRO interrompido.'));});});
+    const current=await this.owned(this.db as unknown as InfraSql,user,id);if(current.version!==project.version)throw new ConflictException('Orçamento mudou durante a captura.');
+    return {project:this.shape(project),calculation:result};
+  }
+  private async assertContractSourceAccess(user:AuthenticatedUser){
+    const rows=await this.db.query<any[]>('SELECT status,deleted_at FROM InfraUser WHERE external_user_id=? AND tenant_id=? LIMIT 1',[user.userId,user.tenantId]);
+    if(rows[0]?.deleted_at||rows[0]?.status==='BLOCKED'||(!this.access.configuredAdmin(user.userId)&&rows[0]?.status!=='ACTIVE'))throw new NotFoundException('Origem Infra não autorizada.');
+  }
+  async contractSources(user:AuthenticatedUser){await this.assertContractSourceAccess(user);return this.projects(user);}
   async recordBmExport(user:AuthenticatedUser,id:string,dto:BmExportReceiptDto) {
     assertTransferegovEnvironment(this.config.get<string>('WEB_BASE_URL'));
     const project=await this.owned(this.db as unknown as InfraSql,user,id);
@@ -177,10 +200,11 @@ export class InfraService {
     if (historicalCycle && historicalCycle.id !== cycleId) throw new ConflictException('Contexto histórico da referência divergente.');
     this.assertCycleUf(historicalCycle ?? await this.cycle(db,user,cycleId,true),uf);
     const document = this.document(body.data,row.id,name,uf,regime);
+    if(versionRetentionEnabled(this.config) && action==='project.save' && name===row.name && uf===row.uf && regime===row.regime && cycleId===row.cycle_id && effectiveDocument(parsed(document.data))===effectiveDocument(parsed(row.data))) return this.shape(row);
     const result = await db.query('UPDATE InfraProject SET name=?,uf=?,regime=?,bdi=?,data=?,cycle_id=?,version=version+1 WHERE id=? AND tenant_id=? AND user_id=? AND version=? AND deleted_at IS NULL',[name,uf,regime,document.bdi,document.data,cycleId,row.id,user.tenantId,user.userId,row.version]) as any;
     if (Number(result.affectedRows) !== 1) throw new ConflictException('Projeto alterado por outra operação.');
     const saved = await this.owned(db,user,row.id);
-    await this.history(db,user,saved);
+    await this.history(db,user,saved, effectiveDocument(parsed(row.data)?.risks ?? null) !== effectiveDocument(parsed(saved.data)?.risks ?? null));
     const previousDocument = parsed(row.data), nextDocument = parsed(document.data);
     const previousPrices = previousDocument?.inputPriceOverrides ?? [];
     const nextPrices = nextDocument?.inputPriceOverrides ?? [];
@@ -221,7 +245,10 @@ export class InfraService {
   }
   async versions(user: AuthenticatedUser, id: string) {
     await this.owned(this.db as unknown as InfraSql,user,id);
-    return { items: await this.db.query('SELECT version,created_at AS createdAt FROM InfraProjectVersion WHERE project_id=? ORDER BY version DESC',[id]) };
+    const items = await this.db.query<any[]>('SELECT version,created_at AS createdAt FROM InfraProjectVersion WHERE project_id=? ORDER BY version DESC',[id]);
+    if(!versionRetentionEnabled(this.config)) return {items};
+    const metadata = await this.db.query<any[]>(historySelectSql,[id,user.tenantId]);
+    return {items: annotateHistory(items, metadata)};
   }
   async restoreVersion(user: AuthenticatedUser, id: string, version: string, input: unknown) {
     const body = fields(input,['version']); const target = integer(/^\d+$/.test(version) ? Number(version) : version,'Versão histórica',1,2147483647);
@@ -315,7 +342,9 @@ export class InfraService {
     return { code,revision: revision + 1,deleted: true };
   }
   async settings(user: AuthenticatedUser) {
-    const rows = await this.db.query<any[]>('SELECT name,data FROM InfraSetting WHERE tenant_id=? AND user_id=?',[user.tenantId,user.userId]);
+    // Return JSON text explicitly: the driver otherwise decodes scalar strings
+    // (e.g. "light") before parsed(), which would decode them a second time.
+    const rows = await this.db.query<any[]>('SELECT name,CAST(data AS CHAR) AS data FROM InfraSetting WHERE tenant_id=? AND user_id=?',[user.tenantId,user.userId]);
     return Object.fromEntries(rows.map(row => [row.name,parsed(row.data)]));
   }
   async setting(user: AuthenticatedUser, input: unknown) {
@@ -543,7 +572,7 @@ export class InfraService {
       yield '],"ownRecords":[';
       yield* collection('SELECT kind,code,data,revision,deleted_at,updated_at FROM InfraOwnRecord WHERE user_id=? AND tenant_id=? ORDER BY kind,code',[user.userId,user.tenantId],row => ({ ...row,data: parsed(row.data) }));
       yield '],"settings":[';
-      yield* collection('SELECT name,data,updated_at FROM InfraSetting WHERE user_id=? AND tenant_id=? ORDER BY name',[user.userId,user.tenantId],row => ({ ...row,data: parsed(row.data) }));
+      yield* collection('SELECT name,CAST(data AS CHAR) AS data,updated_at FROM InfraSetting WHERE user_id=? AND tenant_id=? ORDER BY name',[user.userId,user.tenantId],row => ({ ...row,data: parsed(row.data) }));
       yield '],"audit":[';
       yield* collection('SELECT id,action,entity,entity_id,payload,created_at FROM InfraAudit WHERE user_id=? AND tenant_id=? ORDER BY created_at,id',[user.userId,user.tenantId],row => ({ ...row,payload: parsed(row.payload) }));
       yield ']}';

@@ -26,6 +26,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { OrcaproLoginDto } from './dto/orcapro-account.dto';
 import { OrcaproPublicGuard } from '../../common/guards/orcapro-public.guard';
 import { sessionCookieOptions, writeSessionCookies } from './session-cookies';
+import { GestaoLoginGuard } from './gestao-login.guard';
 
 @ApiTags('Autenticação')
 @Controller('auth')
@@ -72,6 +73,17 @@ export class AuthController {
     this.writeCookies(response, session);
     const { tenant } = await this.auth.me(session.user);
     return { user: session.user, tenant, role: session.user.role };
+  }
+
+  @Public()
+  @HttpCode(200)
+  @UseGuards(GestaoLoginGuard)
+  @Post('gestao/login')
+  @ApiOperation({ summary: 'Autentica a identidade da Gestão Contratual no desenvolvimento, sem conceder acesso aos demais produtos.' })
+  async loginGestao(@Body() dto: OrcaproLoginDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    const session = await this.auth.loginGestao(dto, request);
+    this.writeCookies(response, session);
+    return { user: session.user };
   }
 
   @Public()

@@ -89,7 +89,7 @@ test('Exportação LGPD renova sessão se expira depois do bootstrap e respeita 
 test('Administração abre contexto solicitado, aliases SICRO e padrão seguro', async () => {
   const source = fs.readFileSync(path.join(root, '../app/orcapro-infraestrutura/administracao/page.tsx'), 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
-  for (const [query, expected] of [['?tab=cycles', 'catalog'], ['?tab=catalog', 'catalog'], ['?tab=policies', 'policies'], ['?tab=audit', 'audit'], ['?tab=invalid', 'users'], ['', 'users']]) {
+  for (const [query, expected] of [['?tab=cycles', 'catalog'], ['?tab=catalog', 'catalog'], ['?tab=policies', 'policies'], ['?tab=audit', 'audit'], ['?tab=bulletins', 'bulletins'], ['?tab=invalid', 'users'], ['', 'users']]) {
     const states = [], effects = [];
     const react = { useCallback: fn => fn, useEffect: fn => effects.push(fn), useState: initial => { const index = states.length; states.push(typeof initial === 'function' ? initial() : initial); return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; } };
     const imports = {
@@ -98,6 +98,7 @@ test('Administração abre contexto solicitado, aliases SICRO e padrão seguro',
       '@/lib/infra-api': { infraAccess: async () => ({ enabled: true, role: 'ADMIN', userId: 'fixture-user' }), infraItems: value => value.items,
         infraApi: async route => route === '/admin/stats' ? { users: [], projects: { total: 0 }, cycles: [] } : { items: [] } },
       '@/lib/infra-import': {}, '../infra-shell': () => {}, '../../orcapro/workspace.module.css': {}, '../../orcapro/administracao/audit-panel': () => {},
+      '../../orcapro/administracao/system-bulletins-panel': { __esModule: true, default: () => null, useBulletinAvailability: () => true },
     };
     const context = vm.createContext({ URLSearchParams, window: { location: { search: query }, addEventListener: () => {}, removeEventListener: () => {} } });
     const module = { exports: {} }, fn = vm.runInContext('(function(module,exports,require){' + code + '\n})', context, { timeout: 10000 });

@@ -1,6 +1,8 @@
 # Estado consolidado dos programas — 15/11/2026
 
-Este documento é o ponto de entrada para a rodada encerrada em 15/11/2026. Registra implementação e verificações realizadas; não substitui homologação de todos os cenários possíveis. A publicação desta documentação não implanta código.
+> Atualização de 16/11: foi identificada publicação automática nativa da Hostinger após o merge de documentação, com regressão e posterior recuperação da interface de desenvolvimento. Consulte o [registro do incidente](48-incidente-interface-dev-20261116.md) antes de sincronizar ou publicar.
+
+Este documento é o ponto de entrada para a rodada encerrada em 15/11/2026. Registra implementação e verificações realizadas; não substitui homologação de todos os cenários possíveis. Uma alteração documental não autoriza implantação, mas seu push pode acionar integrações externas; conferir os gatilhos antes de sincronizar.
 
 ## Produtos e ambientes
 

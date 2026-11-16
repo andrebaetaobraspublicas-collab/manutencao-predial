@@ -1,5 +1,7 @@
 # Revisão e sincronização sem implantação — 15/11/2026
 
+> Correção apurada em 16/11: a integração Git nativa da Hostinger publicou automaticamente o frontend de desenvolvimento após o merge, apesar de o workflow do GitHub estar desativado. Portanto, a afirmação abaixo de ausência de alteração na Hostinger não se confirmou para essa interface. Consulte o [incidente e recuperação](48-incidente-interface-dev-20261116.md).
+
 O PR #84 foi incorporado à main após aprovação da CI. Antes do merge, o workflow `promote-hostinger-runtime.yml` foi desativado no GitHub: seu gatilho workflow_run publicava automaticamente o desenvolvimento após CI de push na main. Deve permanecer desativado até autorização explícita de implantação. Não foram alterados hosts, configurações, dados ou serviços na Hostinger.
 
 A branch de revisão reúne Gestão Contratual, integração de identidade e produtos, retenção de versões, correções de consulta/captura Infra, revisão de referência SINAPI, interface e testes locais pendentes. O código é versionado para revisão, não promovido automaticamente para os runtimes.

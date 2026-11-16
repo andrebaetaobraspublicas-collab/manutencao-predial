@@ -12,7 +12,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ACCESS_COOKIE } from './auth.constants';
 import type { JwtPayload } from './jwt-payload.type';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user';
-import { hasOrcaproAccount } from './product-session';
+import { canUseIndependentIdentity } from './product-session';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -49,11 +49,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       },
     });
 
-    if (!membership || (membership.tenant.status === 'CANCELED' && !(await hasOrcaproAccount(membership.userId, this.prisma, this.config)))) {
+    if (!membership || (membership.tenant.status === 'CANCELED' && !(await canUseIndependentIdentity(membership.userId, this.prisma, this.config)))) {
       throw new UnauthorizedException('Acesso suspenso, expirado ou inválido.');
     }
 
     return {
+      workSessionId: payload.workSessionId,
       userId: membership.user.id,
       membershipId: membership.id,
       tenantId: membership.tenant.id,

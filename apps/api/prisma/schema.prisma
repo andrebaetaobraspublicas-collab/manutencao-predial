@@ -2994,3 +2994,42 @@ model OrcaproStripeEvent {
   processedAt DateTime?
   createdAt   DateTime  @default(now())
 }
+
+// Administrative communications are independent from maintenance work orders.
+model SystemBulletin {
+  id String @id @default(uuid()) @db.Char(36)
+  tenantId String @db.Char(36)
+  actorUserId String @db.Char(36)
+  actorName String @db.VarChar(160)
+  subject String @db.VarChar(180)
+  body String @db.Text
+  products Json
+  accountStatus String @db.VarChar(16)
+  audienceHash String @db.Char(64)
+  recipientCount Int
+  status String @default("DRAFT") @db.VarChar(16)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  confirmedAt DateTime? @db.DateTime(3)
+  completedAt DateTime? @db.DateTime(3)
+  lastTestAt DateTime? @db.DateTime(3)
+  deliveries SystemBulletinDelivery[]
+  @@index([tenantId, createdAt])
+  @@index([status, createdAt])
+}
+model SystemBulletinDelivery {
+  id String @id @default(uuid()) @db.Char(36)
+  bulletinId String @db.Char(36)
+  userId String @db.Char(36)
+  emailHash String @db.Char(64)
+  status String @default("PENDING") @db.VarChar(16)
+  attempts Int @default(0)
+  availableAt DateTime @default(now()) @db.DateTime(3)
+  leaseUntil DateTime? @db.DateTime(3)
+  processedAt DateTime? @db.DateTime(3)
+  providerMessageId String? @db.VarChar(190)
+  errorCode String? @db.VarChar(50)
+  bulletin SystemBulletin @relation(fields: [bulletinId], references: [id], onDelete: Restrict)
+  @@unique([bulletinId, userId])
+  @@unique([bulletinId, emailHash])
+  @@index([status, availableAt])
+}

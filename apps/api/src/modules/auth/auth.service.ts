@@ -1,3 +1,4 @@
+import { versionRetentionEnabled } from '../../common/version-retention';
 import {
   BadRequestException,
   ConflictException,
@@ -7,6 +8,8 @@ import {
   UnauthorizedException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
+import { InfraDatabase } from '../infraestrutura/infra-db';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
@@ -33,8 +36,10 @@ import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { OperationsService } from '../operations/operations.service';
-import { hasOrcaproAccount } from './product-session';
+import { hasOrcaproAccount, canUseIndependentIdentity } from './product-session';
 import { OrcaproLoginDto, RegisterOrcaproDto } from './dto/orcapro-account.dto';
+import { developmentHost } from '../contract-management/contract-db';
+import { contractEnvironment } from '../contract-management/contract-environment';
 
 export type IssuedSession = {
   accessToken: string;
@@ -51,6 +56,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly mail: MailService,
     private readonly operations: OperationsService,
+    private readonly modules?: ModuleRef,
   ) {}
 
   async acceptInvitation(dto: AcceptInvitationDto) {
@@ -159,6 +165,9 @@ export class AuthService {
   }
 
   async changePassword(user: AuthenticatedUser, dto: ChangePasswordDto): Promise<void> {
+    if (Buffer.byteLength(dto.newPassword, 'utf8') > 72) {
+      throw new BadRequestException('A nova senha deve ocupar até 72 bytes. Acentos e símbolos podem ocupar mais de um byte.');
+    }
     const account = await this.prisma.user.findUnique({ where: { id: user.userId } });
     if (!account || !(await compare(dto.currentPassword, account.passwordHash))) {
       throw new UnauthorizedException('A senha atual está incorreta.');
@@ -170,6 +179,10 @@ export class AuthService {
     const now = new Date();
     await this.prisma.$transaction([
       this.prisma.user.update({ where: { id: user.userId }, data: { passwordHash } }),
+      this.prisma.accountToken.updateMany({
+        where: { userId: user.userId, purpose: AccountTokenPurpose.PASSWORD_RESET, consumedAt: null },
+        data: { consumedAt: now },
+      }),
       this.prisma.refreshSession.updateMany({
         where: { userId: user.userId, revokedAt: null },
         data: { revokedAt: now },
@@ -477,6 +490,18 @@ export class AuthService {
     return this.issueSession(user, membership, membership.tenant, request);
   }
 
+  async loginGestao(dto: OrcaproLoginDto, request: Request): Promise<IssuedSession> {
+    if (!contractEnvironment(this.config)) throw new ServiceUnavailableException('Gestão Contratual indisponível neste ambiente.');
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email.trim().toLowerCase() }, include: { orcaproSubscription: { select: { tenantId: true } } } });
+    if (!user || user.status !== 'ACTIVE' || user.deletedAt || !(await compare(dto.password, user.passwordHash))) throw new UnauthorizedException('Credenciais inválidas ou acesso suspenso.');
+    // Authenticate the existing identity; each product still enforces its own entitlement.
+    // Keep the budget licence's tenant when one exists; no new membership is granted.
+    const membership = await this.prisma.tenantMembership.findFirst({ where: { userId: user.id, ...(user.orcaproSubscription ? { tenantId: user.orcaproSubscription.tenantId } : {}), status: 'ACTIVE', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }], tenant: { deletedAt: null, status: { in: ['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELED'] } } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], include: { tenant: true } });
+    if (!membership) throw new UnauthorizedException('Credenciais inválidas ou acesso suspenso.');
+    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    return this.issueSession(user, membership, membership.tenant, request);
+  }
+
   async login(dto: LoginDto, request: Request): Promise<IssuedSession> {
     const membership = await this.prisma.tenantMembership.findFirst({
       where: {
@@ -540,22 +565,30 @@ export class AuthService {
     ) {
       throw new UnauthorizedException('Sessão inválida ou expirada.');
     }
-    if (session.membership.tenant.status === 'CANCELED' && !(await hasOrcaproAccount(session.userId, this.prisma, this.config))) throw new UnauthorizedException('A organização não possui acesso contratado.');
+    if (session.membership.tenant.status === 'CANCELED' && !(await canUseIndependentIdentity(session.userId, this.prisma, this.config))) throw new UnauthorizedException('A organização não possui acesso contratado.');
 
-    const revoked = await this.prisma.refreshSession.updateMany({
-      where: { id: session.id, revokedAt: null, expiresAt: { gt: now } },
-      data: { revokedAt: now },
-    });
-    if (revoked.count !== 1) {
-      throw new UnauthorizedException('Sessão já utilizada ou revogada.');
-    }
 
     return this.issueSession(
       session.user,
       session.membership,
       session.membership.tenant,
       request,
+      { id: session.id, token: rawRefreshToken },
     );
+  }
+
+  async sessionStatus(rawRefreshToken?: string) {
+    if (!this.singleSessionEnabled()) return { enforced: false };
+    if (!rawRefreshToken) return { enforced: true, active: false };
+    const now = new Date();
+    const session = await this.prisma.refreshSession.findFirst({
+      where: {
+        tokenHash: this.hashRefreshToken(rawRefreshToken), revokedAt: null, expiresAt: { gt: now },
+        user: { status: UserStatus.ACTIVE, deletedAt: null },
+        membership: { status: MembershipStatus.ACTIVE, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }], tenant: { deletedAt: null, status: { in: [TenantStatus.TRIAL, TenantStatus.ACTIVE, TenantStatus.PAST_DUE, TenantStatus.CANCELED] } } },
+      }, select: { id: true },
+    });
+    return { enforced: true, active: !!session };
   }
 
   async logout(rawRefreshToken?: string): Promise<void> {
@@ -603,11 +636,31 @@ export class AuthService {
     membership: { id: string; tenantId: string; role: MembershipRole; sessionVersion: number; maintenanceAccess?: boolean },
     tenant: { id: string; slug: string; status?: TenantStatus },
     request: Request,
+    refresh?: { id: string; token: string },
   ): Promise<IssuedSession> {
+    const restricted = this.singleSessionEnabled() && !(await this.concurrentAdmin(user.id, tenant.id));
+    return this.prisma.$transaction(async tx => {
+      // Serialize logins and refreshes for this identity, including across tenants.
+      await tx.$queryRaw`SELECT id FROM User WHERE id = ${user.id} FOR UPDATE`;
+      const current = await tx.tenantMembership.findUniqueOrThrow({ where: { id: membership.id } });
+      if (refresh) {
+        const generation = /^v(\d+)\./.exec(refresh.token);
+        if (restricted && Number(generation?.[1] ?? 0) !== current.sessionVersion) {
+          throw new UnauthorizedException('Sua sessão foi encerrada por um novo login. Entre novamente.');
+        }
+        const consumed = await tx.refreshSession.updateMany({ where: { id: refresh.id, revokedAt: null, expiresAt: { gt: new Date() } }, data: { revokedAt: new Date() } });
+        if (consumed.count !== 1) throw new UnauthorizedException('Sessão encerrada ou já utilizada.');
+      } else if (restricted) {
+        await tx.tenantMembership.updateMany({ where: { userId: user.id }, data: { sessionVersion: { increment: 1 } } });
+        await tx.refreshSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+        current.sessionVersion++;
+      }
+    const workSessionId = versionRetentionEnabled(this.config) ? (refresh?.token.match(/^v\d+\.s([a-f0-9]{32})\./)?.[1] ?? randomBytes(16).toString('hex')) : undefined;
     const payload: JwtPayload = {
+      ...(workSessionId ? { workSessionId } : {}),
       sub: user.id,
       membershipId: membership.id,
-      sessionVersion: membership.sessionVersion,
+      sessionVersion: current.sessionVersion,
       tenantId: tenant.id,
       tenantSlug: tenant.slug,
       role: membership.role,
@@ -616,11 +669,11 @@ export class AuthService {
     };
 
     const accessToken = await this.jwt.signAsync(payload);
-    const refreshToken = randomBytes(48).toString('base64url');
+    const refreshToken = `v${current.sessionVersion}.${workSessionId ? `s${workSessionId}.` : ''}${randomBytes(48).toString('base64url')}`;
     const ttlDays = Number(this.config.get('REFRESH_TOKEN_TTL_DAYS') ?? 30);
     const refreshExpiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
 
-    await this.prisma.refreshSession.create({
+    await tx.refreshSession.create({
       data: {
         userId: user.id,
         membershipId: membership.id,
@@ -646,6 +699,24 @@ export class AuthService {
         maintenanceAccess: membership.maintenanceAccess !== false && tenant.status !== 'CANCELED',
       },
     };
+    });
+  }
+
+  private singleSessionEnabled(): boolean {
+    return this.config.get<string>('AUTH_SINGLE_SESSION') === 'true' &&
+      ['https://www.gestaodepredios.com.br', 'https://gestaodepredios.com.br', 'https://sistema.orcaproobras.com.br', 'https://orcaproinfra.com.br', 'https://www.orcaproinfra.com.br'].includes(this.config.get<string>('WEB_BASE_URL')?.replace(/\/$/, '') ?? '');
+  }
+
+  private async concurrentAdmin(userId: string, tenantId: string): Promise<boolean> {
+    for (const key of ['ORCAPRO_ADMIN_USER_IDS', 'INFRA_ADMIN_USER_IDS']) {
+      if ((this.config.get<string>(key) ?? '').split(',').some(id => id.trim() === userId)) return true;
+    }
+    if (this.config.get<string>('INFRA_ENABLED') === 'true' && this.modules) {
+      const db = this.modules.get(InfraDatabase, { strict: false });
+      const rows = await db.query<Array<{role: string}>>("SELECT role FROM InfraUser WHERE external_user_id=? AND tenant_id=? AND status='ACTIVE' AND deleted_at IS NULL LIMIT 1", [userId, tenantId]);
+      if (rows[0]?.role === 'ADMIN') return true;
+    }
+    return false;
   }
 
   private hashRefreshToken(token: string): string {

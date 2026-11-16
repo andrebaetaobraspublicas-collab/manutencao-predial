@@ -43,6 +43,10 @@ export function assertBmDevelopment(webBase: string | undefined) {
   try { const u=new URL(webBase??'');if(['https:','http:'].includes(u.protocol)&&['gestaodepredios.com.br','www.gestaodepredios.com.br','localhost','127.0.0.1','[::1]'].includes(u.hostname)&&!u.username&&!u.password&&u.pathname==='/')return; } catch { /* Fail closed on a missing or malformed environment. */ }
   throw new NotFoundException('Exportação TransfereGov disponível somente no desenvolvimento.');
 }
+export function assertTransferegovEnvironment(webBase: string | undefined) {
+  if(webBase==='https://sistema.orcaproobras.com.br'||webBase==='https://orcaproinfra.com.br')return;
+  assertBmDevelopment(webBase);
+}
 export function pleReceipt(project:{version:number;data:unknown},dto:PleExportReceiptDto) {
   return {...bmReceipt(project,dto),format:'TransfereGov PLE',layoutVersion:'transferegov-ple-2026.1',events:dto.events,completions:dto.completions};
 }

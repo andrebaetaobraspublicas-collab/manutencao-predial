@@ -26,6 +26,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { OrcaproLoginDto } from './dto/orcapro-account.dto';
 import { OrcaproPublicGuard } from '../../common/guards/orcapro-public.guard';
 import { sessionCookieOptions, writeSessionCookies } from './session-cookies';
+import { GestaoLoginGuard } from './gestao-login.guard';
 
 @ApiTags('Autenticação')
 @Controller('auth')
@@ -76,6 +77,17 @@ export class AuthController {
 
   @Public()
   @HttpCode(200)
+  @UseGuards(GestaoLoginGuard)
+  @Post('gestao/login')
+  @ApiOperation({ summary: 'Autentica a identidade da Gestão Contratual no desenvolvimento, sem conceder acesso aos demais produtos.' })
+  async loginGestao(@Body() dto: OrcaproLoginDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    const session = await this.auth.loginGestao(dto, request);
+    this.writeCookies(response, session);
+    return { user: session.user };
+  }
+
+  @Public()
+  @HttpCode(200)
   @Post('refresh')
   async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const session = await this.auth.refresh(request.cookies?.[REFRESH_COOKIE], request);
@@ -90,6 +102,14 @@ export class AuthController {
     await this.auth.logout(request.cookies?.[REFRESH_COOKIE]);
     response.clearCookie(ACCESS_COOKIE, this.baseCookieOptions());
     response.clearCookie(REFRESH_COOKIE, this.baseCookieOptions());
+  }
+
+  @Public()
+  @Get('session-status')
+  @ApiOperation({ summary: 'Verifica sessão no desenvolvimento sem renovar tokens nem revelar dados da conta.' })
+  async sessionStatus(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    response.setHeader('Cache-Control', 'no-store');
+    return this.auth.sessionStatus(request.cookies?.[REFRESH_COOKIE]);
   }
 
   @Get('me')

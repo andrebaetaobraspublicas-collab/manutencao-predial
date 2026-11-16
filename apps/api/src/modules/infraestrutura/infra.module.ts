@@ -12,5 +12,5 @@ import { InfraSharedLoginInterceptor } from './infra-shared-login.interceptor';
 import { InfraAuditService } from './infra-audit.service';
 import { InfraAuditInterceptor } from './infra-audit.interceptor';
 
-@Module({ imports: [AuthModule],controllers: [InfraController,InfraLoginController,InfraHealthController],providers: [InfraDatabase,InfraAccess,InfraGuard,InfraService,InfraLoginSecurity,InfraAuditService,{ provide: APP_INTERCEPTOR,useClass: InfraAuditInterceptor },{ provide: APP_INTERCEPTOR,useClass: InfraSharedLoginInterceptor }],exports: [InfraDatabase] })
+@Module({ imports: [AuthModule],controllers: [InfraController,InfraLoginController,InfraHealthController],providers: [InfraDatabase,InfraAccess,InfraGuard,InfraService,InfraLoginSecurity,InfraAuditService,{ provide: APP_INTERCEPTOR,useClass: InfraAuditInterceptor },{ provide: APP_INTERCEPTOR,useClass: InfraSharedLoginInterceptor }],exports: [InfraDatabase,InfraService] })
 export class InfraModule {}

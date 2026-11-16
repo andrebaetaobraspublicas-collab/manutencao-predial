@@ -1,0 +1,6 @@
+.signup { background: #eceeef; color: #15232e; }
+.signup :global(.login-visual) { background: #15232e; color: #fff; }
+.signup :global(.btn-primary) { background: #3457ff; color: #fff; border-color: #3457ff; }
+.signup :global(.btn-primary:hover) { background: #2447e8; }
+.signup :global(.signup-plan-summary) { background: #eef2ff; border-color: #cad4ee; }
+.signup :global(.input:focus), .signup :global(.select:focus) { border-color: #3457ff; }

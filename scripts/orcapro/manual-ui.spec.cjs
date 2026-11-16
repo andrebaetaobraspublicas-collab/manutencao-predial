@@ -119,8 +119,8 @@ test('release manifest pins manual content/UI/styles with normalized checksums',
   assert.equal(manifest.manualVersion, content.version);
   const html=fs.readFileSync(root+'/apps/web/public/orcapro-legacy/editor.html','utf8'),marker='window.ORCAPRO_MANUAL=',start=html.indexOf(marker),end=html.indexOf(';</script>',start);
   assert.ok(start>0&&end>start);const embedded=JSON.parse(html.slice(start+marker.length,end));
-  const development=['api.gestaodepredios.com.br','gestaodepredios.com.br','www.gestaodepredios.com.br','localhost','127.0.0.1','[::1]'].includes(new URL(manifest.apiBase).hostname);
-  assert.equal(embedded.chapters.some(c=>c.id==='transferegov-bm'),development,'development API must retain the guide; commercial APIs must omit it');
+  const supported=['api.orcaproobras.com.br','api.orcaproinfra.com.br','api.gestaodepredios.com.br','gestaodepredios.com.br','www.gestaodepredios.com.br','localhost','127.0.0.1','[::1]'].includes(new URL(manifest.apiBase).hostname);
+  assert.equal(embedded.chapters.some(c=>c.id==='transferegov-bm'),supported,'approved development and commercial APIs must retain the TransfereGov guide');
   for (const [name, prop] of [['manual-content.json', 'manualContentSha256'], ['manual-ui.js', 'manualUiSha256'], ['manual-ui.css', 'manualCssSha256']]) {
     const source = fs.readFileSync(__dirname + '/' + name, 'utf8').replaceAll('\r\n', '\n');
     assert.equal(manifest[prop], crypto.createHash('sha256').update(source).digest('hex'));
@@ -128,7 +128,7 @@ test('release manifest pins manual content/UI/styles with normalized checksums',
 });
 
  test('TransfereGov development guide is shared, searchable, navigable and complete in the offline manual',()=>{
-  const guide=JSON.parse(fs.readFileSync(root+'/scripts/shared/transferegov-bm-manual.json','utf8'));assert.equal(guide.developmentOnly,true);assert.deepEqual(content.chapters.find(c=>c.id===guide.id),guide);
+  const guide=JSON.parse(fs.readFileSync(root+'/scripts/shared/transferegov-bm-manual.json','utf8'));assert.equal(guide.developmentOnly,false);assert.deepEqual(content.chapters.find(c=>c.id===guide.id),guide);
   const {OP,downloads}=setup(),before=JSON.stringify(OP.app.pj);OP.ui.inp.manualSearch({value:'TransfereGov'});OP.ui.act.manualChapter({dataset:{id:guide.id}});const html=OP.ui.views.manual.render();
   for(const value of ['Planilha de Levantamento de Eventos','Preparar prévia temporária','Preservar ajustes manuais','Variação causada pela distribuição','0,34 m³','Checklist antes de concluir','Resolver os problemas mais comuns','mandatarias.transferegov.sistema.gov.br'])assert.ok(html.includes(value),value);
   assert.ok(html.includes('<table>'));OP.ui.act.manualExport();assert.ok(downloads[0].text.includes('Checklist antes de concluir'));assert.equal(JSON.stringify(OP.app.pj),before);

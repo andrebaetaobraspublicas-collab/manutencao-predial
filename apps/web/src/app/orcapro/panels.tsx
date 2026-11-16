@@ -6,7 +6,7 @@ import styles from './workspace.module.css';
 
 type Reference = { id: string; label: string; status: string };
 type Project = { id: string; name: string; version: number };
-type Version = { version: number; name: string; referenceId: string; uf: string; regime: string; createdAt: string };
+type Version = { retentionState?: string; recoveryUntil?: string | null; version: number; name: string; referenceId: string; uf: string; regime: string; createdAt: string };
 const errorText = (cause: unknown) => cause instanceof Error ? cause.message : 'Não foi possível concluir a operação.';
 const record = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Documento de projeto inválido.');
@@ -37,6 +37,7 @@ export function ProjectImport({ references, defaultReferenceId, onImported }: { 
 }
 
 export function ProjectHistory({ project, onClose, onChanged }: { project: Project; onClose: () => void; onChanged: () => Promise<void> }) {
+  const [showRecovery, setShowRecovery] = useState(false);
   const [versions, setVersions] = useState<Version[]>([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
@@ -62,7 +63,7 @@ export function ProjectHistory({ project, onClose, onChanged }: { project: Proje
     try { await apiDownload(`/orcapro/projects/${project.id}/export`, `${project.name.replace(/[\\/:*?"<>|]/g, '_')}.orcapro.json`); }
     catch (cause) { setError(errorText(cause)); }
   }
-  return <div className={styles.overlay} onClick={onClose}><section className={styles.drawer} role="dialog" aria-modal="true" aria-label="Versões do orçamento" onKeyDown={e => { if (e.key === 'Escape') onClose(); }} onClick={e => e.stopPropagation()}><header><h2>{project.name}</h2><button autoFocus onClick={onClose}>Fechar</button></header><p className={styles.muted}>Restaurar cria uma nova versão com o conteúdo e a referência do histórico selecionado.</p>{error ? <p className={styles.error} role="alert">{error}</p> : null}<div className={styles.tablewrap} aria-busy={busy}><table><thead><tr><th>Versão</th><th>Salva em</th><th>UF / regime</th><th /></tr></thead><tbody>{versions.map(v => <tr key={v.version}><td>{v.version}</td><td>{new Date(v.createdAt).toLocaleString('pt-BR')}</td><td>{v.uf} / {v.regime}</td><td><button disabled={busy || v.version === project.version} onClick={() => restore(v.version)}>Restaurar versão</button></td></tr>)}</tbody></table></div><p className={styles.actions}><button onClick={download}>Exportar projeto JSON</button><button disabled={busy} onClick={() => setArchiveConfirm(true)}>Arquivar orçamento</button></p>{archiveConfirm ? <div className={styles.panel}><p>Arquivar retira o orçamento da lista de ativos. Você poderá recuperá-lo em “Ver arquivados”.</p><button disabled={busy} onClick={archive}>Arquivar este orçamento</button> <button onClick={() => setArchiveConfirm(false)}>Cancelar</button></div> : null}</section></div>;
+  return <div className={styles.overlay} onClick={onClose}><section className={styles.drawer} role="dialog" aria-modal="true" aria-label="Versões do orçamento" onKeyDown={e => { if (e.key === 'Escape') onClose(); }} onClick={e => e.stopPropagation()}><header><h2>{project.name}</h2><button autoFocus onClick={onClose}>Fechar</button></header><p className={styles.muted}>Restaurar cria uma nova versão com o conteúdo e a referência do histórico selecionado.</p>{versions.some(v => v.retentionState === 'RECOVERY') ? <label><input type="checkbox" checked={showRecovery} onChange={e => setShowRecovery(e.target.checked)} /> Mostrar salvamentos intermediários recuperáveis por 24 horas</label> : null}{error ? <p className={styles.error} role="alert">{error}</p> : null}<div className={styles.tablewrap} aria-busy={busy}><table><thead><tr><th>Versão</th><th>Salva em</th><th>UF / regime</th><th /></tr></thead><tbody>{versions.filter(v => showRecovery || v.retentionState !== 'RECOVERY').map(v => <tr key={v.version}><td>{v.version}</td><td>{new Date(v.createdAt).toLocaleString('pt-BR')}{v.retentionState === 'RECOVERY' ? <small><br />Recuperável{v.recoveryUntil ? ` até ${new Date(v.recoveryUntil).toLocaleString('pt-BR')}` : ' por 24 horas'}</small> : null}</td><td>{v.uf} / {v.regime}</td><td><button disabled={busy || v.version === project.version} onClick={() => restore(v.version)}>Restaurar versão</button></td></tr>)}</tbody></table></div><p className={styles.actions}><button onClick={download}>Exportar projeto JSON</button><button disabled={busy} onClick={() => setArchiveConfirm(true)}>Arquivar orçamento</button></p>{archiveConfirm ? <div className={styles.panel}><p>Arquivar retira o orçamento da lista de ativos. Você poderá recuperá-lo em “Ver arquivados”.</p><button disabled={busy} onClick={archive}>Arquivar este orçamento</button> <button onClick={() => setArchiveConfirm(false)}>Cancelar</button></div> : null}</section></div>;
 }
 
 export { ReferenceImport } from './sinapi-import-panel';

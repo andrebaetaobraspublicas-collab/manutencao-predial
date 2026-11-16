@@ -1,6 +1,8 @@
 # Estado consolidado dos programas — 15/11/2026
 
-Este documento é o ponto de entrada para a rodada encerrada em 15/11/2026. Registra implementação e verificações realizadas; não substitui homologação de todos os cenários possíveis. A publicação desta documentação não implanta código.
+> Atualização de 16/11: foi identificada publicação automática nativa da Hostinger após o merge de documentação, com regressão e posterior recuperação da interface de desenvolvimento. Consulte o [registro do incidente](48-incidente-interface-dev-20261116.md) antes de sincronizar ou publicar.
+
+Este documento é o ponto de entrada para a rodada encerrada em 15/11/2026. Registra implementação e verificações realizadas; não substitui homologação de todos os cenários possíveis. Uma alteração documental não autoriza implantação, mas seu push pode acionar integrações externas; conferir os gatilhos antes de sincronizar.
 
 ## Produtos e ambientes
 
@@ -47,3 +49,5 @@ Backups, dumps, credenciais, arquivos de configuração reais, anexos de cliente
 ## Estado do repositório
 
 Esta consolidação versiona documentação. Há código local da rodada ainda não versionado; portanto, a documentação de entregas em execução não constitui garantia de que o GitHub reproduz integralmente os runtimes publicados. O versionamento do código e a reconciliação de artefatos exigem uma entrega separada, com revisão e testes próprios. Nenhum código pendente foi incluído silenciosamente neste fechamento documental.
+
+Atualização de versionamento: consulte a [revisão de código sem implantação](47-revisao-codigo-sem-implantacao-20261115.md). O código pendente está sendo consolidado em branch própria, sem promoção aos ambientes.

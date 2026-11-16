@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-export const metadata={icons:{icon:'/orcapro-brand/icon.svg?v=20261006-dev1'}};
-export default function InfraLayout({children}:{children:ReactNode}) {
+import { INFRA_PRODUCTION } from './branding';
+
+export const metadata: Metadata = {
+  icons: { icon: '/orcapro-brand/icon.svg?v=20261006-dev1' },
+  ...(INFRA_PRODUCTION ? { title: { absolute: 'OrçaPro Infraestrutura' } } : {}),
+};
+
+export default function InfraLayout({ children }: { children: ReactNode }) {
   return <div className="orcapro-brand-scope orcapro-infra-brand">{children}</div>;
 }

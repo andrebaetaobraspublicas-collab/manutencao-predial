@@ -1,5 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { contractEnvironment } from '../contract-management/contract-environment';
+
+/** Identity is separate from maintenance billing; product guards still authorize data. */
+export async function canUseIndependentIdentity(userId: string, prisma: PrismaService, config: ConfigService): Promise<boolean> {
+  if (contractEnvironment(config)) return true;
+  return hasOrcaproAccount(userId, prisma, config);
+}
 
 // Tenant CANCELED is the maintenance billing state. An existing OrçaPro
 // customer can still authenticate to that separately contracted product.

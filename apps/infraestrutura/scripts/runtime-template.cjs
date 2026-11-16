@@ -34,8 +34,8 @@ function validateRaw(raw){
 
 function calculateProject(raw,project,options={}){
  const ctx=runtime(raw,project,options);
- vm.runInContext(`(() => { const m=OP.ui.model(),tax=OP.iva.budget(m);globalThis.__calculated={totals:m.tot,workDays:m.T,start:m.start,end:m.end,iva:{year:tax.year,...tax.total},
-   items:m.items.map(row=>({id:row.id,code:row.node.code,description:row.desc,unit:row.unit,quantity:row.qty,unitCostCents:row.unitCost,directCents:row.direct,priceCents:row.price})),project:OP.app.pj};
+ vm.runInContext(`(() => { const m=OP.ui.model(),tax=OP.iva.budget(m);globalThis.__calculated={totals:m.tot,workDays:m.T,start:OP.util.iso(m.start),end:OP.util.iso(m.end),iva:{year:tax.year,...tax.total},
+   items:m.items.map(row=>({id:row.id,code:row.node.code,description:row.desc,unit:row.unit,quantity:row.qty,unitCostCents:row.unitCost,directCents:row.direct,priceCents:row.total,start:OP.util.iso(row.start),end:OP.util.iso(row.end),days:row.days,TF:row.TF,critical:row.crit,productivity:{hours:row.prod?.Dh,durationHours:row.prod?.Dt,teams:row.prod?.m,rows:row.prod?.rows||[]}})),planning:{start:m.start,end:m.end,workDays:m.T},scurve:{...OP.res.scurve(m,OP.res.buckets(m,'month'),true),monetaryUnit:'CENT'},project:OP.app.pj};
  })()`,ctx,{filename:'calculate-project.js',timeout:30000});
  return clone(ctx.__calculated);
 }

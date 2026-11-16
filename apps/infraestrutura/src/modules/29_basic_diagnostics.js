@@ -11,6 +11,7 @@
 
   // Reutiliza a DFS iterativa da ABC. Uma composição = um serviço sintético com Q=1.
   const B=OP.basic={version:'1.4'};
+  B.context=()=>({base:A.base,pj:A.pj});
   let basicBase=null, basicCustom=null, basicCache=new Map();
   B.unitModel=(base,pj,code)=>{
     code=canon(code);const comp=base.comp(code),cost=base.compCost(code,pj.uf,pj.rg);
@@ -21,13 +22,17 @@
   const basicKey=code=>String(code)+'|'+A.pj.uf+'|'+A.pj.rg;
   function ensureBasicCache(){if(basicBase!==A.base||basicCustom!==A.base.custom){basicBase=A.base;basicCustom=A.base.custom;basicCache=new Map();}}
   function startBasic(c,st,key){
-    const base=A.base,customMap=A.base.custom,uf=A.pj.uf,rg=A.pj.rg,job={key,base,customMap};
+    const base=A.base,customMap=A.base.custom,pj={...A.pj},job={key,base,customMap};
     st.basicJob=job;
     setTimeout(async()=>{
-      const cancelled=()=>A.drawer!==st||st.basicJob!==job||basicKey(c.code)!==key||A.base!==base||A.base.custom!==customMap;
+      const cancelled=()=>{
+        if(A.drawer!==st||st.basicJob!==job||st.tab!=='basic')return true;
+        const context=B.context();
+        return context.base!==base||context.base.custom!==customMap||context.pj.uf!==pj.uf||context.pj.rg!==pj.rg;
+      };
       try{
         if(cancelled())return;
-        const model=B.unitModel(base,{...A.pj,uf,rg},c.code);
+        const model=B.unitModel(base,pj,c.code);
         const result=await ABC.computeAsync(model,null,cancelled);
         if(!result||cancelled())return;
         if(basicCache.size>64)basicCache.delete(basicCache.keys().next().value);

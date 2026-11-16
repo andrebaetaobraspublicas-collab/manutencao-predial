@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import nextEnv from '@next/env';
+import { assertInfraBuildProfile } from '../../../scripts/shared/infra-build-profile.mjs';
 
 const appRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const platformRoot=path.resolve(appRoot,'../..');
@@ -13,6 +14,7 @@ const require=createRequire(import.meta.url);
 nextEnv.loadEnvConfig(path.join(platformRoot,'apps/web'));
 nextEnv.updateInitialEnv({...process.env});
 nextEnv.loadEnvConfig(platformRoot,undefined,console,true);
+assertInfraBuildProfile(process.env);
 if (process.env.NEXT_PUBLIC_ORCAPRO_ONLY === 'true') {
   console.log('Infraestrutura não é incorporado ao ambiente comercial OrçaPro.');
   process.exit(0);

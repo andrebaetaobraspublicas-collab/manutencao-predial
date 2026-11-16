@@ -21,23 +21,30 @@ const product = resolveProductConfig({
 
 export const ORCAPRO_ONLY = product.orcaproOnly;
 export const MARKETING_URL = product.marketingUrl;
-export const PRODUCT_NAME = ORCAPRO_ONLY ? 'OrçaPro' : 'Gestão de Prédios';
-export const PRODUCT_DOMAIN = ORCAPRO_ONLY ? 'orcaproobras.com.br' : 'gestaodepredios.com.br';
+export const GESTAO_ONLY = process.env.NEXT_PUBLIC_GESTAO_ONLY === 'true';
+export const PRODUCT_NAME = GESTAO_ONLY ? 'OrçaPro Gestão Contratual' : ORCAPRO_ONLY ? 'OrçaPro' : 'Gestão de Prédios';
+export const PRODUCT_DOMAIN = GESTAO_ONLY ? 'orcaprogestaocontratual.com.br' : ORCAPRO_ONLY ? 'orcaproobras.com.br' : 'gestaodepredios.com.br';
 
-export type LoginDestination = '/dashboard' | '/orcapro' | '/orcapro-infraestrutura' | '/programas';
+export const isContractDevelopmentHost = (hostname: string) => ['gestaodepredios.com.br', 'www.gestaodepredios.com.br', 'localhost', '127.0.0.1'].includes(hostname);
 
-export function loginDestination(value: string | null, orcaproOnly = ORCAPRO_ONLY): LoginDestination {
+export const isContractHost = (hostname: string) => isContractDevelopmentHost(hostname) || (GESTAO_ONLY && ['orcaprogestaocontratual.com.br','www.orcaprogestaocontratual.com.br'].includes(hostname));
+
+export type LoginDestination = '/dashboard' | '/orcapro' | '/orcapro-infraestrutura' | '/programas' | '/gestao-contratual';
+
+export function loginDestination(value: string | null, orcaproOnly = ORCAPRO_ONLY, contractDevelopment = false): LoginDestination {
+  if (GESTAO_ONLY) return '/gestao-contratual';
   if (orcaproOnly) return '/orcapro';
+  if (value === '/gestao-contratual' && contractDevelopment) return value;
   return value === '/orcapro' || value === '/programas' || value === '/orcapro-infraestrutura' ? value : '/dashboard';
 }
 
-export function loginConfiguration(destination: LoginDestination, orcaproOnly = ORCAPRO_ONLY) {
-  const target = loginDestination(destination, orcaproOnly);
-  const requiresOrganization = target !== '/orcapro' && target !== '/orcapro-infraestrutura';
+export function loginConfiguration(destination: LoginDestination, orcaproOnly = ORCAPRO_ONLY, contractDevelopment = false) {
+  const target = loginDestination(destination, orcaproOnly, contractDevelopment);
+  const requiresOrganization = target !== '/orcapro' && target !== '/orcapro-infraestrutura' && target !== '/gestao-contratual';
   return {
     destination: target,
     requiresOrganization,
-    endpoint: target === '/orcapro-infraestrutura' ? '/infraestrutura/auth/login' : requiresOrganization ? '/auth/login' : '/auth/orcapro/login',
+    endpoint: target === '/gestao-contratual' ? '/auth/gestao/login' : target === '/orcapro-infraestrutura' ? '/infraestrutura/auth/login' : requiresOrganization ? '/auth/login' : '/auth/orcapro/login',
   };
 }
 

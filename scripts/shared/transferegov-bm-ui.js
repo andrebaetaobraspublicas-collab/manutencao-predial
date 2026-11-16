@@ -10,7 +10,7 @@
     const input=(key,value,extra='')=>`<input data-ch="tgField" data-key="${esc(key)}" value="${esc(value)}" ${extra}>`;
     const options=(values,selected)=>values.map(([v,label])=>`<option value="${esc(v)}" ${String(v)===String(selected)?'selected':''}>${esc(label)}</option>`).join('');
     const select=(key,values,selected)=>`<select data-ch="tgField" data-key="${esc(key)}">${options(values,selected)}</select>`;
-    const info=()=>`<p class="notice">${kind} em desenvolvimento: o arquivo é gerado conforme o perfil selecionado. A aceitação no importador TransfereGov ainda precisa de homologação. Não é envio automático.</p>`;
+    const info=()=>`<p class="notice">${kind}: o arquivo é gerado conforme o perfil selecionado. A aceitação no importador TransfereGov ainda precisa de homologação. Não é envio automático.</p>`;
     function capture(){
       const context=cloud().transferegovContext(),m=A.model;
       if(!m)throw Error('Abra Orçamento e aguarde o cálculo e o salvamento antes de exportar. O assistente não recalcula nem grava o projeto.');

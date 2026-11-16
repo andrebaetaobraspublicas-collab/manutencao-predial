@@ -626,6 +626,18 @@ function installReferences(O, checkEditors) {
   if (!O.drawer) return;
   const renderDrawer = O.drawer.render;
   const consultationDrawer = () => consulting() && A.drawer && !A.drawer.fromBudgetId && !A.drawer.ivaItemId;
+  // Async diagnostics retain their captured reference without keeping global
+  // budget state swapped across an await. Filters/exports use the same scope.
+  const drawerScope = fn => consultationDrawer() ? withConsultation(fn) : withBudget(fn);
+  if (O.basic) {
+    O.basic.context = () => drawerScope(() => ({ base: A.base, pj: A.pj }));
+    const refresh = O.basic.refresh;
+    O.basic.refresh = (...args) => drawerScope(() => refresh(...args));
+    for (const name of ['basicCSV', 'basicPaths']) {
+      const action = UI.act[name];
+      if (action) UI.act[name] = (...args) => drawerScope(() => action(...args));
+    }
+  }
   O.drawer.render = () => {
     if (consultationDrawer()) withConsultation(() => renderDrawer()); else withBudget(() => renderDrawer());
     const tabs = document.getElementById('drawer')?.querySelector('.tabs');

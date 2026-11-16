@@ -7,7 +7,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
-import { authenticatedLoginDestination, exitDestination, loginConfiguration, loginDestination, resolveProductConfig, stripeDestination } from '../../apps/web/src/lib/product-config.ts';
+import { authenticatedLoginDestination, exitDestination, isContractDevelopmentHost, loginConfiguration, loginDestination, resolveProductConfig, stripeDestination } from '../../apps/web/src/lib/product-config.ts';
 import { stripeSubscriptionConfirmed } from '../../apps/web/src/lib/stripe-status.ts';
 
 test('checkout confirmation requires a current effective Stripe period, without treating a manual grant as online payment', () => {
@@ -30,6 +30,15 @@ test('development preserves existing program destinations and local logout even 
   assert.equal(loginDestination('/programas', false), '/programas');
   assert.equal(loginDestination('/orcapro', false), '/orcapro');
   assert.equal(loginDestination('/dashboard', false), '/dashboard');
+});
+
+test('contract management login stays development-only and never inherits OrçaPro subscription routing', () => {
+  for (const host of ['gestaodepredios.com.br', 'www.gestaodepredios.com.br', 'localhost', '127.0.0.1']) assert.equal(isContractDevelopmentHost(host), true);
+  for (const host of ['sistema.orcaproobras.com.br', 'orcaproinfra.com.br', 'gestaodepredios.com.br.example.com']) assert.equal(isContractDevelopmentHost(host), false);
+  assert.deepEqual(loginConfiguration('/gestao-contratual', false, true), {destination:'/gestao-contratual',requiresOrganization:false,endpoint:'/auth/gestao/login'});
+  assert.equal(loginDestination('/gestao-contratual', false, false), '/dashboard');
+  assert.equal(loginDestination('/gestao-contratual', true, true), '/orcapro');
+  assert.equal(authenticatedLoginDestination('/gestao-contratual', {maintenanceAccess:false,orcaproEnabled:false}), '/gestao-contratual');
 });
 
 test('development OrçaPro login uses email authentication while maintenance and general selection require an organization', () => {
@@ -66,12 +75,13 @@ test('OrçaPro login can resume an unpaid checkout without being sent to the oth
   assert.equal(authenticatedLoginDestination('/programas', { maintenanceAccess: false }), '/programas');
 });
 
-function renderLogin(orcaproOnly, next) {
+function renderLogin(orcaproOnly, next, clientHost = null) {
   const source = readFileSync(fileURLToPath(new URL('../../apps/web/src/app/login/page.tsx', import.meta.url)), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const runtimeRequire = createRequire(import.meta.url);
   const module = { exports: {} };
   const require = path => {
+    if (path === 'react' && clientHost) return {...React,useSyncExternalStore:(_subscribe,getSnapshot)=>getSnapshot()};
     if (path === 'next/navigation') return { useRouter: () => ({ replace() {}, refresh() {} }), useSearchParams: () => ({ get: () => next }) };
     if (path === 'next/link') return { __esModule: true, default: props => React.createElement('a', props) };
     if (path === '@/components/loading') return { LoadingPanel: () => null };
@@ -80,14 +90,17 @@ function renderLogin(orcaproOnly, next) {
       ORCAPRO_ONLY: orcaproOnly,
       PRODUCT_NAME: orcaproOnly ? 'OrçaPro' : 'Gestão de Prédios',
       PRODUCT_DOMAIN: orcaproOnly ? 'orcaproobras.com.br' : 'gestaodepredios.com.br',
-      loginDestination: value => loginDestination(value, orcaproOnly),
-      loginConfiguration: value => loginConfiguration(value, orcaproOnly),
+      isContractDevelopmentHost,
+      isContractHost: isContractDevelopmentHost,
+      GESTAO_ONLY: false,
+      loginDestination: (value,_only,development) => loginDestination(value, orcaproOnly,development),
+      loginConfiguration: (value,_only,development) => loginConfiguration(value, orcaproOnly,development),
       authenticatedLoginDestination,
       exitDestination: () => 'https://orcaproobras.com.br/',
     };
     return runtimeRequire(path);
   };
-  vm.runInNewContext(compiled, { module, exports: module.exports, require });
+  vm.runInNewContext(compiled, { module, exports: module.exports, require, window:{location:{hostname:clientHost}} });
   return renderToStaticMarkup(React.createElement(module.exports.default));
 }
 
@@ -107,6 +120,16 @@ test('development login renders the program selector and hides the organization 
   const production = renderLogin(true, '/programas');
   assert.doesNotMatch(production, /id="program"|id="tenantSlug"/);
   assert.match(production, /Entrar no OrçaPro/);
+});
+
+test('the client login selector contains Gestão Contratual only on the development host', () => {
+  const development=renderLogin(false,'/gestao-contratual','gestaodepredios.com.br');
+  assert.match(development,/value="\/gestao-contratual" selected="">OrçaPro Gestão Contratual/);
+  assert.match(development,/Entrar na Gestão Contratual/);
+  assert.doesNotMatch(development,/id="tenantSlug"|href="\/orcapro\/cadastro"/);
+  for(const host of ['sistema.orcaproobras.com.br','gestaodepredios.com.br.evil.example']){
+    assert.doesNotMatch(renderLogin(false,'/gestao-contratual',host),/value="\/gestao-contratual"/);
+  }
 });
 
 test('production exit goes to marketing and login cannot be redirected to another program or arbitrary URL', () => {

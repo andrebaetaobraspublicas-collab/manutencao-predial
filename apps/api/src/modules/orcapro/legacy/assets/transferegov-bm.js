@@ -48,7 +48,7 @@
   const signed = n => n<0n ? '-'+decimal(-n) : decimal(n);
   const money = cents => Number(cents)/100;
   const unit = text => ({'TKM':'TXKM','T.KM':'TXKM','DM³':'DM3','M²':'M2','M³':'M3','M³XKM':'M3XKM','T X KM':'TXKM','M2XMÊS':'M2XMES'})[String(text).trim().toUpperCase()] || String(text).trim().toUpperCase();
-  const enabled = host => ['gestaodepredios.com.br','www.gestaodepredios.com.br','localhost','127.0.0.1','[::1]'].includes(host);
+  const enabled = host => ['sistema.orcaproobras.com.br','orcaproinfra.com.br','gestaodepredios.com.br','www.gestaodepredios.com.br','localhost','127.0.0.1','[::1]'].includes(host);
   function validateConfiguration(snapshot,c){
     const record=x=>x&&typeof x==='object'&&!Array.isArray(x),str=(x,max)=>typeof x==='string'&&x.length<=max;
     if(!record(c)||c.version!==VERSION||!PROFILES[c.profile]||!str(c.submeta,100)||!Number.isInteger(Number(c.duration))||Number(c.duration)<1||Number(c.duration)>999)throw Error('Configuração BM inválida.');

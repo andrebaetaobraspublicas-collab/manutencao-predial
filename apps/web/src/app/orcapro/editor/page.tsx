@@ -57,7 +57,12 @@ export default function OrcaproEditorPage() {
   async function logout() {
     if (signingOut || status === 'saving') return;
     setSigningOut(true); setLogoutError('');
-    try { await endSession('/login?next=/orcapro'); }
+    try {
+      const frame=document.getElementById('orcapro-editor') as HTMLIFrameElement | null;
+      const editor=frame?.contentWindow as (Window & {OP?:{cloud?:{flush?:()=>Promise<unknown>}}}) | null;
+      if(editor?.OP?.cloud?.flush) await editor.OP.cloud.flush();
+      await endSession('/login?next=/orcapro');
+    }
     catch { setLogoutError('Não foi possível encerrar a sessão. Tente novamente.'); setSigningOut(false); }
   }
 

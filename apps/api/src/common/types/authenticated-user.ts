@@ -1,6 +1,7 @@
 import type { MembershipRole } from '../../generated/prisma/client';
 
 export type AuthenticatedUser = {
+  workSessionId?: string;
   userId: string;
   membershipId: string;
   tenantId: string;

@@ -15,6 +15,7 @@ describe('AuthService — segurança de senha', () => {
     const sessionUpdate = jest.fn().mockResolvedValue({ count: 2 });
     const auditCreate = jest.fn().mockResolvedValue({});
     const membershipUpdate = jest.fn().mockResolvedValue({ count: 1 });
+    const resetUpdate = jest.fn().mockResolvedValue({ count: 1 });
     const transaction = jest.fn().mockImplementation(async (operations: Array<Promise<unknown>>) =>
       Promise.all(operations),
     );
@@ -23,6 +24,7 @@ describe('AuthService — segurança de senha', () => {
       refreshSession: { updateMany: sessionUpdate },
       auditLog: { create: auditCreate },
       tenantMembership: { updateMany: membershipUpdate },
+      accountToken: { updateMany: resetUpdate },
       $transaction: transaction,
     } as unknown as PrismaService;
     const service = new AuthService(
@@ -46,6 +48,14 @@ describe('AuthService — segurança de senha', () => {
       data: { revokedAt: expect.any(Date) },
     });
     expect(transaction).toHaveBeenCalledTimes(1);
+    expect(resetUpdate).toHaveBeenCalledWith({where:{userId:'user-1',purpose:'PASSWORD_RESET',consumedAt:null},data:{consumedAt:expect.any(Date)}});
+  });
+
+  it('rejects a password over the bcrypt byte limit before changing identity', async () => {
+    const primary={user:{findUnique:jest.fn()}} as unknown as PrismaService;
+    const service=new AuthService(primary,new JwtService({secret:'test'}),new ConfigService(),{} as MailService,{} as OperationsService);
+    await expect(service.changePassword({userId:'u'} as any,{currentPassword:'test',newPassword:'🔒'.repeat(20)})).rejects.toBeInstanceOf(BadRequestException);
+    expect(primary.user.findUnique).not.toHaveBeenCalled();
   });
 
   it('rejeita token de redefinição inexistente sem alterar a conta', async () => {

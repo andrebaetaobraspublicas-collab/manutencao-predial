@@ -136,8 +136,9 @@
     {
       "file": "21_bdi_core.js",
       "originalSha256": "82c9ce1c7d9e8ff25747ed09f58756d0ea6589b047c5befd6d6ce14373a9273f",
-      "extractedSha256": "82c9ce1c7d9e8ff25747ed09f58756d0ea6589b047c5befd6d6ce14373a9273f",
-      "bytes": 102522
+      "extractedSha256": "69266597c286337e5890ea28894a04248462b2febe3c5df12208a1f61596423b",
+      "bytes": 102554,
+      "revision": "5f75e7c: documented fiscal scenario and BDI defaults; docs/tax-scenario-20261031.md"
     },
     {
       "file": "22_ui_bdi.js",
@@ -202,8 +203,9 @@
     {
       "file": "28_abc_ui.js",
       "originalSha256": "7e412fc555d5b8f0eba9869f76c29ee8caac13ab6f7f96ff3ced394f20e82e6d",
-      "extractedSha256": "7e412fc555d5b8f0eba9869f76c29ee8caac13ab6f7f96ff3ced394f20e82e6d",
-      "bytes": 540240
+      "extractedSha256": "ec8b1d0dc025efa7dfd677db4edb5d5f2da61f972f72b69eb3cd630eba4b1cb4",
+      "bytes": 521325,
+      "revision": "5f75e7c: fiscal scenario; b889806: SICRO self-tests and tax UI deduplication; docs/infra-fiscal-self-tests-20261031.md"
     },
     {
       "file": "29_basic_diagnostics.js",

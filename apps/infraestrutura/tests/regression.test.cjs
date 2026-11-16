@@ -20,10 +20,21 @@ test('Extração conserva todos os custos em cada regime',()=>{
 test('Rodovia conserva os 64 serviços, centavos e prazo de 172 dias úteis',()=>{
  assert.equal(NM.items.length,64);assert.equal(NM.T,172);
  assert.equal(NM.tot.direct,2964114491);assert.equal(NM.tot.price,3563786534);
- assert.deepEqual(clean(NM.tot),clean(OM.tot));
+ // Fiscal defaults evolved in 5f75e7c; they must not change budget prices.
+ const budgetTotals=({iva,...totals})=>totals;
+ assert.deepEqual(clean(budgetTotals(NM.tot)),clean(budgetTotals(OM.tot)));
  const values=m=>m.items.map(i=>({code:i.node.code,qty:i.qty,unitCost:i.unitCost,direct:i.direct,price:i.price}));
  assert.deepEqual(clean(values(NM)),clean(values(OM)));
  assert.equal(NM.T,OM.T);
+});
+
+test('Rodovia conserva também o IVA quando as premissas históricas são explícitas',()=>{
+ const ctx=H.loadExtracted();
+ // Version 8 marks these rates/fuel assumptions as an explicit scenario,
+ // rather than old defaults eligible for automatic scenario migration.
+ ctx.OP.app.pj.iva={...clean(original.OP.app.pj.iva),cfg:{...clean(original.OP.app.pj.iva.cfg),schemaVersion:8}};
+ ctx.OP.app.model=null;
+ assert.deepEqual(clean(ctx.OP.ui.model().tot),clean(OM.tot));
 });
 
 const suites=[['Administração Local','al',44],['Mobilização','mob',6],['Canteiro','can',39],['FIT','fit',9],['FIC','fic',7],['PEM','pem',3]];

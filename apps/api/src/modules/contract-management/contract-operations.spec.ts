@@ -1,5 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as XLSX from '@e965/xlsx';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { ContractAccess } from './contract-access';
 import { ContractFiles } from './contract-files';
 import { ContractImport, importDecimal, mapContractRows, mapMeasurementRows } from './contract-import';
@@ -61,7 +63,7 @@ describe('Contract operations authorization and import integrity',()=>{
  });
  it('locks tenant quota and refuses an oversized private blob before writing it',async()=>{
   const query=jest.fn(async(sql:string)=>sql.includes('SUM(size_bytes)')?[{used:100}]:[]),db:any={transaction:async(fn:any)=>fn({query})};
-  const files=new ContractFiles({get:(k:string)=>k==='GESTAO_STORAGE_ROOT'?'C:/Orçapro/platform/.runtime/contract-files-test':100} as any,db,{} as any);
+  const files=new ContractFiles({get:(k:string)=>k==='GESTAO_STORAGE_ROOT'?path.join(tmpdir(),'contract-files-test'):100} as any,db,{} as any);
   await expect(files.store(user,Buffer.from('x'),'pdf')).rejects.toBeInstanceOf(BadRequestException);
   expect(query.mock.calls.some(([sql])=>sql.endsWith('FOR UPDATE'))).toBe(true);
   expect(query.mock.calls.some(([sql])=>sql.startsWith('INSERT INTO GcBlob'))).toBe(false);

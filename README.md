@@ -1,3 +1,5 @@
+> Documentação atual: [estado consolidado dos programas — 15/11/2026](docs/46-estado-consolidado-programas-20261115.md).
+
 # Gestão de Prédios — v0.9.0
 
 Base inicial do SaaS hospedado no domínio `www.gestaodepredios.com.br`, com:
@@ -67,7 +69,7 @@ Antes do seed, defina `SEED_ADMIN_PASSWORD` no `.env` com pelo menos 12 caracter
 
 ```text
 Tenant: demonstracao
-E-mail: admin@gestaodepredios.com.br
+E-mail: <email-da-conta>
 Senha: valor configurado em SEED_ADMIN_PASSWORD
 ```
 

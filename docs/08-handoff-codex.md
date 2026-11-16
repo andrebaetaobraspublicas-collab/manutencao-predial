@@ -1,3 +1,5 @@
+> Atualização de 15/11/2026: consulte o [estado consolidado dos programas](46-estado-consolidado-programas-20261115.md). As seções anteriores conservam o histórico das entregas.
+
 # Continuidade do desenvolvimento no Codex
 
 ## 1. Objetivo

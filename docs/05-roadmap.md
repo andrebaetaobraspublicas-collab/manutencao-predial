@@ -1,3 +1,5 @@
+> Atualização de 15/11/2026: consulte o [estado consolidado dos programas](46-estado-consolidado-programas-20261115.md). As seções anteriores conservam o histórico das entregas.
+
 # Roadmap por versões
 
 O roadmap usa entregas verticais: cada versão deve acrescentar fluxo utilizável, testes e documentação, e não apenas tabelas ou menus.

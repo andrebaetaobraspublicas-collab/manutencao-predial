@@ -7,3 +7,9 @@ O commit `5f75e7c` alterou intencionalmente as premissas fiscais e de BDI, confo
 O inventário estava desatualizado para dois módulos: `21_bdi_core.js`, modificado em `5f75e7c`, e `28_abc_ui.js`, modificado no mesmo commit e em `b889806` (autotestes SICRO e deduplicação da interface tributária). Foram atualizados somente seus hashes extraídos e tamanhos, com indicação dos commits e documentos de origem. Os hashes originais e o HTML histórico permanecem preservados; a conferência de todos os módulos continua obrigatória.
 
 Nenhum código do motor ou aplicativo foi alterado nesta correção. A execução dos testes usa fixtures locais/CI, sem conexão aos bancos dos ambientes. Sincronização Git não autoriza publicação, migration ou reinício; promoção automática do GitHub permanece desativada e o frontend de desenvolvimento tem publicação Git nativa desligada.
+
+## Verificação
+
+Localmente passaram os 96 testes do Infra e os três testes compartilhados de premissas fiscais. Na [CI 43800271856](https://github.com/andrebaetaobraspublicas-collab/manutencao-predial/actions/runs/43800271856), commit `34d1966`, passaram segurança, lint, testes da API, verificações SICRO/Infra, integração de homologação, build e exportação estática. As duas falhas tratadas neste registro estão resolvidas.
+
+A última etapa do editor OrçaPro apresentou uma falha distinta: `scripts/orcapro/sanitize-derived-html.spec.mjs`, teste `generated editor scripts compile and bridge is outside report template literals`, recebeu `SyntaxError: Unexpected token '<'` em um fechamento `</script>` do trecho compilado. A CI completa permanece reprovada por essa pendência, que não foi ocultada nem resolvida por alteração nos valores ou hashes dos testes Infra.

@@ -1,4 +1,4 @@
-> Gestão Contratual em 21/11/2026: consulte o [estado publicado em desenvolvimento e produção e a divergência de código com o GitHub](53-gestao-contratual-publicado-20261121.md). Para os demais produtos, permanece a referência do [estado consolidado de 15/11/2026](46-estado-consolidado-programas-20261115.md). Os documentos anteriores conservam o histórico das entregas.
+> Gestão Contratual em 21/11/2026: consulte a [sincronização do código publicado, sem implantação](54-sincronizacao-gestao-producao-20261121.md) e o [estado funcional dos ambientes](53-gestao-contratual-publicado-20261121.md). Para os demais produtos, permanece a referência do [estado consolidado de 15/11/2026](46-estado-consolidado-programas-20261115.md). Os documentos anteriores conservam o histórico das entregas.
 
 # Documentação do Gestão de Prédios
 

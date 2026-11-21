@@ -1,5 +1,13 @@
 # Contrato inicial da API
 
+## Gestão Contratual — correções e preços publicados em 21/11/2026
+
+Extensões já publicadas em desenvolvimento e produção, sincronizadas conforme [registro 54](54-sincronizacao-gestao-producao-20261121.md). Sem mudança de schema ou dos endpoints dos orçamentadores.
+
+`POST /api/v1/contract-management/contracts` aceita opcionalmente `contractedPrices:[{itemId,price}]`, além de `referencePrices`. Quando fornecida, a lista deve identificar todos os itens, sem duplicação e com valores válidos não negativos. A ausência conserva compatibilidade com clientes anteriores. A fotografia de origem permanece preservada. Desconto linear é aplicado pela interface aos preços enviados, sem novo endpoint.
+
+As operações existentes `/contracts/:id/preview` e `/contracts/:id/actions` aceitam os tipos `revise-measurement`, `revise-record` e `delete-record`, com versão esperada e os controles de confirmação/idempotência já existentes. O payload identifica `measurementId` ou `recordId`, informa `revisionReason` e, para retificação, `replacement`. São exclusivas do proprietário, respeitam tenant e acrescentam ações ao diário. Não apagam registros anteriores nem pagamentos. Aprovação pelo próprio autor é permitida quando ele é proprietário; papéis dos demais usuários permanecem preservados. Consulte o registro 53 e o manual para efeitos sobre lançamentos vinculados.
+
 ## Conferência do novo usuário da Gestão Contratual — desenvolvimento, 14/11/2026
 
 `POST /auth/password/change` continua sendo a operação compartilhada de troca autenticada. A interface `Minha conta` da Gestão Contratual a utiliza, confirma a senha e o encerramento das sessões e mantém o retorno em `/login?next=/gestao-contratual`. O servidor invalida também tokens de recuperação anteriores na mesma transação da senha/sessões e rejeita senhas que excedam 72 bytes UTF-8, evitando truncamento pelo bcrypt.

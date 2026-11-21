@@ -43,3 +43,5 @@
 .tab{overflow-wrap:anywhere}
 @media(max-width:640px){.productLinks .switchProgram{display:inline-flex;max-width:70px;font-size:12px;line-height:1.15;text-align:center;white-space:normal}.productLinks{flex-shrink:0}.productTitle{min-width:0}}
 @media(max-width:400px){.productLogo{width:95px;flex-basis:95px;background-size:90px auto}.productTitle{font-size:15px}}
+
+.summary{display:flex;gap:24px;padding:18px;background:#f4f7fc;border-bottom:1px solid #d9e0eb}.summary>div{display:flex;flex-direction:column;gap:6px}.summary strong{font-size:26px;color:#174e85}.summary>div+div strong{color:#a33333}

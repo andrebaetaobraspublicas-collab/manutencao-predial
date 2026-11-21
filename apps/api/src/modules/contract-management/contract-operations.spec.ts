@@ -75,15 +75,16 @@ describe('Contract operations authorization and import integrity',()=>{
   expect(rows).toContainEqual(['e','Fundação',100,'Confirmado']);expect(JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets.Boletim,{header:1}))).toContain('sem efeito contratual');
   const pdf=await exports.measurement(user,'c','m','pdf');expect(pdf.buffer.subarray(0,5).toString()).toBe('%PDF-');
  });
- it('rejects the author approving their own real bulletin before persistence',async()=>{
+ it.each([['owner',false],['author',true]])('owner %s controls self approval (allowed %s)',async(owner,allowed)=>{
   const baseline={regime:'UNIT_PRICE',originalValue:'100',paradigmOriginal:'100',events:[],items:[{id:'i',code:'1',description:'Service',unit:'UN',originalQuantity:'10',quantity:'10',unitPrice:'10',referencePrice:'10',originalTotal:'100',measured:'0'}]};
-  const row={id:'c',owner_id:'author',baseline,version:2,demo:false,regime:'UNIT_PRICE'};
+  const row={id:'c',owner_id:owner,baseline,version:2,demo:false,regime:'UNIT_PRICE'};
   const draft={id:'draft',kind:'measurement',actor_id:'author',payload:{title:'Medição',period:'2026-11',executionDate:'2026-11-10',evidence:'Conferência',lines:[{itemId:'i',quantity:'1'}]}};
   const query=jest.fn(async(sql:string)=>sql.startsWith('SELECT c.')?[row]:sql.startsWith('SELECT id,version')?[draft]:[]);
   const db:any={query,transaction:async(fn:any)=>fn({query})},access:any={role:async()=> 'MANAGER',require:async()=> 'MANAGER'};
   const service=new ContractService(db,{} as any,{} as any,{} as any,access);
-  await expect(service.action(user,'c',{requestId:'approval',expectedVersion:2,kind:'approve-measurement',payload:{measurementId:'draft'}})).rejects.toBeInstanceOf(ForbiddenException);
-  expect(query.mock.calls.some(([sql])=>sql.startsWith('INSERT'))).toBe(false);
+  const operation=service.action(user,'c',{requestId:'approval',expectedVersion:2,kind:'approve-measurement',payload:{measurementId:'draft'}});
+  if(allowed)await expect(operation).resolves.toBeDefined();else await expect(operation).rejects.toBeInstanceOf(ForbiddenException);
+  expect(query.mock.calls.some(([sql])=>sql.startsWith('INSERT'))).toBe(allowed);
  });
  it('confirms measurement import, source attachment and receipt in the same transaction without approval',async()=>{
   const baseline={regime:'UNIT_PRICE',originalValue:'100',paradigmOriginal:'100',events:[],items:[{id:'i',code:'1',description:'Service',unit:'UN',originalQuantity:'10',quantity:'10',unitPrice:'10',referencePrice:'10',originalTotal:'100',measured:'0'}]};
@@ -150,4 +151,18 @@ it('preserves complete imported technical descriptions over 1000 characters with
  const result=mapContractRows({rows:[['Código','Descrição','Unidade','Quantidade','Preço','Referência'],['GLP',description,'UN',1,2000,2200]]},mapping,1);
  expect(result.ready).toBe(true);expect(result.rows[0].description).toBe(description.trim());expect(result.total).toBe('2000.00');
  const excess=mapContractRows({rows:[[],['GLP','x'.repeat(10001),'UN',1,2000,2200]]},mapping,1);expect(excess.ready).toBe(false);
+});
+
+
+describe('Retificação exclusiva do proprietário',()=>{
+ it.each(['MANAGER','FISCAL','READER'])('does not grant revision rights to shared role %s',async role=>{
+  const row={id:'c',owner_id:'another',version:1,baseline:{regime:'UNIT_PRICE',originalValue:'100',paradigmOriginal:'100',items:[],events:[]}};
+  const query=jest.fn(async(sql:string)=>sql.startsWith('SELECT c.')?[row]:[]);
+  const access={role:async()=>role,require:async(_u:any,_id:any,roles:string[])=>{if(!roles.includes(role))throw new ForbiddenException();return role;}};
+  const service=new ContractService({query,transaction:async(fn:any)=>fn({query})} as any,{} as any,{} as any,{} as any,access as any);
+  const dto={kind:'revise-measurement',requestId:'r',expectedVersion:1,payload:{measurementId:'m',replacement:{},revisionReason:'Correção'}};
+  await expect(service.previewAction(user,'c',dto)).rejects.toBeInstanceOf(ForbiddenException);
+  await expect(service.action(user,'c',dto)).rejects.toBeInstanceOf(ForbiddenException);
+  expect(query.mock.calls.some(([sql])=>sql.startsWith('INSERT'))).toBe(false);
+ });
 });

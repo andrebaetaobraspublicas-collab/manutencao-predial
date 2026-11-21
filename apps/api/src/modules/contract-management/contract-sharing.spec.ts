@@ -53,15 +53,15 @@ describe('Contract team authorization',()=>{
 
 describe('Per-bulletin approval presentation',()=>{
  it.each([
-  ['MANAGER','manager',false,false],['FISCAL','manager',false,false],
+  ['OWNER','manager',false,true],['MANAGER','manager',false,false],['FISCAL','manager',false,false],
   ['MANAGER','another',false,true],['FISCAL','another',false,true],
   ['READER','another',false,false],['MANAGER','manager',true,true],
  ])('role %s, author %s and demo %s give approval %s',async(role,author,demo,canApprove)=>{
   const baseline={regime:'UNIT_PRICE',originalValue:'100',paradigmOriginal:'100',events:[],items:[{id:'i',code:'1',description:'Service',unit:'UN',originalQuantity:'10',quantity:'10',unitPrice:'10',referencePrice:'10',originalTotal:'100',measured:'0'}]};
-  const row={id:'c',owner_id:'owner',baseline,version:2,demo,regime:'UNIT_PRICE'};
+  const row={id:'c',owner_id:role==='OWNER'?actor.userId:'owner',baseline,version:2,demo,regime:'UNIT_PRICE'};
   const draft={id:'draft',kind:'measurement',actor_id:author,payload:{title:'Medição',period:'2026-11',executionDate:'2026-11-10',evidence:'Conferência',lines:[{itemId:'i',quantity:'1'}]}};
   const query=jest.fn(async(sql:string)=>sql.startsWith('SELECT c.')?[row]:sql.startsWith('SELECT id,version')?[draft]:[]);
-  const service=new ContractService({query} as any,{} as any,{} as any,{} as any,{role:async()=>role} as any);
+  const service=new ContractService({query} as any,{} as any,{} as any,{} as any,{role:async()=>role==='OWNER'?'MANAGER':role} as any);
   expect((await service.detail(actor,'c')).measurements[0]).toMatchObject({createdBy:author,canApprove});
  });
 });

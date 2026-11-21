@@ -104,6 +104,7 @@ function fixture(file, api, props = {}, exportName) {
       if(path==='./source-link')return load('source-link.tsx');
       if(path==='./sheet-math')return load('sheet-math.ts');
       if(path==='./contract-sheets')return load('contract-sheets.tsx');
+      if(path==='./record-corrections')return load('record-corrections.tsx');
       if(path==='./contract-history')return load('contract-history.tsx');
       if(path==='./contract-planning')return load('contract-planning.tsx');
       if(path==='./schedule-revision-editor')return load('schedule-revision-editor.tsx');
@@ -171,7 +172,7 @@ test('source creation submits confirmed paradigm, exact version/hash and day off
   const requests = [], created = [];
   const f = fixture('create-contract.tsx', async (path, init) => { requests.push({ path, init }); return path.endsWith('/preview') ? preview : { contract: { id: 'created-contract' } }; }, { sources: [source], onCreated: async id => { created.push(id); }, onCancel() {} });
   f.render(); f.button('Conferir versão').props.onClick(); await flush(); f.render();
-  f.button('Confirmar paradigma igual').props.onClick(); f.render();
+  assert.equal(f.find(n=>n.props?.['aria-label']==='Preço contratado '+preview.items[0].code).props.value,preview.items[0].unitPrice);
   f.find(n => n.type === 'select' && n.props.name === 'regime').props.onChange({ target: { value: 'GLOBAL_PRICE' } }); f.render();
   const deadline = f.find(n => n.props?.name === 'eventDeadline0');
   assert.equal(deadline.props.type, 'number');
@@ -319,7 +320,7 @@ test('approval UI blocks the real author and lets another authorized reviewer ap
   const detail={...gridDetail,contract:{...gridDetail.contract,demo:false,permissions:{manage:false,measure:true,approve:true,pay:false}},measurements:[{id:'m',title:'Boletim',status:'DRAFT',canApprove}]};
   const f=fixture('page.tsx',async path=>path.endsWith('/access')?{enabled:true,databaseConfigured:true,entitled:true,canCreate:false}:path.endsWith('/sources')?{orcapro:[],infra:[]}:path.endsWith('/contracts')?[detail.contract]:path.endsWith('/grid')?detail:{});
   await f.mount();f.button('Medições').props.onClick();f.render();assert.equal(f.button('Aprovar boletim').props.disabled,!canApprove);assert.equal(f.button('Registrar pagamento').props.disabled,true);
-  if(!canApprove)assert.match(f.text(f.render()),/O autor não pode aprovar a própria medição/);
+  if(!canApprove)assert.match(f.text(f.render()),/Somente o proprietário pode aprovar a própria medição/);
  }
 });
 
@@ -478,4 +479,33 @@ test('schedule revision requires a reviewed proposal, preserves completed rows, 
  f.find(n=>n.type==='input'&&n.props.placeholder==='Aditivo e autorização de reprogramação').props.onChange({target:{value:'TA 01 / Autorização'}});f.find(n=>n.type==='textarea').props.onChange({target:{value:'Prazo do saldo conferido'}});f.render();f.button('Conferir reprogramação').props.onClick();await flush();f.render();assert.ok(f.button('Aprovar e registrar revisão'));
  f.find(n=>n.props?.['aria-label']==='Fim reprogramado 2.1').props.onInput({currentTarget:{value:'2027-09-03'}});f.render();assert.equal(f.button('Aprovar e registrar revisão'),undefined);f.button('Conferir reprogramação').props.onClick();await flush();f.render();f.button('Aprovar e registrar revisão').props.onClick();await flush();
  const request=calls.find(([p])=>p.endsWith('/actions'))[1];assert.equal(request.kind,'schedule-revision');assert.equal(request.previewHash,'approved-hash');assert.equal(request.requestId,'reviewed-id');assert.equal(request.payload.lines[1].end,'2027-09-03');assert.equal(saved.length,1);
+});
+
+
+test('fill remaining copies both quantities, leaves entered rows intact, and revision preloads the existing bulletin',async()=>{
+ const item={...manyItems[0],quantity:'10',measured:'3'},detail={...gridDetail,items:[item]};
+ const props={detail,mode:'measurement',busy:false,prepared:null,onPreview:async()=>{},onDirty(){},onCommit(){},onCancel(){}};
+ const f=fixture('contract-sheets.tsx',async()=>({items:[item],events:[],groups:[],summary:{}}),props,'ContractSheetEditor');await f.mount();
+ f.button('Preencher saldos').props.onClick();f.render();
+ const cell=key=>f.find(n=>n.props?.['aria-label']===`${key} ${item.number}`);
+ assert.equal(cell('Quantidade apresentada').props.value,'7,000000');assert.equal(cell('Quantidade no período').props.value,'7,000000');
+ cell('Quantidade no período').props.onChange({target:{value:'2'}});f.render();f.button('Preencher saldos').props.onClick();f.render();assert.equal(cell('Quantidade no período').props.value,'2');
+ const sent=[],revision={id:'m',status:'APPROVED',title:'M1',period:'1',executionDate:'2026-11-01',evidence:'Evidência',lines:[{itemId:item.id,quantity:'2',presentedQuantity:'3'}]};
+ const edit=fixture('contract-sheets.tsx',async()=>({items:[item],events:[],groups:[],summary:{}}),{...props,revision,onPreview:async(kind,payload)=>sent.push({kind,payload})},'ContractSheetEditor');await edit.mount();
+ assert.equal(edit.find(n=>n.props?.['aria-label']===`Quantidade no período ${item.number}`).props.value,'2');
+ await edit.submit(edit.find(n=>n.type==='form'),{});assert.equal(sent[0].kind,'revise-measurement');assert.equal(sent[0].payload.measurementId,'m');assert.equal(sent[0].payload.replacement.lines[0].quantity,'2');
+});
+
+
+test('source prices start equal, linear discount uses edited paradigm without compounding and both columns submit',async()=>{
+ const requests=[];const f=fixture('create-contract.tsx',async(path,init)=>{requests.push({path,init});return path.endsWith('/preview')?preview:{id:'new'};},{sources:[source],onCreated:async()=>{},onCancel(){}});
+ f.render();f.button('Conferir versão').props.onClick();await flush();f.render();
+ const field=name=>f.find(n=>n.props?.['aria-label']===name);
+ assert.equal(field('Preço paradigma '+preview.items[0].code).props.value,'100.000000');
+ field('Preço paradigma '+preview.items[0].code).props.onChange({target:{value:'120'}});f.render();
+ field('Desconto linear (%)').props.onChange({target:{value:'10'}});f.render();f.button('Aplicar desconto linear').props.onClick();f.render();assert.equal(field('Preço contratado '+preview.items[0].code).props.value,'108.000000');
+ f.button('Aplicar desconto linear').props.onClick();f.render();assert.equal(field('Preço contratado '+preview.items[0].code).props.value,'108.000000');
+ field('Preço contratado '+preview.items[0].code).props.onChange({target:{value:'125'}});f.render();
+ await f.submit(f.find(n=>n.type==='form'&&f.nodes(n).some(c=>c.props?.name==='name')),{name:'Teste',baseDate:'2026-11-21',reason:'Conferido'});
+ const body=JSON.parse(requests.at(-1).init.body);assert.deepEqual(body.contractedPrices,[{itemId:'item-1',price:'125'}]);assert.deepEqual(body.referencePrices,[{itemId:'item-1',price:'120'}]);
 });

@@ -1,5 +1,7 @@
 # Gestão Contratual — estado publicado e correspondência com o GitHub
 
+> Registro histórico anterior à atualização do código. Consulte a [sincronização posterior, sem implantação](54-sincronizacao-gestao-producao-20261121.md): os ajustes recentes passaram a ser versionados, preservando diferenças administrativas anteriores e todo o histórico abaixo.
+
 Referência: 21/11/2026, horário de Brasília. Este registro atualiza a Gestão Contratual e complementa os documentos 46 e 52, preservando seu conteúdo histórico. Não autoriza implantação, migração, restauração de banco ou alteração de qualquer produto.
 
 ## Repositório correto, mas código remoto ainda incompleto

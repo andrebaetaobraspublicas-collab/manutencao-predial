@@ -16,6 +16,7 @@ export class DemoContractDto extends ContractSourceDto {
 export class CreateContractDto extends ContractSourceDto {
  @ApiProperty({description:'SHA-256 da prévia autorizada da origem'}) @IsString() @MaxLength(64) sourceHash!:string;
  @IsString() @MaxLength(240) name!:string;
+ @ApiProperty({required:false,description:'Preços contratados por item; a origem permanece preservada'}) @IsOptional() @IsArray() @ArrayMaxSize(10000) contractedPrices?:Array<{itemId:string;price:string}>;
  @IsArray() @ArrayMaxSize(10000) referencePrices!:Array<{itemId:string;price:string}>;
  @IsString() @MaxLength(10) baseDate!:string;
  @IsString() @MaxLength(2000) reason!:string;
@@ -62,14 +63,14 @@ export class ConfirmMeasurementImportDto {
 export class ContractActionDto {
   @IsInt() @Min(1) expectedVersion!: number;
   @IsUUID() requestId!: string;
-  @IsIn(['amendment','compensation-reconciliation','price-rule','price-batch','measurement','difference-measurement','approve-measurement','cancel-measurement','payment','refund','progress','progress-items','metadata-enrichment','schedule-revision']) kind!: string;
+  @IsIn(['amendment','compensation-reconciliation','price-rule','price-batch','measurement','revise-measurement','revise-record','delete-record','difference-measurement','approve-measurement','cancel-measurement','payment','refund','progress','progress-items','metadata-enrichment','schedule-revision']) kind!: string;
   @IsObject() payload!: Record<string,any>;
   @IsOptional() @IsString() @MaxLength(64) previewHash?: string;
 }
 export class ContractPreviewDto {
  @IsInt() @Min(1) expectedVersion!:number;
  @IsOptional() @IsUUID() requestId?:string;
- @IsIn(['amendment','price-rule','price-batch','measurement','difference-measurement','metadata-enrichment','schedule-revision']) kind!:string;
+ @IsIn(['amendment','price-rule','price-batch','measurement','revise-measurement','revise-record','delete-record','difference-measurement','metadata-enrichment','schedule-revision']) kind!:string;
  @IsObject() payload!:Record<string,any>;
 }
 export class ScheduleProposalDto {

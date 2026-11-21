@@ -26,3 +26,9 @@ As estruturas do banco conferidas já existem. A ausência de histórico formal 
 Preparação em checkout isolado a partir da revisão atual do GitHub, mantendo intacta a pasta de trabalho anterior e seus arquivos pendentes. A entrega usa uma branch de preparação e PR em rascunho, com `[skip ci]`. Não atualiza `main`/`deploy-api`, não modifica configurações de Actions/Hostinger e não habilita auto-merge. Não reutilizar uma futura aprovação deste PR como autorização automática de implantação.
 
 Testes e resultados finais são registrados no PR. Os testes de configuração/empacotamento usam diretórios e identidades fictícios, sem conexão com serviços, envio de e-mail, cobrança ou edição de contratos. A validação da dependência no Windows não substitui o pacote Linux. O manual operacional distingue explicitamente o que foi preparado do que ainda depende de autorização de implantação.
+
+## Revisão do PR #87
+
+A incorporação na `main` foi solicitada separadamente, mantendo a proibição de implantação. Na revisão, o build passou a conferir o SHA contra o HEAD, recusar alterações versionadas pendentes e ler os blobs diretamente do commit. Arquivos locais não versionados ficam fora da compilação; inicializador, lock e parâmetros de empacotamento também vêm da fotografia desse commit. Isso evita registrar um SHA que não corresponda aos insumos do pacote e preserva o trabalho local.
+
+Os testes de preparação e origem somam 17 casos, cobrindo SHA divergente, mudanças pendentes, exclusão de arquivos não versionados, bytes binários, terminações de linha e uso da receita congelada. Os testes funcionais anteriores (220 da API e 40 da interface) permanecem como evidência do código de negócio inalterado. A revisão não modifica schema, regras contratuais, dependências gerais ou workflows. O merge deve conservar `[skip ci]`, `deploy-api` e os bloqueios de publicação já existentes; não autoriza ativação do pacote preparado.

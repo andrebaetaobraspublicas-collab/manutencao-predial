@@ -42,7 +42,7 @@ export function validateWeb(root) {
     }
   }
 }
-export function prepare({ apiDist, webExport, output, sourceCommit, sourceDigest, toolchainNode = process.version }) {
+export function prepare({ apiDist, webExport, output, sourceCommit, sourceDigest, toolchainNode = process.version, recipeRoot = recipe }) {
   if (!/^[a-f0-9]{40}$/.test(sourceCommit)) throw new Error('A full source commit is required.');
   if (!/^[a-f0-9]{64}$/.test(sourceDigest)) throw new Error('An input source digest is required.');
   output = path.resolve(output);
@@ -52,12 +52,12 @@ export function prepare({ apiDist, webExport, output, sourceCommit, sourceDigest
   const api = path.join(output, 'api'), web = path.join(output, 'web');
   fs.mkdirSync(api, { recursive: true }); fs.mkdirSync(web);
   for (const name of files(apiDist).filter(n => /\.(js|cjs|json)$/.test(n))) copy(apiDist, path.join(api, 'dist'), name);
-  for (const name of ['package.json', 'package-lock.json', 'main.js', 'validate-config.cjs']) copy(path.join(recipe, 'runtime'), api, name);
+  for (const name of ['package.json', 'package-lock.json', 'main.js', 'validate-config.cjs']) copy(path.join(recipeRoot, 'runtime'), api, name);
   for (const name of files(webExport).filter(webAllowed)) copy(webExport, web, name);
-  fs.copyFileSync(path.join(recipe, 'web.htaccess'), path.join(web, '.htaccess'));
+  fs.copyFileSync(path.join(recipeRoot, 'web.htaccess'), path.join(web, '.htaccess'));
   validateWeb(web);
   const hashes = Object.fromEntries(files(output).map(n => [n, sha256(fs.readFileSync(path.join(output, n)))]));
-  const manifest = { product: 'gestao-contratual', sourceCommit, sourceDigest, toolchainNode, runtimeNode: '22.23.5', buildEnvironment: JSON.parse(fs.readFileSync(path.join(recipe, 'build-env.json'))), deploymentPerformed: false, databaseChanges: false, files: hashes };
+  const manifest = { product: 'gestao-contratual', sourceCommit, sourceDigest, toolchainNode, runtimeNode: '22.23.5', buildEnvironment: JSON.parse(fs.readFileSync(path.join(recipeRoot, 'build-env.json'))), deploymentPerformed: false, databaseChanges: false, files: hashes };
   fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   return manifest;
 }

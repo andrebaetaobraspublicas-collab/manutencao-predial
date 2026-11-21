@@ -59,6 +59,12 @@ test('packaging verifies references, preserves input, excludes maps and builds a
   assert.notEqual(spawnSync(process.execPath,[path.join(recipe,'verify.mjs'),f.output]).status,0);
 });
 test('existing output is never overwritten',t=>{const f=fixture(t);fs.mkdirSync(f.output);fs.writeFileSync(path.join(f.output,'keep'),'preserve');assert.throws(()=>prepare(f),/never overwritten/);assert.equal(fs.readFileSync(path.join(f.output,'keep'),'utf8'),'preserve');});
+test('assembly reads runtime and public build parameters from the frozen recipe',t=>{
+  const f=fixture(t),frozen=path.join(f.root,'frozen');fs.mkdirSync(frozen);fs.cpSync(path.join(recipe,'runtime'),path.join(frozen,'runtime'),{recursive:true});
+  fs.writeFileSync(path.join(frozen,'build-env.json'),JSON.stringify({marker:'frozen'}));fs.copyFileSync(path.join(recipe,'web.htaccess'),path.join(frozen,'web.htaccess'));
+  fs.writeFileSync(path.join(frozen,'runtime/main.js'),'// frozen launcher\n');
+  const manifest=prepare({...f,recipeRoot:frozen});assert.equal(manifest.buildEnvironment.marker,'frozen');assert.equal(fs.readFileSync(path.join(f.output,'api/main.js'),'utf8'),'// frozen launcher\n');
+});
 test('missing public dependencies fail assembly',t=>{const f=fixture(t);fs.unlinkSync(path.join(f.webExport,'_next/static/chunks/shared.js'));assert.throws(()=>prepare(f),/Missing public dependency/);});
 test('launcher import does not start the API; absent private config fails before startup',()=>{const launcher=require('./runtime/main.js');const before=process.env.GESTAO_ENV_FILE;delete process.env.GESTAO_ENV_FILE;try{assert.throws(()=>launcher.loadConfiguration(),/GESTAO_ENV_FILE/)}finally{if(before!==undefined)process.env.GESTAO_ENV_FILE=before}});
 test('installed dependency validation catches drift and permits platform-specific optional absence',t=>{

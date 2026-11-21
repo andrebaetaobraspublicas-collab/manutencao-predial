@@ -11,12 +11,12 @@ O `runtime/package-lock.json` é a cópia integral do lock auditado em produçã
 ```sh
 # Dentro do checkout isolado, usando Node 22.23.5.
 npm ci --ignore-scripts
-node --test scripts/gestao-production/prepare.test.mjs
+node --test scripts/gestao-production/prepare.test.mjs scripts/gestao-production/source.test.mjs
 node scripts/gestao-production/build.mjs --output /caminho/local/novo-pacote --source-commit <SHA-completo-do-checkout>
 node scripts/gestao-production/verify.mjs /caminho/local/novo-pacote
 ```
 
-O build copia os insumos para uma pasta temporária, ignora configurações privadas, usa URL fictícia de banco apenas para gerar o cliente Prisma e chama TypeScript/Next diretamente. Não usa os comandos `hostinger:deploy`, `prisma:deploy`, `prisma:seed` nem os prebuilds dos editores. A identidade do commit é informada explicitamente; o manifesto também registra um hash dos insumos efetivamente compilados. A pasta temporária é mantida para inspeção. A saída precisa estar fora do checkout e não pode existir previamente.
+O build exige que o SHA informado corresponda ao HEAD e recusa alterações pendentes em arquivos versionados. Lê os blobs diretamente desse commit, excluindo arquivos locais não versionados e configurações privadas, e os materializa numa pasta temporária. Assim, diferenças locais de quebra de linha não falsificam a origem. Usa URL fictícia de banco apenas para gerar o cliente Prisma e chama TypeScript/Next diretamente. Não usa os comandos `hostinger:deploy`, `prisma:deploy`, `prisma:seed` nem os prebuilds dos editores. O manifesto também registra um hash dos insumos efetivamente compilados. A pasta temporária é mantida para inspeção. A saída precisa estar fora do checkout e não pode existir previamente.
 
 O pacote contém `api/`, `web/` e `manifest.json`. O inicializador é exclusivamente `api/main.js` → `dist/main-gestao.js`. Módulos compartilhados compilados podem existir na distribuição, mas o módulo Nest exclusivo continua controlando os serviços e controllers carregados. Não há publicação de rotas operacionais dos demais produtos.
 

@@ -1,4 +1,4 @@
-> Documentação atual: [estado consolidado dos programas — 15/11/2026](docs/46-estado-consolidado-programas-20261115.md).
+> Gestão Contratual: [estado publicado em desenvolvimento e produção — 21/11/2026](docs/53-gestao-contratual-publicado-20261121.md), incluindo a divergência entre o código remoto e os artefatos publicados. Demais produtos: [estado consolidado — 15/11/2026](docs/46-estado-consolidado-programas-20261115.md).
 
 # Gestão de Prédios — v0.9.0
 

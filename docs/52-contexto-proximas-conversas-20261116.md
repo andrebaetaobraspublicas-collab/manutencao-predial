@@ -1,5 +1,7 @@
 # Contexto para próximas conversas — família OrçaPro
 
+> Atualização de 21/11/2026: para a Gestão Contratual, leia primeiro o [estado publicado e a correspondência com o GitHub](53-gestao-contratual-publicado-20261121.md). Há código recente publicado nos dois ambientes que ainda não integra a `main` remota; a árvore local contém alterações e arquivos novos que devem ser preservados. O retrato abaixo permanece histórico e não deve ser usado para concluir que a pasta continua limpa ou sincronizada com os servidores.
+
 Referência consolidada em 16/11/2026. Copie o conteúdo abaixo para iniciar uma nova conversa. Este documento é um retrato datado: confirme o estado atual antes de agir. Não autoriza implantação nem mudanças nos ambientes.
 
 ## 1. Produtos e ambientes

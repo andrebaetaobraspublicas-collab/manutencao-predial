@@ -2,6 +2,8 @@
 
 # Documentação do Gestão de Prédios
 
+Gestão Contratual: [preparação do pacote reproduzível, sem implantação — 21/11/2026](55-gestao-pacote-reproduzivel-20261121.md). A preparação no GitHub não modifica o estado publicado dos ambientes.
+
 Este diretório é a fonte de verdade funcional e técnica do produto. Atualize os documentos no mesmo pull request que alterar regras de negócio, integrações, modelo de dados ou arquitetura.
 
 ## Ordem recomendada de leitura

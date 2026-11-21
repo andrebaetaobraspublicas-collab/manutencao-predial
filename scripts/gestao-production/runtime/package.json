@@ -1,0 +1,47 @@
+{
+  "name": "orcapro-gestao-contratual-production",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "@e965/xlsx": "0.20.3",
+    "@nestjs/common": "11.2.7",
+    "@nestjs/config": "4.0.4",
+    "@nestjs/core": "11.2.7",
+    "@nestjs/jwt": "11.0.2",
+    "@nestjs/mapped-types": "2.1.1",
+    "@nestjs/passport": "11.0.5",
+    "@nestjs/platform-express": "11.2.7",
+    "@nestjs/swagger": "11.4.7",
+    "@prisma/adapter-mariadb": "7.9.1",
+    "@prisma/client": "7.9.1",
+    "bcryptjs": "3.0.2",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.2",
+    "compression": "1.8.2",
+    "cookie-parser": "1.4.7",
+    "dotenv": "17.4.2",
+    "helmet": "8.1.0",
+    "iconv-lite": "^0.7.3",
+    "mariadb": "3.5.4",
+    "mime-types": "3.0.1",
+    "multer": "2.5.0",
+    "nodemailer": "^10.3.1",
+    "passport": "0.7.0",
+    "passport-jwt": "4.0.1",
+    "pdf-parse": "2.4.5",
+    "pdfkit": "0.17.2",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "saxes": "6.0.0",
+    "stripe": "22.4.0",
+    "stripe-gestao": "npm:stripe@23.1.0",
+    "swagger-ui-dist": "5.32.11",
+    "unzipper": "0.12.5"
+  },
+  "private": true
+}
